@@ -1,0 +1,3 @@
+BOT_TOKEN = "5465464869:Bottokennnnn_xyskwA500LU"
+LOG_LEVEL=DEBUG
+LOG_FORMAT='[{asctime}] #{levelname:8} {filename}:{lineno} - {name} - {message}'
