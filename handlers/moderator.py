@@ -6,7 +6,7 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 import time
 
 from config.config import config
-from filters.is_moderator import ModeratorChatFilter
+from filters import ModeratorChatFilter
 
 moderator_router = Router()
 moderator_router.message.filter(ModeratorChatFilter())
@@ -16,5 +16,4 @@ async def check_in_moderator_chat(message:Message):
     """
     Проверяет, написано сообщение в чате модераторов или нет
     """
-
     await message.answer("Да, это чат модераторов")
