@@ -8,8 +8,9 @@ class MenuKeyboard:
     """
     Клавиатура для меню пользователя
     """
+
     @staticmethod
-    def create_keyboard_menu():
+    def get_keyboard_menu():
         button_submit_application= KeyboardButton(text=LEXICON_USER_KEYBOARD["submit_application"])
         button_my_tyuiu_coins= KeyboardButton(text=LEXICON_USER_KEYBOARD["my_tyuiu_coins"])
         button_catalog_of_rewards= KeyboardButton(text=LEXICON_USER_KEYBOARD["catalog_of_rewards"])
@@ -28,8 +29,9 @@ class AgreementInlineButtons:
     """
     Инлайн-кнопки согласия
     """
+
     @staticmethod
-    def get_inline_agreement():
+    def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["read_the_agreement"],callback_data="read_the_agreement")],
@@ -44,8 +46,9 @@ class ChoiceOfInstituteInlineButtons:
     """
     Инлайн кнопки выбора института обучения
     """
+
     @staticmethod
-    def get_inline_choice_of_institute():
+    def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard = [
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute_of_architecture_and_design"], callback_data="institute_of_architecture_and_design")],
@@ -64,8 +67,9 @@ class DirectionOfActivitiesInlineButtons:
     """
     Инлайн кнопки выбора направления внеучебного направления
     """
+
     @staticmethod
-    def get_inline_direction_of_activities():
+    def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard = [
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_social_design"], callback_data="topic_social_design")],
@@ -96,8 +100,9 @@ class ChoiceOfRoleInlineButtons:
     """
     Инлайн кнопки выбора роли участника в мероприятии
     """
+
     @staticmethod
-    def get_inline_choice_of_role():
+    def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard = [
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["role_spectator"], callback_data="role_spectator")],
@@ -118,8 +123,9 @@ class ApplicationConfirmationInlineButtons:
     """
     Инлайн-кнопки подтверждения заявки
     """
+
     @staticmethod
-    def get_inline_application_confirmation():
+    def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["confirm_application"], callback_data="confirm_application")],
@@ -132,8 +138,9 @@ class ChangeOfApplicationInlineButtons:
     """
     Инлайн-кнопки изменения заявки
     """
+
     @staticmethod
-    def get_inline_change_of_application():
+    def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_direction_of_activities"],callback_data="edit_direction_of_activities")],
@@ -148,8 +155,9 @@ class RewardsChoiceInlineButtons:
     """
     Инлайн-кнопки получения поощрений (ПОЗЖЕ СДЕЛАТЬ ДИНАМИЧЕСКИМИ: возможность добавления определённых подарков)
     """
+    
     @staticmethod
-    def get_inline_rewards_choice():
+    def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard = [
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["item_pencil"], callback_data="item_pencil")],
