@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 
 from config.config import config
+from handlers.moderator import moderator_router
 
 logging.basicConfig(
     level=logging.getLevelName(config.log.level),
@@ -28,6 +29,7 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher()
+    dp.include_router(moderator_router)
     await bot.delete_webhook(drop_pending_updates=True) 
     await dp.start_polling(bot)
     
