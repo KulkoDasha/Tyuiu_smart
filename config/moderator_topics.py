@@ -1,5 +1,5 @@
 #Темы чатов модерации
-TOPIC_ADMIN_PANEL = 1 # Админ-панель
+TOPIC_ADMIN_PANEL = None # Админ-панель
 TOPIC_SUPPORT = 3 # Поддержка
 TOPIC_SOCIAL_DESIGN = 5 # Социальное проектирование
 TOPIC_RESEARCH_TECHNOLOGIES = 7 # Научно-исследовательские технологии
