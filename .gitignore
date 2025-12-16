@@ -1,8 +1,4 @@
 /venv
 /.vscode
 /.env
-BOT_TOKEN = 8222510415:AAHUyGYXrImegwUcq6XbS9j_xyskwA500LU
-LOG_LEVEL=DEBUG
-LOG_FORMAT='[{asctime}] #{levelname:8} {filename}:{lineno} - {name} - {message}'
-MODERATOR_CHAT_ID = -1003355128619
 __pycache__
