@@ -5,15 +5,17 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from datetime import datetime
 import pytz
-import logging
+
 
 from config.config import config
 from filters import ModeratorChatFilter
 from states.admin_states import ModeratorStates
+from keyboards.user_keyboard import MenuKeyboard
 
 moderator_router = Router()
 moderator_router.message.filter(ModeratorChatFilter())
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
+menu_keyboard = MenuKeyboard.get_keyboard_menu()
 
 @moderator_router.message(Command("check"))
 async def check_in_moderator_chat(message:Message):
@@ -27,7 +29,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     user_id = int(callback.data.split("_")[-1])
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
-    await callback.answer(f"✅ Анкета пользователя {user_id} одобрена!", show_alert=True)
+    await callback.answer(f"✅ Анкета пользователя {user_id} одобрена!", show_alert=True, reply_murkup = menu_keyboard)
     await callback.message.edit_text(
         f"✅ Анкета одобрена\n"
         f"👤 Пользователь ID: {user_id}\n"

@@ -293,9 +293,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         await state.set_state(EditRegistration.start)
     else:
         await callback.message.answer(
-            "Пожалуйста, ответьте:\n"
-            "• «Да» - чтобы сохранить анкету\n"
-            "• «Нет» - чтобы редактировать"
+            "Пожалуйста, выберите что изменить"
         )
 
 @user_router.callback_query(StateFilter(EditRegistration.start))
@@ -304,52 +302,50 @@ async def choice_edit(callback:CallbackQuery, state: FSMContext):
     Обрабатываем нажатие на кнопки изменить данные
     """
     if callback.data.startswith("fio"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_fio)
     elif callback.data.startswith("institute"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_institute)
     elif callback.data.startswith("direction"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_direction)
     elif callback.data.startswith("form_of_education"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_form_of_education)
     elif callback.data.startswith("course"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_course)
     elif callback.data.startswith("group"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_group)
     elif callback.data.startswith("date_start"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_date_start)
     elif callback.data.startswith("date_end"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_date_end)
     elif callback.data.startswith("phone_number"):
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_phone_number)
     else:
-        await callback.message.answer("Введите изменнённые данные")
+        await callback.message.edit_text("Введите изменнённые данные")
         await state.set_state(EditRegistration.edit_email)
 
 async def show_updated_anketa(message: Message, state: FSMContext):
     """Показываем обновленную анкету"""
     data = await state.get_data()
-    response = "✅ Данные обновлены! Подтвердите данные или выберите что изменить\n\n"
-    response += f"ФИО: {data.get('fio', 'Не указано')}\n"
-    response += f"Институт: {data.get('institute', 'Не указано')}\n"
-    response += f"Направление: {data.get('direction', 'Не указано')}\n"
-    response += f"Форма обучения: {data.get('form_of_education', 'Не указано')}\n"
-    response += f"Курс: {data.get('course', 'Не указано')}\n"
-    response += f"Группа: {data.get('group', 'Не указано')}\n"
-    response += f"Дата начала: {data.get('date_start', 'Не указано')}\n"
-    response += f"Дата окончания: {data.get('date_end', 'Не указано')}\n"
-    response += f"Телефон: {data.get('phone', 'Не указано')}\n"
-    response += f"Email: {data.get('email', 'Не указано')}\n"
-    
-    await message.answer(response, reply_markup=confirm_anketa)
+    await message.answer("✅ Анкета успешно заполнена!Подтвердите данные или выберите что изменить\n\n"
+                         f"ФИО: {data.get('fio', 'Не указано')}\n"
+                         f"Институт: {data.get('institute', 'Не указано')}\n"
+                         f"Направление: {data.get('direction', 'Не указано')}\n"
+                         f"Форма обучения: {data.get('form_of_education', 'Не указано')}\n"
+                         f"Курс: {data.get('course', 'Не указано')}\n"
+                         f"Группа: {data.get('group', 'Не указано')}\n"
+                         f"Дата начала: {data.get('date_start', 'Не указано')}\n"
+                         f"Дата окончания: {data.get('date_end', 'Не указано')}\n"
+                         f"Телефон: {data.get('phone', 'Не указано')}\n"
+                         f"Email: {message.text}\n", reply_markup=confirm_anketa)
     await state.set_state(RegistrationStates.registration_end)
 
 @user_router.message(StateFilter(EditRegistration.edit_fio))
