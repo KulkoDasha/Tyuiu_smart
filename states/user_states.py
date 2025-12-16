@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from aiogram.fsm.state import State, StatesGroup
 
-
-
 @dataclass
 class RegistrationStates(StatesGroup):
+    """
+    Состояния при регистрации
+    """
     fio = State()
     institute= State()
     direction = State()
@@ -16,13 +17,15 @@ class RegistrationStates(StatesGroup):
     phone_number = State()
     email = State()
     registration_end = State()
-    a = State()
 
 @dataclass 
 class EditRegistration(StatesGroup):
+    """
+    Состояния при изменении данных
+    """
     start = State()
     edit_fio = State()
-    edit_institut = State()
+    edit_institute = State()
     edit_direction = State()
     edit_form_of_education = State()
     edit_course = State()
@@ -34,6 +37,9 @@ class EditRegistration(StatesGroup):
 
 @dataclass
 class Application(StatesGroup):
+    """
+    Состояния при заполнения заявки
+    """
     event = State()
     date_event = State()
     place = State()
