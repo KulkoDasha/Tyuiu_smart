@@ -1,5 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+
 from lexicon import LEXICON_MODERATOR_KEYBOARD
 
 class AdminPanelInlineButtons:
@@ -23,11 +24,11 @@ class RegisterNewUserInlineButtons:
     """
 
     @staticmethod
-    def get_inline_keyboard():
+    def get_inline_keyboard(user_id: int):
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["accept_user"],callback_data="accept_user")],
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["reject_user"], callback_data="reject_user")]
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["accept_user"],callback_data=f"accept_user_{user_id}")],
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["reject_user"], callback_data=f"reject_user_{user_id}")]
                                 ])
         
         return keyboard

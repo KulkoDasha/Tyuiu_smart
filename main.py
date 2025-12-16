@@ -10,6 +10,8 @@ from pathlib import Path
 from config.config import config
 from handlers.moderator import moderator_router
 from handlers.admin import admin_router
+from handlers.user import user_router
+from handlers.other import other_router
 
 logging.basicConfig(
     level=logging.getLevelName(config.log.level),
@@ -30,8 +32,10 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher()
+    dp.include_router(user_router)
     dp.include_router(moderator_router)
     dp.include_router(admin_router)
+    dp.include_router(other_router)
     await bot.delete_webhook(drop_pending_updates=True) 
     await dp.start_polling(bot)
     
