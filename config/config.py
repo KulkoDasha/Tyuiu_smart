@@ -12,6 +12,7 @@ class LogSettings:
 @dataclass
 class TgBot:
     token: str
+
     
 @dataclass
 class Config:
@@ -19,6 +20,8 @@ class Config:
     log: LogSettings
     moderator_chat_id: int
     admin_panel_id :None | int
+    google_secret_key : str
+    apps_script_url: str
 
 def load_config(path: str | None = None) -> Config:
     """создает парсер(скрипт который собирает и структурирует данные), 
@@ -41,6 +44,8 @@ def load_config(path: str | None = None) -> Config:
         ),
         moderator_chat_id = int(moderator_chat_id),
         admin_panel_id = admin_panel_id,
+        google_secret_key = os.getenv("GOOGLE_SECRET_KEY"),
+        apps_script_url = os.getenv("APPS_SCRIPT_URL")
         )
     
 config = load_config()

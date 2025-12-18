@@ -171,7 +171,7 @@ class RewardsChoiceInlineButtons:
         return keyboard
 
 
-class Change_anketa:
+class ChangeRegistrationFormInlineButtons:
     """
     Инлайн кнопки для изменения анкеты
     """
@@ -180,21 +180,21 @@ class Change_anketa:
     def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard = [
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["fio"], callback_data="fio")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["full_name"], callback_data="full_name")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute"], callback_data="institute")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["direction"], callback_data="direction")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["form_of_education"], callback_data="form_of_education")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["course"], callback_data="course")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["group"], callback_data="group")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["date_start"], callback_data="date_start")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["date_end"], callback_data="date_end")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["start_year"], callback_data="start_year")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["end_year"], callback_data="end_year")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["phone_number"], callback_data="phone_number")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["email"], callback_data="email")]
                             ])        
                 
         return keyboard
 
-class Confirm_anketa:
+class ConfirmRegistrationFormInlineButtons:
     """
     Инлайн-кнопки подтверждения заявки
     """
@@ -203,8 +203,8 @@ class Confirm_anketa:
     def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["save_anketa"], callback_data="save_anketa")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["change_anketa"], callback_data= "change_anketa")]
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["save_registration_form"], callback_data="save_registration_form")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["change_registration_form"], callback_data= "change_registration_form")]
                                 ])
         
         return keyboard
