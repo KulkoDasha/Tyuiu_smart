@@ -22,8 +22,8 @@ user_router = Router()
 keyboard_start = AgreementInlineButtons.get_inline_keyboard()
 menu_keyboard = MenuKeyboard.get_keyboard_menu()
 institute_keyboard = ChoiceOfInstituteInlineButtons.get_inline_keyboard()
-change_form = ChangeRegistrationFormInlineButtons.get_inline_keyboard()
-confirm_form = ConfirmRegistrationFormInlineButtons.get_inline_keyboard()
+change_registration_form = ChangeRegistrationFormInlineButtons.get_inline_keyboard()
+confirm_registration_form = ConfirmRegistrationFormInlineButtons.get_inline_keyboard()
 
 
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
@@ -236,7 +236,7 @@ async def email_sent(message: Message, state: FSMContext):
                          f"Год начала обучения: {data.get('start_year', 'Не указано')}\n"
                          f"Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
                          f"Телефон: {data.get('phone', 'Не указано')}\n"
-                         f"Email: {message.text}\n",reply_markup= confirm_form)
+                         f"Email: {message.text}\n",reply_markup= confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
 @user_router.message(StateFilter(RegistrationFormStates.email))
@@ -249,11 +249,11 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     """
     Обрабатываем нажатие на кнопки отправить анкету/изменить анкету
     """
-    if callback.data.startswith("save_form"):
+    if callback.data.startswith("save_registration_form"):
         data = await state.get_data()
         utc_time = callback.message.date
         ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
-        moder_message = (
+        moderator_message = (
             "📋 Новая анкета на проверку\n\n"
             f"👤 Пользователь: @{callback.from_user.username or 'без username'} "
             f"(ID: {callback.from_user.id})\n"
@@ -265,7 +265,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"• Форма обучения: {data.get('form_of_education', 'Не указано')}\n"
             f"• Курс: {data.get('course', 'Не указано')}\n"
             f"• Группа: {data.get('group', 'Не указано')}\n"
-            f"• Год поступления {data.get('start_year', 'Не указано')}\n"
+            f"• Год начала обучения: {data.get('start_year', 'Не указано')}\n"
             f"• Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
             f"• Телефон: {data.get('phone', 'Не указано')}\n"
             f"• Email: {data.get('email', 'Не указано')}\n"
@@ -275,15 +275,15 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         )
         send_params = {
                 "chat_id": config.moderator_chat_id,
-                "text": moder_message,
+                "text": moderator_message,
                 "reply_markup": moderator_confirm_form,
                 "message_thread_id": 45
             }
         await bot.send_message(**send_params)
         await callback.message.edit_text(text = LEXICON_TEXT["registration_end"])
         await state.clear()
-    elif callback.data.startswith("change_form"):
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit"], reply_markup = change_form)
+    elif callback.data.startswith("change_registration_form"):
+        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit"], reply_markup = change_registration_form)
         await state.set_state(EditRegistrationForm.start)
     else:
         await callback.message.answer(
@@ -336,10 +336,10 @@ async def show_updated_form(message: Message, state: FSMContext):
                          f"Форма обучения: {data.get('form_of_education', 'Не указано')}\n"
                          f"Курс: {data.get('course', 'Не указано')}\n"
                          f"Группа: {data.get('group', 'Не указано')}\n"
-                         f"Год поступления: {data.get('start_year', 'Не указано')}\n"
+                         f"Год начала обучения: {data.get('start_year', 'Не указано')}\n"
                          f"Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
                          f"Телефон: {data.get('phone', 'Не указано')}\n"
-                         f"Email: {message.text}\n", reply_markup=confirm_form)
+                         f"Email: {message.text}\n", reply_markup=confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_full_name))
@@ -396,7 +396,7 @@ async def edit_phone_number(message:Message, state: FSMContext):
     await message.answer("Данные изменены")
     await show_updated_form(message, state)
 
-@user_router.message(StateFilter(EditRegistrationForm.edit_email ))
+@user_router.message(StateFilter(EditRegistrationForm.edit_email))
 async def edit_email(message:Message, state: FSMContext):
     await state.update_data(email=message.text)
     await message.answer("Данные изменены")

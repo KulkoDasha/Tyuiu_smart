@@ -64,7 +64,7 @@ LEXICON_USER_KEYBOARD = {
     "item_olympia_course": "🏆 Курс «Олимпия»",
 
     "save_registration_form":"✅ Сохранить анкету",
-    "change_registration_form":"❌ Изменить данные",
+    "change_registration_form":"✏️ Изменить данные",
 
     "full_name":"Изменить ФИО",
     "institute":"Изменить институт",

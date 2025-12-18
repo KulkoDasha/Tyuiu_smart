@@ -24,7 +24,7 @@ def parse_registration_form_from_message(message_text: str, user_id: int,
             ("form_of_education", "Форма обучения"),
             ("course", "Курс"),
             ("group", "Группа"),
-            ("start_year", "Год поступления"), 
+            ("start_year", "Год начала обучения"), 
             ("end_year", "Год окончания программы обучения"), 
             ("phone", "Телефон"),
             ("email", "Email")
