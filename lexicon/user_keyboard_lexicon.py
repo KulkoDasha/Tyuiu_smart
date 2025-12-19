@@ -49,7 +49,7 @@ LEXICON_USER_KEYBOARD = {
     "role_leader":"👑 Руководитель/лидер/староста/командир",
 
     "confirm_application": "✅ Подтвердить заявку",
-    "edit_application": "❌ Изменить заявку",
+    "edit_application": "✏️ Изменить данные",
 
     "edit_direction_of_activities": "✏️ Изменить направление внеучебной деятельности",
     "edit_event_details": "✏️ Изменить данные о мероприятии",
@@ -63,17 +63,17 @@ LEXICON_USER_KEYBOARD = {
     "item_sweatshirt" : "🧥 Свитшот",
     "item_olympia_course": "🏆 Курс «Олимпия»",
 
-    "save_anketa":"✅ Сохранить анкету",
-    "change_anketa":"❌ Изменить данные",
+    "save_registration_form":"✅ Сохранить анкету",
+    "change_registration_form":"✏️ Изменить данные",
 
-    "fio":"Изменить ФИО",
+    "full_name":"Изменить ФИО",
     "institute":"Изменить институт",
     "direction":"Изменить направление",
     "form_of_education":"Изменить форму образования",
     "course":"Изменить курс",
     "group":"Изменить группу",
-    "date_start":"Изменить дату начала",
-    "date_end":"Изменить дату конца",
+    "start_year":"Изменить дату начала",
+    "end_year":"Изменить дату конца",
     "phone_number":"Изменить номер телефона",
     "email":"Изменить почту",
 

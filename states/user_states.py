@@ -2,36 +2,36 @@ from dataclasses import dataclass
 from aiogram.fsm.state import State, StatesGroup
 
 @dataclass
-class RegistrationStates(StatesGroup):
+class RegistrationFormStates(StatesGroup):
     """
     Состояния при регистрации
     """
-    fio = State()
+    full_name = State()
     institute= State()
     direction = State()
     form_of_education = State()
     course = State()
     group = State()
-    date_start = State()
-    date_end = State()
+    start_year = State()
+    end_year = State()
     phone_number = State()
     email = State()
     registration_end = State()
 
 @dataclass 
-class EditRegistration(StatesGroup):
+class EditRegistrationForm(StatesGroup):
     """
     Состояния при изменении данных
     """
     start = State()
-    edit_fio = State()
+    edit_full_name = State()
     edit_institute = State()
     edit_direction = State()
     edit_form_of_education = State()
     edit_course = State()
     edit_group = State()
-    edit_date_start = State()
-    edit_date_end = State()
+    edit_start_year = State()
+    edit_end_year = State()
     edit_phone_number = State()
     edit_email = State()
 
