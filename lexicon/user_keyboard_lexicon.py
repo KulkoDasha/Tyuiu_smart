@@ -52,7 +52,9 @@ LEXICON_USER_KEYBOARD = {
     "edit_application": "✏️ Изменить данные",
 
     "edit_direction_of_activities": "✏️ Изменить направление внеучебной деятельности",
-    "edit_event_details": "✏️ Изменить данные о мероприятии",
+    "edit_event_name" : "✏️ Изменить название мероприятия",
+    "edit_event_date": "✏️ Изменить дату мероприятия",
+    "edit_event_location": "✏️ Изменить локацию мероприятия",
     "edit_role": "✏️ Изменить роль",
     "edit_confirmation_material": "✏️ Изменить материал, подтверждающий участие",
 
@@ -77,7 +79,7 @@ LEXICON_USER_KEYBOARD = {
     "phone_number":"Изменить номер телефона",
     "email":"Изменить почту",
 
-    "support_":"Написать модератору направления",
-    "":"Посмотреть FAQ",
-    "":"Обратная связь"
+    "support_write_moderator_of_the_direct":"Обратиться к модератору направления",
+    "support_feedback":"Обратная связь",
+    "support_error":"Сообщить об ошибке"
 }

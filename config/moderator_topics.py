@@ -20,7 +20,7 @@ TOPIC_STUDENT_UNITS = 35 # Студенческие отряды
 TOPIC_UNITED_STUDENT_COUNCIL = 38 # Объединенный совет обучающихся
 TOPIC_HEADMAN = 40 # Старостат
 TOPIC_REGISTRATION_NEW_USER = 45 # Регистрация новых пользователей
-
+GENERAL_CHAT = 243 # Общий чат
 
 
 

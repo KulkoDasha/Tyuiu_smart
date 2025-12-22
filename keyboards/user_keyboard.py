@@ -83,8 +83,6 @@ class DirectionOfActivitiesInlineButtons:
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_applied_creativity"], callback_data="topic_applied_creativity")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_media_communications"], callback_data="topic_media_communications")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_volunteering"], callback_data="topic_volunteering")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_headman"], callback_data="topic_headman")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_registration_new_user"], callback_data="topic_registration_new_user")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_ecology_nature"], callback_data="topic_ecology_nature")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_sport"], callback_data="topic_sport")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_tourism_travel"], callback_data="topic_tourism_travel")],
@@ -144,7 +142,9 @@ class ChangeOfApplicationInlineButtons:
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_direction_of_activities"],callback_data="edit_direction_of_activities")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_event_details"], callback_data="edit_event_details")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_event_name"], callback_data="edit_event_name")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_event_date"], callback_data="edit_event_date")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_event_location"], callback_data="edit_event_location")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_role"], callback_data= "edit_role")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["edit_confirmation_material"], callback_data= "edit_confirmation_material")]
                                 ])
@@ -208,5 +208,19 @@ class ConfirmRegistrationFormInlineButtons:
                                 ])
         
         return keyboard
-    
+
+class SupportInlineButtons:
+    """
+    Инлайн-клавиатура поддержки
+    """
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_write_moderator_of_the_direct"], callback_data="write_moderator_of_the_direct")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_feedback"], callback_data="feedback")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_error"], callback_data= "error")]
+                                ])
+        
+        return keyboard
 
