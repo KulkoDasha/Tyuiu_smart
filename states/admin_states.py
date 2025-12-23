@@ -14,3 +14,4 @@ class NotificationUser(StatesGroup):
 class ModeratorStates(StatesGroup):
     waiting_reject_reason = State()
     waiting_edit_comment = State()
+    waiting_reject_application_reason = State()

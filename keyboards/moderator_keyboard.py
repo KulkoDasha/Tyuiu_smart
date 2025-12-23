@@ -39,11 +39,27 @@ class ProcessingUserApplicationInlineButtons:
     """
 
     @staticmethod
-    def get_inline_keyboard():
+    def get_inline_keyboard(user_id: int):
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["approve_application"],callback_data="approve_application")],
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["decline_application"], callback_data="decline_application")]
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["approve_application"],callback_data=f"approve_application_{user_id}")],
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["decline_application"], callback_data=f"decline_application_{user_id}")]
                                 ])
         
         return keyboard
+
+class ModeratorSupportInlineButtons:
+    """
+    Инлайн-кнопки поддержки
+    """
+    
+    @staticmethod
+    def get_inline_keyboard(user_id: int):
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["answer_user"],callback_data=f"answer_user_{user_id}")],
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["close_the_request"], callback_data=f"close_the_request_{user_id}")]
+                                ])
+        
+        return keyboard
+        

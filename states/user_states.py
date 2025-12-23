@@ -36,10 +36,38 @@ class EditRegistrationForm(StatesGroup):
     edit_email = State()
 
 @dataclass
-class Application(StatesGroup):
+class ApplicationStates(StatesGroup):
     """
     Состояния при заполнения заявки
     """
-    event = State()
+    direction_name = State()
+    name_event = State()
     date_event = State()
-    place = State()
+    event_location = State()
+    role_at_the_event = State()
+    supporting_manerial = State()
+    application_process_end = State()
+
+@dataclass
+class ChangeApplicationStates(StatesGroup):
+    """
+    Состояния при изменении заявки
+    """
+    start = State()
+    change_direction_name = State()
+    change_name_event = State()
+    change_date_event = State()
+    change_event_location = State()
+    change_role_at_the_event = State()
+    
+
+@dataclass
+class SupportStates(StatesGroup):
+    """
+    Состояния при нажатии на кнопку поддержки
+    """
+    support_start = State()
+    support_write_moderator = State()
+    support_choice_direction = State()
+    support_feedback_and_error = State()
+    

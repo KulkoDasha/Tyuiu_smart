@@ -1,21 +1,27 @@
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import Message, Update, CallbackQuery
+from aiogram.types import Message, Update, CallbackQuery,FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from datetime import datetime
 import pytz
 
-from states.user_states import RegistrationFormStates, EditRegistrationForm, Application
+from states.user_states import RegistrationFormStates, EditRegistrationForm, ApplicationStates, SupportStates, ChangeApplicationStates
 from keyboards.user_keyboard import (AgreementInlineButtons, 
                                      MenuKeyboard, 
                                      ChoiceOfInstituteInlineButtons,
                                      ChangeRegistrationFormInlineButtons,
-                                     ConfirmRegistrationFormInlineButtons)
+                                     ConfirmRegistrationFormInlineButtons,
+                                     SupportInlineButtons,
+                                     DirectionOfActivitiesInlineButtons,
+                                     ChoiceOfRoleInlineButtons,
+                                     ApplicationConfirmationInlineButtons,
+                                     ChangeOfApplicationInlineButtons)
 from lexicon import (LEXICON_TEXT, 
-                    LEXICON_USER_KEYBOARD,
-                    INSTITUTE_MAPPING)
-from keyboards.moderator_keyboard import RegisterNewUserInlineButtons
+                    LEXICON_USER_KEYBOARD
+                    )
+from lexicon.moderator_topics_lexicon import TOPIC_MAPPING
+from keyboards.moderator_keyboard import RegisterNewUserInlineButtons, ModeratorSupportInlineButtons, ProcessingUserApplicationInlineButtons
 from config.config import config
 
 user_router = Router()
@@ -24,7 +30,14 @@ menu_keyboard = MenuKeyboard.get_keyboard_menu()
 institute_keyboard = ChoiceOfInstituteInlineButtons.get_inline_keyboard()
 change_registration_form = ChangeRegistrationFormInlineButtons.get_inline_keyboard()
 confirm_registration_form = ConfirmRegistrationFormInlineButtons.get_inline_keyboard()
+support_keyboard = SupportInlineButtons.get_inline_keyboard()
+choice_role = ChoiceOfRoleInlineButtons.get_inline_keyboard()
+direction_of_activities_keyboard = DirectionOfActivitiesInlineButtons.get_inline_keyboard()
+application_confirm_keyboard = ApplicationConfirmationInlineButtons.get_inline_keyboard()
+change_of_application_keyboard = ChangeOfApplicationInlineButtons.get_inline_keyboard()
 
+
+competition_regulations_path = "Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.docx"
 
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 
@@ -51,7 +64,7 @@ async def start(message: Message):
     """
     await message.answer(text=LEXICON_TEXT["start_text"], reply_markup = keyboard_start)
 
-@user_router.callback_query(F.data.startswith("read_the_agreement"))
+@user_router.callback_query(F.data == "read_the_agreement")
 async def send_the_agreement(callback: CallbackQuery):
     """
     Хендлер на обработку согласия
@@ -59,7 +72,7 @@ async def send_the_agreement(callback: CallbackQuery):
     await callback.message.answer("Вставить согласие")
     await callback.answer()
 
-@user_router.callback_query(F.data.startswith("give_agreement"))
+@user_router.callback_query(F.data == "give_agreement")
 async def give_agreement(callback:CallbackQuery, state: FSMContext):
     """
     Хендлер на принятие согласия
@@ -69,7 +82,7 @@ async def give_agreement(callback:CallbackQuery, state: FSMContext):
     await state.set_state(RegistrationFormStates.full_name)
     await callback.answer()
 
-@user_router.callback_query(F.data.startswith("refuse_agreement"))
+@user_router.callback_query(F.data == "refuse_agreement")
 async def refuse_agreement(callback:CallbackQuery, state: FSMContext):
     """
     Хендлер на отказ от согласия
@@ -119,7 +132,7 @@ async def institute_select(callback: CallbackQuery,state: FSMContext):
     Выбрали институт, запрашиваем направление
     """
     institute_key = callback.data
-    institute_name = INSTITUTE_MAPPING.get(institute_key, 'Неизвестный институт')
+    institute_name = LEXICON_USER_KEYBOARD.get(institute_key, 'Неизвестный институт')
     await callback.message.edit_text(f"✅ Вы выбрали: {institute_name}")
     
     await state.update_data(institute=institute_name)
@@ -249,7 +262,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     """
     Обрабатываем нажатие на кнопки отправить анкету/изменить анкету
     """
-    if callback.data.startswith("save_registration_form"):
+    if callback.data == ("save_registration_form"):
         data = await state.get_data()
         utc_time = callback.message.date
         ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
@@ -282,12 +295,12 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         await bot.send_message(**send_params)
         await callback.message.edit_text(text = LEXICON_TEXT["registration_end"])
         await state.clear()
-    elif callback.data.startswith("change_registration_form"):
+    elif callback.data == "change_registration_form":
         await callback.message.edit_text(text = LEXICON_TEXT["registration_edit"], reply_markup = change_registration_form)
         await state.set_state(EditRegistrationForm.start)
     else:
         await callback.message.answer(
-            text = LEXICON_TEXT["registration_edit"]
+            text = "ДОБАВИТЬ ТЕКСТ"
         )
 
 @user_router.callback_query(StateFilter(EditRegistrationForm.start))
@@ -295,31 +308,31 @@ async def choice_edit(callback:CallbackQuery, state: FSMContext):
     """
     Обрабатываем нажатие на кнопки изменить данные
     """
-    if callback.data.startswith("full_name"):
+    if callback.data == "full_name":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_full_name"])
         await state.set_state(EditRegistrationForm.edit_full_name)
-    elif callback.data.startswith("institute"):
-        await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_institute"])
+    elif callback.data == "institute":
+        await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_institute"],reply_markup = institute_keyboard)
         await state.set_state(EditRegistrationForm.edit_institute)
-    elif callback.data.startswith("direction"):
+    elif callback.data == "direction":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_direction"])
         await state.set_state(EditRegistrationForm.edit_direction)
-    elif callback.data.startswith("form_of_education"):
+    elif callback.data == "form_of_education":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_form_of_education"])
         await state.set_state(EditRegistrationForm.edit_form_of_education)
-    elif callback.data.startswith("course"):
+    elif callback.data == "course":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_course"])
         await state.set_state(EditRegistrationForm.edit_course)
-    elif callback.data.startswith("group"):
+    elif callback.data == "group":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_group"])
         await state.set_state(EditRegistrationForm.edit_group)
-    elif callback.data.startswith("start_year"):
+    elif callback.data == "start_year":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_start_year"])
         await state.set_state(EditRegistrationForm.edit_start_year)
-    elif callback.data.startswith("end_year"):
+    elif callback.data == "end_year":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_end_year"])
         await state.set_state(EditRegistrationForm.edit_end_year)
-    elif callback.data.startswith("phone_number"):
+    elif callback.data == "phone_number":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_phone_number"])
         await state.set_state(EditRegistrationForm.edit_phone_number)
     else:
@@ -339,7 +352,7 @@ async def show_updated_form(message: Message, state: FSMContext):
                          f"Год начала обучения: {data.get('start_year', 'Не указано')}\n"
                          f"Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
                          f"Телефон: {data.get('phone', 'Не указано')}\n"
-                         f"Email: {message.text}\n", reply_markup=confirm_registration_form)
+                         f"Email: {data.get('email', 'Не указано')}\n", reply_markup=confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_full_name))
@@ -392,7 +405,7 @@ async def edit_end_year(message:Message, state: FSMContext):
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_phone_number))
 async def edit_phone_number(message:Message, state: FSMContext):
-    await state.update_data(phone_number=message.text)
+    await state.update_data(phone=message.text)
     await message.answer("Данные изменены")
     await show_updated_form(message, state)
 
@@ -404,13 +417,316 @@ async def edit_email(message:Message, state: FSMContext):
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['submit_application'],StateFilter(default_state))
 async def aplication_start(message: Message, state: FSMContext):
-    await message.answer("Давайте заполним заявку. Введите название мероприятия. Лексикон")
-    await state.set_state(Application.event)
+    """
+    Обработка кнопки подать заявку
+    """
+    await message.answer(LEXICON_TEXT["application_select_event_topic"],reply_markup=direction_of_activities_keyboard )
+    await state.set_state(ApplicationStates.direction_name)
 
-@user_router.callback_query(StateFilter(Application.event))
-async def name_of_event_sent(callback: CallbackQuery, state: FSMContext):
-    await callback.data
+@user_router.callback_query(StateFilter(ApplicationStates.direction_name))
+async def direction_name(callback: CallbackQuery, state: FSMContext):
+    """
+    Обработка выбора направления
+    """
+    direction_name, thread_id = TOPIC_MAPPING[callback.data]
+    await state.update_data(
+        thread_id=thread_id,
+        direction_name = direction_name
+    )
+    await callback.message.edit_text(f"✅ Вы выбрали: {direction_name}")
+    await callback.message.answer(text=LEXICON_TEXT["application_fill_event_name"])
+    await state.set_state(ApplicationStates.name_event)
 
+@user_router.message(StateFilter(ApplicationStates.name_event))
+async def name_of_event_sent(message: Message, state: FSMContext):
+    await state.update_data(name_of_event=message.text)
+    await message.answer(LEXICON_TEXT["application_fill_event_date"])
+    await state.set_state(ApplicationStates.date_event)
+
+@user_router.message(StateFilter(ApplicationStates.date_event))
+async def date_of_event_sent(message: Message, state: FSMContext):
+    await state.update_data(date_of_event=message.text)
+    await message.answer(LEXICON_TEXT["application_fill_event_location"])
+    await state.set_state(ApplicationStates.event_location)
+
+@user_router.message(StateFilter(ApplicationStates.event_location))
+async def date_of_event_sent(message: Message, state: FSMContext):
+    await state.update_data(event_location=message.text)
+    await message.answer(LEXICON_TEXT["application_event_select_role"],reply_markup=choice_role)
+    await state.set_state(ApplicationStates.role_at_the_event)
+
+@user_router.callback_query(StateFilter(ApplicationStates.role_at_the_event))
+async def role_at_the_event_sent(callback: CallbackQuery, state: FSMContext):
+    role_key = callback.data
+    role_name = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
+    await state.update_data(role_name=role_name)
+    await callback.message.edit_text(f"✅ Вы выбрали: {role_name}")
+    await callback.message.answer(text=LEXICON_TEXT["application_event_material"])
+    await state.set_state(ApplicationStates.supporting_manerial)
+    
+@user_router.message(StateFilter(ApplicationStates.supporting_manerial))
+async def supporting_material_sent(message:Message,state:FSMContext):
+    """
+    Сохраняем отправленный материал
+    """
+    data = await state.get_data()
+    user_id = message.from_user.id
+    material_info = None
+    if message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
+        material_info = {
+            "type": "ссылка",
+            "content": message.text,
+            "timestamp": message.date.isoformat()
+        }
+        await message.answer("✅ Ссылка сохранена")
+    elif message.document:
+        material_info = {
+            "type": "документ",
+            "file_id": message.document.file_id,
+            "file_name": message.document.file_name,
+            "file_size": message.document.file_size,
+            "mime_type": message.document.mime_type,
+            "timestamp": message.date.isoformat()
+        }
+        await message.answer("✅ Документ сохранен")
+    elif message.photo:
+        material_info = {
+            "type": "фото",
+            "file_id": message.photo[-1].file_id,
+            "width": message.photo[-1].width,
+            "height": message.photo[-1].height,
+            "timestamp": message.date.isoformat()
+        }
+        await message.answer("✅ Фото сохранено")
+    elif message.video:
+        material_info = {
+            "type": "видео",
+            "file_id": message.video.file_id,
+            "file_name": message.video.file_name,
+            "duration": message.video.duration,
+            "file_size": message.video.file_size,
+            "timestamp": message.date.isoformat()
+        }
+        await message.answer("✅ Видео сохранено")
+    else:
+        await message.answer(
+            "❌ Пожалуйста, отправьте:\n"
+            "• Ссылку (начинается с http:// или https://)\n"
+            "• Документ (Word, PDF, Excel)\n"
+            "• Фото или видео\n\n"
+            "Вы можете прислать только один файл или ссылку."
+        )
+        return
+    if material_info:
+        await state.update_data(supporting_material=material_info)
+    updated_data = await state.get_data()
+    await message.answer("✅ Заявка успешно заполнена!Подтвердите данные или выберите что изменить\n\n"
+                         f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('direction_name', 'Не указано')}\n"
+                         f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
+                         f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
+                         f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
+                         f"👤 <b>Роль в мероприятии:</b> {data.get('role_name', 'Не указано')}\n"
+                         f"📎 <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n", reply_markup = application_confirm_keyboard)
+    material = updated_data.get('supporting_material')
+    if material and isinstance(material, dict):
+        file_id = material.get('file_id')
+        material_type = material.get('type')
+        
+        if material_type == 'фото' and file_id:
+            await message.answer_photo(
+                photo=file_id,
+                caption="🖼️ Ваше подтверждающее фото"
+            )
+        elif material_type == 'документ' and file_id:
+            file_name = material.get('file_name', 'Документ')
+            await message.answer_document(
+                document=file_id,
+                caption=f"📄 {file_name}"
+            )
+        elif material_type == 'ссылка':
+            await message.answer(f"🔗 Ссылка: {material.get('content')}")
+        await state.set_state(ApplicationStates.application_process_end )
+
+async def show_updated_application(message:Message, state: FSMContext):
+    """
+    Показывает обновленную заявку
+    """
+    data = await state.get_data()
+    await message.answer("✅ Заявка успешно обновлена!Подтвердите данные или выберите что изменить\n\n"
+                         f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('direction_name', 'Не указано')}\n"
+                         f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
+                         f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
+                         f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
+                         f"👤 <b>Роль в мероприятии:</b> {data.get('role_name', 'Не указано')}\n"
+                         f"📎 <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n", reply_markup = application_confirm_keyboard)
+    await state.set_state(ApplicationStates.application_process_end)
+
+@user_router.callback_query(StateFilter(ApplicationStates.application_process_end ))
+async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    """
+    Обрабатываем нажатие на кнопки отправить отправить заявку/изменить заявку
+    """
+    if callback.data == ("confirm_application"):
+        data = await state.get_data()
+        user_id = callback.from_user.id
+        updated_data = await state.get_data()
+        thread_id = data.get("thread_id")
+        utc_time = callback.message.date
+        ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+        moderator_message = (
+            "📋 Новая заявка на проверку\n\n"
+            f"👤 Пользователь: @{callback.from_user.username or 'без username'} "
+            f"(ID: {callback.from_user.id})\n"
+            f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
+            f"📝 Данные заявки:\n"
+            f"• ФИО: В будущем добавить\n"
+            f"• Направление внеучебной деятельности: {data.get('direction_name', 'Не указано')}\n"
+            f"• Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
+            f"• Дата проведения: {data.get('date_of_event', 'Не указано')}\n"
+            f"• Место проведения: {data.get('event_location', 'Не указано')}\n"
+            f"• Роль в мероприятии: {data.get('role_name', 'Не указано')}\n"
+            f"• Подтверждающий материал: Прикреплен ниже 👇\n"
+        )
+        moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(user_id)
+        send_params = {
+                "chat_id": config.moderator_chat_id,
+                "text": moderator_message,
+                "reply_markup": moderator_proceesing_application_keyboard,
+                "message_thread_id": thread_id 
+            }
+        await bot.send_message(**send_params)
+        material = updated_data.get('supporting_material')
+        if material:
+            try:
+                if isinstance(material, dict):
+                    file_id = material.get('file_id')
+                    material_type = material.get('type')
+                    
+                    if material_type == 'фото' and file_id:
+                        await bot.send_photo(
+                            chat_id=config.moderator_chat_id,
+                            photo=file_id,
+                            caption="🖼️ Подтверждающее фото от пользователя",
+                            message_thread_id=thread_id
+                        )
+                    elif material_type == 'документ' and file_id:
+                        file_name = material.get('file_name', 'Документ')
+                        await bot.send_document(
+                            chat_id=config.moderator_chat_id,
+                            document=file_id,
+                            caption=f"📄 {file_name}",
+                            message_thread_id=thread_id
+                        )
+                    elif material_type == 'видео' and file_id:
+                        await bot.send_video(
+                            chat_id=config.moderator_chat_id,
+                            video=file_id,
+                            caption="🎥 Видео от пользователя",
+                            message_thread_id=thread_id
+                        )
+                    elif material_type == 'ссылка' and material.get('content'):
+                        await bot.send_message(
+                            chat_id=config.moderator_chat_id,
+                            text=f"🔗 Ссылка от пользователя: {material['content']}",
+                            message_thread_id=thread_id
+                        )
+                else:
+                    await bot.send_document(
+                        chat_id=config.moderator_chat_id,
+                        document=material,
+                        caption="📎 Подтверждающий материал",
+                        message_thread_id=thread_id
+                    )
+            except Exception as e:
+                await bot.send_message(
+                    chat_id=config.moderator_chat_id,
+                    text=f"⚠️ Не удалось отправить материал.",
+                    message_thread_id=thread_id
+                )
+        await callback.message.edit_text(text = LEXICON_TEXT["application_event_end"])
+        await state.clear()
+    elif callback.data == "edit_application":
+        await callback.message.delete()
+        await callback.message.answer(LEXICON_TEXT["application_edit"],reply_markup = change_of_application_keyboard)
+        await state.set_state(ChangeApplicationStates.start)
+    else:
+        await callback.message.answer(
+            text = LEXICON_TEXT["application_other_answer"]
+        )
+
+@user_router.callback_query(StateFilter(ChangeApplicationStates.start))
+async def start_change_of_application(callback: CallbackQuery, state:FSMContext):
+    """
+    Начало изменения заявки
+    """
+    if callback.data == "edit_direction_of_activities":
+        await callback.message.delete()
+        await callback.message.answer(LEXICON_TEXT["application_edit_topic"],reply_markup = direction_of_activities_keyboard)
+        await state.set_state(ChangeApplicationStates.change_direction_name)
+    elif callback.data == "edit_event_name":
+        await callback.message.delete()
+        await callback.message.answer(LEXICON_TEXT["application_edit_name"])
+        await state.set_state(ChangeApplicationStates.change_name_event)
+    elif callback.data == "edit_event_date":
+        await callback.message.delete()
+        await callback.message.answer(LEXICON_TEXT["application_edit_date"])
+        await state.set_state(ChangeApplicationStates.change_date_event)
+    elif callback.data == "edit_event_location":
+        await callback.message.delete()
+        await callback.message.answer(LEXICON_TEXT["application_edit_location"])
+        await state.set_state(ChangeApplicationStates.change_event_location)
+    elif callback.data == "edit_role":
+        await callback.message.delete()
+        await callback.message.answer(LEXICON_TEXT["application_edit_role"], reply_markup = choice_role)
+        await state.set_state(ChangeApplicationStates.change_role_at_the_event)
+    elif callback.data == "edit_confirmation_material":
+        await callback.message.delete()
+        await callback.message.answer(LEXICON_TEXT["application_edit_material"])
+        await state.set_state(ApplicationStates.supporting_manerial)
+    else:
+        await callback.message.answer(
+            text = LEXICON_TEXT["application_other_answer"]
+        )
+
+@user_router.callback_query(StateFilter(ChangeApplicationStates.change_direction_name))
+async def change_direction_name(callback:CallbackQuery, state:FSMContext):  
+    direction_name, thread_id = TOPIC_MAPPING[callback.data]
+    await state.update_data(
+        thread_id=thread_id,
+        direction_name = direction_name
+    )
+    await callback.message.edit_text(f"✅ Вы выбрали: {direction_name}")     
+    await callback.message.answer("Данные изменены")
+    await show_updated_application(callback.message, state)
+
+@user_router.message(StateFilter(ChangeApplicationStates.change_name_event))
+async def change_date_event(message:Message, state:FSMContext): 
+    await state.update_data(name_of_event=message.text)   
+    await message.answer("Данные изменены")
+    await show_updated_application(message, state)
+
+@user_router.message(StateFilter(ChangeApplicationStates.change_date_event))
+async def change_date_event(message:Message, state:FSMContext): 
+    await state.update_data(date_of_event=message.text)   
+    await message.answer("Данные изменены")
+    await show_updated_application(message, state)
+
+@user_router.message(StateFilter(ChangeApplicationStates.change_event_location))
+async def change_event_location (message:Message, state:FSMContext):   
+    await state.update_data(event_location=message.text) 
+    await message.answer("Данные изменены")
+    await show_updated_application(message, state)
+
+@user_router.callback_query(StateFilter(ChangeApplicationStates.change_role_at_the_event))
+async def application_edit_role(callback:CallbackQuery, state:FSMContext):
+    role_key = callback.data
+    role_name = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
+    await state.update_data(role_name=role_name)
+    await callback.message.edit_text(f"✅ Вы выбрали: {role_name}")   
+    await callback.message.answer("Данные изменены")
+    await show_updated_application(callback.message, state)
+
+    
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['my_tyuiu_coins'],StateFilter(default_state))
 async def tyuiu_coins_start(message: Message, state: FSMContext):
     await message.answer(text = LEXICON_TEXT["balance"])
@@ -420,12 +736,108 @@ async def catalog_start(message: Message, state: FSMContext):
     await message.answer("Здась будет каталог. Лексикон")
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['agreement_of_contest'],StateFilter(default_state))
-async def aplication_start(message: Message, state: FSMContext):
-    await message.answer("ДЗдесь будет положение конкурса. Лексикон")
+async def competition_regulations_start(message: Message, state: FSMContext):
+    """
+    Высылает положение о конкурсе
+    """
+    document = FSInputFile(
+            path =competition_regulations_path,
+            filename="Положение_о_конкурсе_ТИУмничка.docx"  
+        )
+    await message.answer_document(document=document)
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['support'],StateFilter(default_state))
-async def aplication_start(message: Message, state: FSMContext):
-    await message.answer("Это поддержка. Лексикон")
+async def support_start(message:Message, state: FSMContext):
+    """
+    Обработчки кнопки поддержки
+    """
+    await message.answer(LEXICON_TEXT["support_head"],reply_markup=support_keyboard)
+    await state.set_state(SupportStates.support_start)
 
+@user_router.callback_query(StateFilter(SupportStates.support_start))
+async def support_process(callback:CallbackQuery,state:FSMContext):
+    """
+    Обработчки инлайн-кнопок поддержки
+    """
+    if callback.data == "write_moderator_of_the_direct":
+        await callback.message.edit_text(
+            text = LEXICON_TEXT["support_select_event_topic"],reply_markup=direction_of_activities_keyboard
+        )
+        await state.set_state(SupportStates.support_choice_direction)
+    elif callback.data == "feedback":
+        await callback.message.edit_text(
+            text = LEXICON_TEXT["feedback_text"]
+        )
+        await state.set_state(SupportStates.support_feedback_and_error)
+    else:
+        await callback.message.edit_text(
+            text = LEXICON_TEXT["support_text"]
+        )
+        await state.set_state(SupportStates.support_feedback_and_error)
+
+@user_router.callback_query(StateFilter(SupportStates.support_choice_direction))
+async def support_choice_direction(callback:CallbackQuery, state:FSMContext):
+    """
+    Обработчки инлайн-кнопки написать модератору направления
+    """
+    direction_name, thread_id = TOPIC_MAPPING[callback.data]
+    await state.update_data(
+        thread_id=thread_id
+    )
+    await callback.message.edit_text(f"✅ Вы выбрали: {direction_name}")
+    await callback.message.answer(text=LEXICON_TEXT["support_text"])
+    await state.set_state(SupportStates.support_write_moderator)
+
+@user_router.message(StateFilter(SupportStates.support_write_moderator))
+async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
+    """
+    Обработчки инлайн-кнопки написать модератору направления
+    """
+    data = await state.get_data()
+    thread_id = data.get("thread_id")
+    utc_time = message.date
+    ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+    moderator_message = (
+        "❗️ Новое сообщение от пользователя: \n\n"
+        f"👤 Пользователь: @{message.from_user.username or 'без username'} "
+        f"(ID: {message.from_user.id})\n"
+        f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Сообщение: {message.text}"
+    )
+    moderator_support_keyboard = ModeratorSupportInlineButtons.get_inline_keyboard(message.from_user.id)
+    send_params = {
+                "chat_id": config.moderator_chat_id,
+                "text": moderator_message,
+                "reply_markup": moderator_support_keyboard,
+                "message_thread_id": thread_id
+            }
+    await bot.send_message(**send_params)
+    await message.answer(text = LEXICON_TEXT["support_end"])
+    await state.clear()
+    
+@user_router.message(StateFilter(SupportStates.support_feedback_and_error))
+async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot):
+    """
+    Обработчки инлайн-кнопок обратная связь и сообщить об ошибке
+    """
+    utc_time = message.date
+    ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+    moderator_message = (
+        "❗️ Новое сообщение от пользователя: \n\n"
+        f"👤 Пользователь: @{message.from_user.username or 'без username'} "
+        f"(ID: {message.from_user.id})\n"
+        f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Сообщение: {message.text}"
+    )
+    moderator_support_keyboard = ModeratorSupportInlineButtons.get_inline_keyboard(message.from_user.id)
+    send_params = {
+                "chat_id": config.moderator_chat_id,
+                "text": moderator_message,
+                "reply_markup": moderator_support_keyboard,
+                "message_thread_id": 3
+            }
+    await bot.send_message(**send_params)
+    await message.answer(text = LEXICON_TEXT["support_end"])
+    await state.clear()
     
 
