@@ -1,7 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-
-from lexicon import LEXICON_MODERATOR_KEYBOARD
+from ..lexicon import LEXICON_MODERATOR_KEYBOARD
 
 class AdminPanelInlineButtons:
     """

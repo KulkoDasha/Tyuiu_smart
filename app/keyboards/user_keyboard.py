@@ -2,7 +2,7 @@ from aiogram.types import KeyboardButton, InlineKeyboardButton, InlineKeyboardMa
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from aiogram import Bot
 
-from lexicon import LEXICON_USER_KEYBOARD
+from ..lexicon import LEXICON_USER_KEYBOARD
 
 class MenuKeyboard:
     """

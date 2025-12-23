@@ -5,10 +5,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 import time
 
-from config.config import config
-from filters import AdminChatFilter
-from keyboards import AdminPanelInlineButtons
-from states import NotifificationAllUsers, NotificationUser
+from ..config import config
+from ..filters import AdminChatFilter
+from ..keyboards import AdminPanelInlineButtons
+from ..states import NotifificationAllUsers, NotificationUser
 
 admin_router = Router()
 admin_router.message.filter(AdminChatFilter())

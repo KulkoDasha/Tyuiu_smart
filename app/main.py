@@ -7,11 +7,8 @@ from aiogram.enums import ParseMode
 import shutil
 from pathlib import Path
 
-from config.config import config
-from handlers.moderator import moderator_router
-from handlers.admin import admin_router
-from handlers.user import user_router
-from handlers.other import other_router
+from .config import config
+from .handlers import *
 
 logging.basicConfig(
     level=logging.getLevelName(config.log.level),

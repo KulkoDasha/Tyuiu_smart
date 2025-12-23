@@ -1,6 +1,6 @@
 from aiogram.filters import Filter
 from aiogram.types import Message
-from config.config import config
+from ..config import config
 
 class UserIDFilter(Filter):
     async def  __call__ (self, message: Message) -> bool:

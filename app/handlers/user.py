@@ -6,23 +6,13 @@ from aiogram.fsm.state import default_state, State, StatesGroup
 from datetime import datetime
 import pytz
 
-from states.user_states import RegistrationFormStates, EditRegistrationForm, ApplicationStates, SupportStates, ChangeApplicationStates
-from keyboards.user_keyboard import (AgreementInlineButtons, 
-                                     MenuKeyboard, 
-                                     ChoiceOfInstituteInlineButtons,
-                                     ChangeRegistrationFormInlineButtons,
-                                     ConfirmRegistrationFormInlineButtons,
-                                     SupportInlineButtons,
-                                     DirectionOfActivitiesInlineButtons,
-                                     ChoiceOfRoleInlineButtons,
-                                     ApplicationConfirmationInlineButtons,
-                                     ChangeOfApplicationInlineButtons)
-from lexicon import (LEXICON_TEXT, 
-                    LEXICON_USER_KEYBOARD
-                    )
-from lexicon.moderator_topics_lexicon import TOPIC_MAPPING
-from keyboards.moderator_keyboard import RegisterNewUserInlineButtons, ModeratorSupportInlineButtons, ProcessingUserApplicationInlineButtons
-from config.config import config
+from ..states import *
+
+from ..keyboards import *
+
+from ..lexicon import *
+
+from ..config import config
 
 user_router = Router()
 keyboard_start = AgreementInlineButtons.get_inline_keyboard()
@@ -37,7 +27,7 @@ application_confirm_keyboard = ApplicationConfirmationInlineButtons.get_inline_k
 change_of_application_keyboard = ChangeOfApplicationInlineButtons.get_inline_keyboard()
 
 
-competition_regulations_path = "Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.docx"
+competition_regulations_path = "app/files/Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.docx"
 
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 

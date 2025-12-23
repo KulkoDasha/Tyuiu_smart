@@ -1,4 +1,4 @@
-from config.moderator_topics import *
+from ..config import *
 
 TOPIC_MAPPING = {
     "topic_social_design": ("Социальное проектирование", TOPIC_SOCIAL_DESIGN),
