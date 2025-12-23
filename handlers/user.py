@@ -312,7 +312,7 @@ async def choice_edit(callback:CallbackQuery, state: FSMContext):
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_full_name"])
         await state.set_state(EditRegistrationForm.edit_full_name)
     elif callback.data == "institute":
-        await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_institute"])
+        await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_institute"],reply_markup = institute_keyboard)
         await state.set_state(EditRegistrationForm.edit_institute)
     elif callback.data == "direction":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_direction"])
@@ -405,7 +405,7 @@ async def edit_end_year(message:Message, state: FSMContext):
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_phone_number))
 async def edit_phone_number(message:Message, state: FSMContext):
-    await state.update_data(phone_number=message.text)
+    await state.update_data(phone=message.text)
     await message.answer("Данные изменены")
     await show_updated_form(message, state)
 
@@ -742,7 +742,7 @@ async def competition_regulations_start(message: Message, state: FSMContext):
     """
     document = FSInputFile(
             path =competition_regulations_path,
-            filename="Положение_о_конкурсе_ТИУ.docx"  
+            filename="Положение_о_конкурсе_ТИУмничка.docx"  
         )
     await message.answer_document(document=document)
 
@@ -760,7 +760,7 @@ async def support_process(callback:CallbackQuery,state:FSMContext):
     Обработчки инлайн-кнопок поддержки
     """
     if callback.data == "write_moderator_of_the_direct":
-        await callback.message.answer(
+        await callback.message.edit_text(
             text = LEXICON_TEXT["support_select_event_topic"],reply_markup=direction_of_activities_keyboard
         )
         await state.set_state(SupportStates.support_choice_direction)
