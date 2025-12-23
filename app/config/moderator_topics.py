@@ -1,4 +1,3 @@
-#Темы чатов модерации
 TOPIC_ADMIN_PANEL = None # Админ-панель
 TOPIC_SUPPORT = 3 # Поддержка
 TOPIC_SOCIAL_DESIGN = 5 # Социальное проектирование
@@ -22,7 +21,7 @@ TOPIC_HEADMAN = 40 # Старостат
 TOPIC_REGISTRATION_NEW_USER = 45 # Регистрация новых пользователей
 GENERAL_CHAT = 243 # Общий чат
 USER_FEEDBACK = 425 #Обратная связь
-ISSUANCE_OF_INCENTIVES = 496#Выдача поощрений
+ISSUANCE_OF_INCENTIVES = 496 #Выдача поощрений
 
 
 

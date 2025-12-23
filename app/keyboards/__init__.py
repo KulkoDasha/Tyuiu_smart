@@ -1,4 +1,3 @@
-from .moderator_keyboard import AdminPanelInlineButtons, RegisterNewUserInlineButtons, ProcessingUserApplicationInlineButtons
 from .user_keyboard import (MenuKeyboard,
                            AgreementInlineButtons,
                            ChoiceOfInstituteInlineButtons,
@@ -6,7 +5,15 @@ from .user_keyboard import (MenuKeyboard,
                            ApplicationConfirmationInlineButtons,
                            ChangeOfApplicationInlineButtons,
                            ChoiceOfRoleInlineButtons,
-                           RewardsChoiceInlineButtons)
+                           RewardsChoiceInlineButtons,
+                           ChangeRegistrationFormInlineButtons,
+                           ConfirmRegistrationFormInlineButtons,
+                           SupportInlineButtons)
+
+from .moderator_keyboard import (AdminPanelInlineButtons,
+                                 RegisterNewUserInlineButtons,
+                                 ProcessingUserApplicationInlineButtons,
+                                 ModeratorSupportInlineButtons)
 
 __all__ = [
     "MenuKeyboard",
@@ -17,6 +24,10 @@ __all__ = [
     "ChangeOfApplicationInlineButtons",
     "ChoiceOfRoleInlineButtons",
     "RewardsChoiceInlineButtons",
+    "ChangeRegistrationFormInlineButtons",
+    "ConfirmRegistrationFormInlineButtons",
+    "SupportInlineButtons",
     "AdminPanelInlineButtons",
     "RegisterNewUserInlineButtons",
-    "ProcessingUserApplicationInlineButtons"]
+    "ProcessingUserApplicationInlineButtons",
+    "ModeratorSupportInlineButtons"]

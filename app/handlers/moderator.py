@@ -5,17 +5,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from datetime import datetime
 import pytz
-import logging
 
+from ..services import *
 
-from services.googlesheets_service import googlesheet_service
-from services.parser_registration_form_service import parse_registration_form_from_message
-
-from lexicon import LEXICON_TEXT
-from config.config import config
-from filters import ModeratorChatFilter
-from states.admin_states import ModeratorStates
-from keyboards.user_keyboard import MenuKeyboard
+from ..lexicon import LEXICON_TEXT
+from ..config import config
+from ..filters import ModeratorChatFilter
+from ..states import ModeratorStates
+from ..keyboards import MenuKeyboard
 
 moderator_router = Router()
 moderator_router.message.filter(ModeratorChatFilter())
