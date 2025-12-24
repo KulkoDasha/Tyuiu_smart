@@ -9,6 +9,7 @@ def parse_event_application_from_message(message_text: str, user_id: int) -> Dic
     data = {"user_id": user_id}
     
     fields = [
+        ("full_name", "ФИО"),
         ("direction_name", "Направление внеучебной деятельности"),
         ("event_name", "Название мероприятия"),
         ("event_date", "Дата проведения"),

@@ -482,7 +482,7 @@ async def supporting_material_sent(message:Message,state:FSMContext):
     if material_info:
         await state.update_data(supporting_material=material_info)
     updated_data = await state.get_data()
-    await message.answer("✅ Заявка успешно заполнена!Подтвердите данные или выберите что изменить\n\n"
+    await message.answer("✅ Заявка успешно заполнена!\nПодтвердите данные или выберите что изменить\n\n"
                          f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('direction_name', 'Не указано')}\n"
                          f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
                          f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
@@ -514,7 +514,7 @@ async def show_updated_application(message:Message, state: FSMContext):
     Показывает обновленную заявку
     """
     data = await state.get_data()
-    await message.answer("✅ Заявка успешно обновлена!Подтвердите данные или выберите что изменить\n\n"
+    await message.answer("✅ Заявка успешно обновлена!\nПодтвердите данные или выберите что изменить\n\n"
                          f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('direction_name', 'Не указано')}\n"
                          f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
                          f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
