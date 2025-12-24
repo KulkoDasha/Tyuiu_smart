@@ -10,6 +10,7 @@ from ..states import *
 from ..keyboards import *
 from ..lexicon import *
 from ..config import *
+from ..services import *
 
 user_router = Router()
 keyboard_start = AgreementInlineButtons.get_inline_keyboard()
@@ -534,13 +535,38 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         thread_id = data.get("thread_id")
         utc_time = callback.message.date
         ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+
+        user_full_name = "Не указано"  # TODO: из БД участников
+
+        app_data = {
+        "tg_id": user_id,
+        "user_id": user_id,
+        "full_name": user_full_name,
+        "direction_name": data.get("direction_name", ""),
+        "event_name": data.get("name_of_event", ""),
+        "event_date": data.get("date_of_event", ""),
+        "event_location": data.get("event_location", ""),
+        "role_name": data.get("role_name", ""),
+        "application_time": ekaterinburg_time.strftime('%d.%m.%Y %H:%M'),
+        "status": "На рассмотрении",
+        "moderator": "",
+        "sheet_name": data.get("direction_name", ""),
+        "thread_id": thread_id
+        }
+
+        direction_name = app_data["direction_name"]
+        sheets_result = googlesheet_service.add_event_application(app_data, direction_name)
+
         moderator_message = (
             "📋 Новая заявка на проверку\n\n"
             f"👤 Пользователь: @{callback.from_user.username or 'без username'} "
-            f"(ID: {callback.from_user.id})\n"
+            f"(ID: {user_id})\n"
+            f"📊 Google Sheets: {'✅' if sheets_result.get('success') else '❌'}\n"
+            f"📁 Лист: {direction_name}\n"
+            f"📄 Строка: {sheets_result.get('row', 'N/A')}\n"
             f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 Данные заявки:\n"
-            f"• ФИО: В будущем добавить\n"
+            f"• ФИО: {user_full_name}\n"
             f"• Направление внеучебной деятельности: {data.get('direction_name', 'Не указано')}\n"
             f"• Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
             f"• Дата проведения: {data.get('date_of_event', 'Не указано')}\n"

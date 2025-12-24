@@ -34,7 +34,7 @@ LEXICON_USER_KEYBOARD = {
     "topic_tourism_travel": "🏕 Туризм и путешествия",
     "topic_digital_sport": "🎮 Фиджитал спорт",
     "topic_student_units": "🎓 Студенческие отряды",
-    "topic_united_student_council": "❤️ Объединенный совет обучающихся",
+    "topic_united_student_council": "❤️ Совет обучающихся",
     "topic_headman": "🗣 Старостат",
 
     "role_spectator":"👂 Зритель/слушатель",

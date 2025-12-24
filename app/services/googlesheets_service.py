@@ -96,40 +96,24 @@ class GoogleSheetsService:
         logger.error(f"Google Sheets: ошибка добавления tg_id={tg_id}: {error}")
         return {"success": False, "error": error}
     
-    def add_event(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Добавляет мероприятие в лист "Заявки".
-        """
-
-        tg_id = data.get("tg_id")
-        if tg_id is None:
-            return {"success": False, "error": "Отсутствует tg_id"}
-
+    def add_event_application(self, data: Dict[str, Any], sheet_name: str) -> Dict[str, Any]:
         payload = {
             "secret": self.secret,
-            "type": "new_event",
-            "data": {
-                "tg_id": int(tg_id),
-                "event_direction": data.get("event_direction", ""),
-                "event_name": data.get("event_name", ""),
-                "event_date": data.get("event_date", ""),
-                "event_place": data.get("event_place", ""),
-                "participant_role": data.get("participant_role", ""),
-                "status": data.get("status", "На рассмотрении"),
-            },
+            "type": "new_event_application",
+            "data": {"sheet_name": sheet_name, **data}
         }
+        return self.make_request(payload)
 
-        logger.info(f"Google Sheets: отправка мероприятия tg_id={tg_id}")
-        result = self.make_request(payload)
-
-        if result.get("success"):
-            row = result.get("row")
-            logger.info(f"Google Sheets: мероприятие для tg_id={tg_id} добавлено (row={row})")
-            return {"success": True, "row": row, "tg_id": tg_id}
-
-        error = result.get("error") or result.get("message") or "Неизвестная ошибка"
-        logger.error(f"Google Sheets: ошибка добавления мероприятия tg_id={tg_id}: {error}")
-        return {"success": False, "error": error}
+    def update_application_status(self, sheet_name: str, row_id: int, status: str, moderator: str) -> Dict[str, Any]:
+        payload = {
+            "secret": self.secret,
+            "type": "update_application_status",
+            "data": {
+                "sheet_name": sheet_name, "row_id": row_id, 
+                "status": status, "moderator": moderator
+            }
+        }
+        return self.make_request(payload)
 
 
 # Глобальный экземпляр сервиса

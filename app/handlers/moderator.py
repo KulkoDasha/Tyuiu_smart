@@ -177,29 +177,57 @@ async def process_the_request_answer(message: Message, state: FSMContext, bot: B
         await state.clear()
 
 @moderator_router.callback_query(F.data.startswith("approve_application_"))
-async def approve_application(callback: CallbackQuery, bot:Bot):
+async def approve_application(callback: CallbackQuery, bot: Bot):
     """
     Обработка нажатия на кнопку Одобрить заявку
     """
     user_id = int(callback.data.split("_")[-1])
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+    moderator_username = callback.from_user.username or callback.from_user.full_name
     
+    # Парсим заявку извлекаем row_id из сообщения
+    message_text = callback.message.text or ""
+    app_data = parse_event_application_from_message(message_text, user_id)
+    
+    # Извлекаем номер строки из сообщения из текста сообщения
+    import re
+    row_match = re.search(r"Строка:\s*(\d+)", message_text)
+    row_id = int(row_match.group(1)) if row_match else 2
+    
+    # Обновляем статус в Google Sheets
+    result = googlesheet_service.update_application_status(
+        app_data.get("direction_name", ""), 
+        row_id, 
+        "Принята", 
+        f"@{moderator_username}"
+    )
+
+    # Статус для модератора
+    sheets_status = "✅ Обновлено" if result.get("success") else f"❌ {result.get('error', 'Ошибка')}"
+
     await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert=True)
     await callback.message.edit_text(
         f"✅ Заявка одобрена\n"
         f"👤 ID пользователя: {user_id}\n"
-        f"👤 ФИО пользователя: Позже добавить\n"
-        f"👮 Модератор: @{callback.from_user.username or callback.from_user.full_name}\n"
+        f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
+        f"📁 Лист: {app_data.get('direction_name', 'Неизвестно')}\n"
+        f"👮 Модератор: @{moderator_username}\n"
         f"🕐 Время: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
-        reply_markup=None)
+        reply_markup=None,
+        parse_mode="HTML"
+    )
+    
+    # Уведомляем пользователя
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=LEXICON_TEXT["application_event_completed"], reply_markup = menu_keyboard
+            text=LEXICON_TEXT["application_event_completed"], 
+            reply_markup=menu_keyboard
         )
     except Exception as e:
         await callback.message.answer(f"❗️ Не удалось уведомить пользователя {user_id}")
+
 
 @moderator_router.callback_query(F.data.startswith("decline_application_"))
 async def decline_application(callback: CallbackQuery, state: FSMContext):
