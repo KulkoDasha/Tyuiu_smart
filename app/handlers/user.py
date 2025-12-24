@@ -7,12 +7,9 @@ from datetime import datetime
 import pytz
 
 from ..states import *
-
 from ..keyboards import *
-
 from ..lexicon import *
-
-from ..config import config
+from ..config import *
 
 user_router = Router()
 keyboard_start = AgreementInlineButtons.get_inline_keyboard()
@@ -50,7 +47,7 @@ def is_valid_email(email: str) -> bool:
 @user_router.message(CommandStart(),StateFilter(default_state))
 async def start(message: Message):
     """
-    Хендлер на команду страрт
+    Хендлер на команду старт
     """
     await message.answer(text=LEXICON_TEXT["start_text"], reply_markup = keyboard_start)
 
@@ -130,32 +127,18 @@ async def institute_select(callback: CallbackQuery,state: FSMContext):
     await state.set_state(RegistrationFormStates.direction)
 
 @user_router.message(StateFilter(RegistrationFormStates.direction), F.text.regexp(r'^[А-ЯЁа-яё\s]+$'))
-async def form_of_education_sent(message:Message, state:FSMContext):
+async def direction_sent(message:Message, state:FSMContext):
     """
-    Ввели направление, запрашиваем форму обучения
+    Ввели направление, запрашиваем курс
     """
     await state.update_data(direction = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_form_of_education"])  
-    await state.set_state(RegistrationFormStates.form_of_education)
+    await message.answer(text = LEXICON_TEXT["registration_fill_course"])  
+    await state.set_state(RegistrationFormStates.course)
 
 @user_router.message(StateFilter(RegistrationFormStates.direction))
 async def process_from_of_education_incorrect(message:Message):
     """если направление неккоректно"""
     await message.answer(text=LEXICON_TEXT["registration_incorrect_direction"])
-    
-@user_router.message(StateFilter(RegistrationFormStates.form_of_education), lambda message: message.text.lower() in ["очная", "заочная"])
-async def form_of_education_sent(message:Message, state:FSMContext):
-    """
-    Ввели направление, запрашиваем курс
-    """
-    await state.update_data(form_of_education = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_course"])  
-    await state.set_state(RegistrationFormStates.course)
-
-@user_router.message(StateFilter(RegistrationFormStates.form_of_education))
-async def process_from_of_education_incorrect(message:Message):
-    """если форма обучения неккоректна"""
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_form_of_education"])
 
 @user_router.message(StateFilter(RegistrationFormStates.course),lambda message: message.text in ["1","2","3","4","5"])
 async def course_sent(message: Message, state: FSMContext):
@@ -211,7 +194,7 @@ async def process_end_year_incorrect(message:Message):
 @user_router.message(StateFilter(RegistrationFormStates.phone_number))
 async def phone_sent(message: Message, state: FSMContext):  
     """
-    Ввели телефон, запрашиваем почту
+    Ввели номер телефон, запрашиваем почту
     """
     await state.update_data(phone = message.text)
     await message.answer(text = LEXICON_TEXT["registration_fill_email"])  
@@ -229,16 +212,15 @@ async def email_sent(message: Message, state: FSMContext):
     """
     await state.update_data(email = message.text)
     data = await state.get_data()
-    await message.answer("✅ Анкета успешно заполнена!Подтвердите данные или выберите что изменить\n\n"
+    await message.answer("✅ Анкета успешно заполнена!\nПодтвердите данные или выберите что изменить\n\n"
                          f"ФИО: {data.get('full_name', 'Не указано')}\n"
                          f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
                          f"Направление: {data.get('direction', 'Не указано')}\n"
-                         f"Форма обучения: {data.get('form_of_education', 'Не указано')}\n"
                          f"Курс: {data.get('course', 'Не указано')}\n"
                          f"Группа: {data.get('group', 'Не указано')}\n"
                          f"Год начала обучения: {data.get('start_year', 'Не указано')}\n"
                          f"Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
-                         f"Телефон: {data.get('phone', 'Не указано')}\n"
+                         f"Номер телефона: {data.get('phone', 'Не указано')}\n"
                          f"Email: {message.text}\n",reply_markup= confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
@@ -265,12 +247,11 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"• ФИО: {data.get('full_name', 'Не указано')}\n"
             f"• Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
             f"• Направление: {data.get('direction', 'Не указано')}\n"
-            f"• Форма обучения: {data.get('form_of_education', 'Не указано')}\n"
             f"• Курс: {data.get('course', 'Не указано')}\n"
             f"• Группа: {data.get('group', 'Не указано')}\n"
             f"• Год начала обучения: {data.get('start_year', 'Не указано')}\n"
             f"• Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
-            f"• Телефон: {data.get('phone', 'Не указано')}\n"
+            f"• Номер телефона: {data.get('phone', 'Не указано')}\n"
             f"• Email: {data.get('email', 'Не указано')}\n"
         )
         moderator_confirm_form = RegisterNewUserInlineButtons.get_inline_keyboard(
@@ -280,7 +261,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
                 "reply_markup": moderator_confirm_form,
-                "message_thread_id": 45
+                "message_thread_id": TOPIC_REGISTRATION_NEW_USER
             }
         await bot.send_message(**send_params)
         await callback.message.edit_text(text = LEXICON_TEXT["registration_end"])
@@ -307,9 +288,6 @@ async def choice_edit(callback:CallbackQuery, state: FSMContext):
     elif callback.data == "direction":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_direction"])
         await state.set_state(EditRegistrationForm.edit_direction)
-    elif callback.data == "form_of_education":
-        await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_form_of_education"])
-        await state.set_state(EditRegistrationForm.edit_form_of_education)
     elif callback.data == "course":
         await callback.message.edit_text(text=LEXICON_TEXT["registration_edit_course"])
         await state.set_state(EditRegistrationForm.edit_course)
@@ -336,12 +314,11 @@ async def show_updated_form(message: Message, state: FSMContext):
                          f"ФИО: {data.get('full_name', 'Не указано')}\n"
                          f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
                          f"Направление: {data.get('direction', 'Не указано')}\n"
-                         f"Форма обучения: {data.get('form_of_education', 'Не указано')}\n"
                          f"Курс: {data.get('course', 'Не указано')}\n"
                          f"Группа: {data.get('group', 'Не указано')}\n"
                          f"Год начала обучения: {data.get('start_year', 'Не указано')}\n"
                          f"Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
-                         f"Телефон: {data.get('phone', 'Не указано')}\n"
+                         f"Номер телефона: {data.get('phone', 'Не указано')}\n"
                          f"Email: {data.get('email', 'Не указано')}\n", reply_markup=confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
@@ -360,12 +337,6 @@ async def edit_institute(message:Message, state: FSMContext):
 @user_router.message(StateFilter(EditRegistrationForm.edit_direction))
 async def edit_direction(message:Message, state: FSMContext):
     await state.update_data(direction=message.text)
-    await message.answer("Данные изменены")
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_form_of_education))
-async def edit_form_of_education(message:Message, state: FSMContext):
-    await state.update_data(form_of_education=message.text)
     await message.answer("Данные изменены")
     await show_updated_form(message, state)
 

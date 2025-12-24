@@ -9,7 +9,6 @@ class RegistrationFormStates(StatesGroup):
     full_name = State()
     institute= State()
     direction = State()
-    form_of_education = State()
     course = State()
     group = State()
     start_year = State()
