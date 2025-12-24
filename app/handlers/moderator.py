@@ -177,29 +177,57 @@ async def process_the_request_answer(message: Message, state: FSMContext, bot: B
         await state.clear()
 
 @moderator_router.callback_query(F.data.startswith("approve_application_"))
-async def approve_application(callback: CallbackQuery, bot:Bot):
+async def approve_application(callback: CallbackQuery, bot: Bot):
     """
     Обработка нажатия на кнопку Одобрить заявку
     """
     user_id = int(callback.data.split("_")[-1])
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+    moderator_username = callback.from_user.username or callback.from_user.full_name
     
+    # Парсим заявку извлекаем row_id из сообщения
+    message_text = callback.message.text or ""
+    app_data = parse_event_application_from_message(message_text, user_id)
+    
+    # Извлекаем номер строки из сообщения из текста сообщения
+    import re
+    row_match = re.search(r"Строка:\s*(\d+)", message_text)
+    row_id = int(row_match.group(1)) if row_match else 2
+    
+    # Обновляем статус в Google Sheets
+    result = googlesheet_service.update_application_status(
+        app_data.get("direction_name", ""), 
+        row_id, 
+        "Принята", 
+        f"@{moderator_username}"
+    )
+
+    # Статус для модератора
+    sheets_status = "✅ Обновлено" if result.get("success") else f"❌ {result.get('error', 'Ошибка')}"
+
     await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert=True)
     await callback.message.edit_text(
         f"✅ Заявка одобрена\n"
-        f"👤 ID пользователя: {user_id}\n"
-        f"👤 ФИО пользователя: Позже добавить\n"
-        f"👮 Модератор: @{callback.from_user.username or callback.from_user.full_name}\n"
-        f"🕐 Время: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
-        reply_markup=None)
+        f"👤 Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
+        f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
+        f"📁 Лист: {app_data.get('direction_name', 'Неизвестно')}\n"
+        f"👮 Модератор: @{moderator_username}\n"
+        f"🕐 Время одобрения: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+        reply_markup=None,
+        parse_mode="HTML"
+    )
+    
+    # Уведомляем пользователя
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=LEXICON_TEXT["application_event_completed"], reply_markup = menu_keyboard
+            text=LEXICON_TEXT["application_event_completed"], 
+            reply_markup=menu_keyboard
         )
     except Exception as e:
         await callback.message.answer(f"❗️ Не удалось уведомить пользователя {user_id}")
+
 
 @moderator_router.callback_query(F.data.startswith("decline_application_"))
 async def decline_application(callback: CallbackQuery, state: FSMContext):
@@ -212,8 +240,9 @@ async def decline_application(callback: CallbackQuery, state: FSMContext):
         reject_user_id=user_id,
         moder_message_id=callback.message.message_id,
         moder_chat_id=callback.message.chat.id,
-        moder_thread_id=callback.message.message_thread_id
-    )
+        moder_thread_id=callback.message.message_thread_id,
+        message_text=callback.message.text or "" 
+        )
     await callback.message.answer(f"❔ Введите причину отклонения заявки пользователя {user_id}:" )
 
     await state.set_state(ModeratorStates.waiting_reject_application_reason)
@@ -225,26 +254,56 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     user_id = data.get("reject_user_id")
     reason = message.text
+    message_text = data.get("message_text", "")
+    
+    # Парсим заявку извлекаем row_id из сообщения
+    app_data = parse_event_application_from_message(message_text, user_id)
+
+    # Извлекаем номер строки из сообщения из текста сообщения
+    import re
+    row_match = re.search(r"Строка:\s*(\d+)", message_text)
+    row_id = int(row_match.group(1)) if row_match else 2
+    
+    moderator_username = message.from_user.username or message.from_user.full_name
+    
     try:
+        # Обновляем статус в Google Sheets
+        sheets_result = googlesheet_service.update_application_status(
+            app_data.get("direction_name", ""), 
+            row_id, 
+            "Отклонена", 
+            f"@{moderator_username}"
+        )
+        sheets_status = "✅ Обновлено" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
+        
+        # Уведомляем пользователя
         await bot.send_message(
             chat_id=user_id,
-            text=f"😔 Ваша заявка отклонена.\nПричина: {reason}\n\nПожалуйста, заполните заявку заново."
+            text=f"😔 Ваша заявка на мероприятия «» отклонена.\n"
+                 f"📝 Причина: {reason}\n\n"
+                 f"Пожалуйста, заполните заявку заново.",
+            parse_mode="HTML"
         )
+        
+        # Обновляем сообщение модератора
         moder_chat_id = data.get("moder_chat_id")
         moder_message_id = data.get("moder_message_id")
         await bot.edit_message_text(
-        chat_id=moder_chat_id,
-        message_id=moder_message_id,
-        text=f"❌ Заявка отклонена\n"
-            f"👤 Пользователь ID: {user_id}\n"
-            f"👤 ФИО: Потом добавить\n"
-            f"👮 Модератор: @{message.from_user.username or message.from_user.full_name}\n"
-            f"📝 Причина: {reason}\n"
-            f"🕐 Время: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
-            reply_markup=None
+            chat_id=moder_chat_id,
+            message_id=moder_message_id,
+            text=f"❌ Заявка <b>отклонена</b>\n\n"
+                 f"👤 Пользователь {app_data.get('full_name', '')}(ID: {user_id})\n"
+                 f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
+                 f"📁 Лист: {app_data.get('direction_name', 'Неизвестно')}\n"
+                 f"👮 Модератор: @{moderator_username}\n"
+                 f"📝 Причина: {reason}\n"
+                 f"🕐 Время отклонения: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+            reply_markup=None,
+            parse_mode="HTML"
         )
-        await message.answer(f"✅ Заявка пользователя {user_id} отклонена. Причина отправлена.")
+        
         await state.clear()
+        
     except Exception as e:
-        await message.answer(f"❗️ Не удалось уведомить пользователя")
+        await message.answer(f"❗️ Не удалось отклонить заявку: {e}")
         await state.clear()

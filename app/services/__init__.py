@@ -1,6 +1,6 @@
 from .googlesheets_service import googlesheet_service
-from .parser_registration_form_service import (parse_registration_form_from_message,
-                                               _extract_field)
+from .parser_registration_form_service import parse_registration_form_from_message
+from .parser_event_application_service import parse_event_application_from_message
 
 from .validation_service import (is_valid_full_name,
                                  is_valid_group,
@@ -15,7 +15,7 @@ from .validation_service import (is_valid_full_name,
 
 __all__=["googlesheet_service",
          "parse_registration_form_from_message",
-         "_extract_field",
+         "parse_event_application_from_message",
          "is_valid_full_name",
          "is_valid_group",
          "is_valid_direction",
