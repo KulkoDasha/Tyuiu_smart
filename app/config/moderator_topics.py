@@ -20,8 +20,8 @@ TOPIC_UNITED_STUDENT_COUNCIL = 38 # Объединенный совет обуч
 TOPIC_HEADMAN = 40 # Старостат
 TOPIC_REGISTRATION_NEW_USER = 45 # Регистрация новых пользователей
 GENERAL_CHAT = 243 # Общий чат
-USER_FEEDBACK = 425 #Обратная связь
-ISSUANCE_OF_INCENTIVES = 496 #Выдача поощрений
+USER_FEEDBACK = 425 # Обратная связь
+ISSUANCE_OF_INCENTIVES = 496 # Выдача поощрений
 
 
 

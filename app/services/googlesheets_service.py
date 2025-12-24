@@ -73,7 +73,6 @@ class GoogleSheetsService:
                 "full_name": data.get("full_name", ""),
                 "institute": data.get("institute", ""),
                 "direction": data.get("direction", ""),
-                "form_of_education": data.get("form_of_education", ""),
                 "course": data.get("course", ""),
                 "group": data.get("group", ""),
                 "start_year": data.get("start_year", ""),

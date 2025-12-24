@@ -21,12 +21,11 @@ def parse_registration_form_from_message(message_text: str, user_id: int,
             ("full_name", "ФИО"),
             ("institute", "Структурное подразделение обучения"),
             ("direction", "Направление"),
-            ("form_of_education", "Форма обучения"),
             ("course", "Курс"),
             ("group", "Группа"),
             ("start_year", "Год начала обучения"), 
             ("end_year", "Год окончания программы обучения"), 
-            ("phone", "Телефон"),
+            ("phone", "Номер телефона"),
             ("email", "Email")
         ]
         

@@ -183,7 +183,6 @@ class ChangeRegistrationFormInlineButtons:
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["full_name"], callback_data="full_name")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute"], callback_data="institute")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["direction"], callback_data="direction")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["form_of_education"], callback_data="form_of_education")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["course"], callback_data="course")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["group"], callback_data="group")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["start_year"], callback_data="start_year")],
