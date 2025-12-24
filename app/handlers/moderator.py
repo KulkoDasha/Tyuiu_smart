@@ -276,8 +276,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         # 2. Уведомляем пользователя
         await bot.send_message(
             chat_id=user_id,
-            text=f"😔 Ваша заявка <b>ОТКЛОНЕНА</b>.\n"
-                 f"📊 Строка <b>{row_id}</b>: {sheets_status}\n"
+            text=f"😔 Ваша заявка отклонена.\n"
                  f"📝 Причина: {reason}\n\n"
                  f"Пожалуйста, заполните заявку заново.",
             parse_mode="HTML"
