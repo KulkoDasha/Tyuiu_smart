@@ -12,12 +12,13 @@ from ..lexicon import LEXICON_TEXT
 from ..config import config
 from ..filters import ModeratorChatFilter
 from ..states import ModeratorStates
-from ..keyboards import MenuKeyboard
+from ..keyboards import MenuKeyboard, ReRegister
 
 moderator_router = Router()
 moderator_router.message.filter(ModeratorChatFilter())
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 menu_keyboard = MenuKeyboard.get_keyboard_menu()
+re_register_keyboard = ReRegister.get_inline_keyboard()
 
 @moderator_router.message(Command("check"))
 async def check_in_moderator_chat(message:Message):
@@ -95,7 +96,8 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=f"😔 Ваша анкета отклонена.\nПричина: {reason}\n\nПожалуйста, заполните анкету заново."
+            text=f"😔 Ваша анкета отклонена.\nПричина: {reason}\n\nПожалуйста, заполните анкету заново.",
+            reply_markup=re_register_keyboard
         )
         moder_chat_id = data.get("moder_chat_id")
         moder_message_id = data.get("moder_message_id")

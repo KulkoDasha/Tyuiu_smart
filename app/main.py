@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .config import config
 from .handlers import *
+from .keyboards import *
 
 logging.basicConfig(
     level=logging.getLevelName(config.log.level),
@@ -29,10 +30,13 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher()
+    
     dp.include_router(user_router)
     dp.include_router(moderator_router)
     dp.include_router(admin_router)
+    dp.startup.register(set_main_menu)
     dp.include_router(other_router)
+
     await bot.delete_webhook(drop_pending_updates=True) 
     await dp.start_polling(bot)
     
