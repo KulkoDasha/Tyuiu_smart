@@ -8,6 +8,7 @@ LEXICON_USER_KEYBOARD = {
     "read_the_agreement": "📃 Ознакомиться с текстом согласия",
     "give_agreement": "✅ Даю согласие",
     "refuse_agreement": "❌ Не даю согласие",
+    "re_register":"🔄 Пройти регистрацию заново",
 
     "institute_of_architecture_and_design": "🏛️ Институт архитектуры и дизайна",
     "civil_engineering_institute": "🏗️ Строительный институт",

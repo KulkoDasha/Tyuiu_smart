@@ -8,12 +8,15 @@ from .user_keyboard import (MenuKeyboard,
                            RewardsChoiceInlineButtons,
                            ChangeRegistrationFormInlineButtons,
                            ConfirmRegistrationFormInlineButtons,
+                           ReRegister,
                            SupportInlineButtons)
 
 from .moderator_keyboard import (AdminPanelInlineButtons,
                                  RegisterNewUserInlineButtons,
                                  ProcessingUserApplicationInlineButtons,
                                  ModeratorSupportInlineButtons)
+
+from .set_menu import(set_main_menu)
 
 __all__ = [
     "MenuKeyboard",
@@ -30,4 +33,6 @@ __all__ = [
     "AdminPanelInlineButtons",
     "RegisterNewUserInlineButtons",
     "ProcessingUserApplicationInlineButtons",
-    "ModeratorSupportInlineButtons"]
+    "ReRegister",
+    "ModeratorSupportInlineButtons",
+    "set_main_menu"]

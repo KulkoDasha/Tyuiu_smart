@@ -29,22 +29,6 @@ competition_regulations_path = "app/files/Polozhenie_o_Konkurse_nematerialnoy_mo
 
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 
-def is_valid_date(text: str) -> int:
-    """Проверяет дату в формате ГГГГ"""
-    try:
-        datetime.strptime(text, '%Y')
-        return True
-    except ValueError:
-        return False
-
-def is_valid_email(email: str) -> bool:
-    """Проверяет корректность email адреса"""
-    email = email.strip().lower()
-    if '@' not in email:
-        return False
-    else:
-        return True
-
 @user_router.message(CommandStart(),StateFilter(default_state))
 async def start(message: Message):
     """
@@ -100,7 +84,15 @@ async def help_command(message: Message):
     """
     await message.answer(text = LEXICON_TEXT["help_text"])
 
-@user_router.message(StateFilter(RegistrationFormStates.full_name), F.text.regexp(r'^[А-ЯЁа-яё\s]+$'))
+@user_router.callback_query(F.data == "re_register")
+async def re_register_start(callback: CallbackQuery,state:FSMContext):
+    """
+    Нажатие на кнопку пройти регистрацию заново
+    """
+    await callback.message.edit_text(LEXICON_TEXT["re_register_text"])
+    await state.set_state(RegistrationFormStates.full_name)
+
+@user_router.message(StateFilter(RegistrationFormStates.full_name), lambda message: is_valid_full_name(message.text) == True )
 async def full_name_sent(message:Message, state: FSMContext ):
     """
     Хендлер фио ввели, запрашивается институт
@@ -127,7 +119,7 @@ async def institute_select(callback: CallbackQuery,state: FSMContext):
     await callback.message.answer(text = LEXICON_TEXT["registration_fill_direction"])  
     await state.set_state(RegistrationFormStates.direction)
 
-@user_router.message(StateFilter(RegistrationFormStates.direction), F.text.regexp(r'^[А-ЯЁа-яё\s]+$'))
+@user_router.message(StateFilter(RegistrationFormStates.direction), lambda message: is_valid_direction(message.text) == True)
 async def direction_sent(message:Message, state:FSMContext):
     """
     Ввели направление, запрашиваем курс
@@ -141,7 +133,7 @@ async def process_from_of_education_incorrect(message:Message):
     """если направление неккоректно"""
     await message.answer(text=LEXICON_TEXT["registration_incorrect_direction"])
 
-@user_router.message(StateFilter(RegistrationFormStates.course),lambda message: message.text in ["1","2","3","4","5"])
+@user_router.message(StateFilter(RegistrationFormStates.course),lambda message: is_valid_course(message.text) == True)
 async def course_sent(message: Message, state: FSMContext):
     """
     Ввели курс, запрашиваем группу
@@ -155,16 +147,23 @@ async def process_course_incorrect(message:Message):
     """если курс некорректен"""
     await message.answer(text = LEXICON_TEXT["registration_incorrect_course"])
 
-@user_router.message(StateFilter(RegistrationFormStates.group))
+@user_router.message(StateFilter(RegistrationFormStates.group),lambda message: is_valid_group(message.text) == True)
 async def groupe_sent(message: Message, state: FSMContext):
     """
-    Ввели курс, запрашиваем год поступления
+    Ввели группу, запрашиваем год поступления
     """
     await state.update_data(group = message.text)
     await message.answer(text = LEXICON_TEXT["registration_fill_start_year"])  
     await state.set_state(RegistrationFormStates.start_year)
 
-@user_router.message(StateFilter(RegistrationFormStates.start_year),lambda message: is_valid_date(message.text))
+@user_router.message(StateFilter(RegistrationFormStates.group))
+async def process_course_incorrect(message:Message):
+    """если группа некорректна"""
+    await message.answer(text = LEXICON_TEXT["registration_incorrect_group"])
+
+@user_router.message(StateFilter(RegistrationFormStates.start_year), lambda message: message.text.isdigit() 
+                     and len(message.text) == 4
+                     and 1900 <= int(message.text) <= 2200) 
 async def start_year_sent(message: Message, state: FSMContext):
     """
     Ввели год поступления, запрашиваем год окончания
@@ -178,21 +177,21 @@ async def process_start_year_incorrect(message:Message):
     """если дата начала неккоректна"""
     await message.answer(text = LEXICON_TEXT["registration_incorrect_start_year"])
 
-@user_router.message(StateFilter(RegistrationFormStates.end_year),lambda message: is_valid_date(message.text))
+@user_router.message(StateFilter(RegistrationFormStates.end_year))
 async def end_year_sent(message: Message, state: FSMContext):
     """
     Ввели дату конца, запрашиваем номер телефона
     """
-    await state.update_data(end_year = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_phone_number"]) 
-    await state.set_state(RegistrationFormStates.phone_number)
+    data = await state.get_data()
+    start_year = data.get("start_year")
+    if is_valid_study_years(start_year, message.text):
+        await state.update_data(end_year = message.text)
+        await message.answer(text = LEXICON_TEXT["registration_fill_phone_number"]) 
+        await state.set_state(RegistrationFormStates.phone_number)
+    else:
+        await message.answer(LEXICON_TEXT["registration_incorrect_end_year"])
 
-@user_router.message(StateFilter(RegistrationFormStates.end_year))
-async def process_end_year_incorrect(message:Message): 
-    """если дата конца неккоректна"""
-    await message.answer(LEXICON_TEXT["registration_incorrect_end_year"])
-
-@user_router.message(StateFilter(RegistrationFormStates.phone_number))
+@user_router.message(StateFilter(RegistrationFormStates.phone_number),lambda message: is_valid_phone_number(message.text) == True)
 async def phone_sent(message: Message, state: FSMContext):  
     """
     Ввели номер телефон, запрашиваем почту
@@ -206,7 +205,7 @@ async def process_phone_incorrect(message:Message):
     """если номер телефона неккоректен""" 
     await message.answer(text = LEXICON_TEXT["registration_incorrect_phone_number"])
 
-@user_router.message(StateFilter(RegistrationFormStates.email))
+@user_router.message(StateFilter(RegistrationFormStates.email),lambda message: is_valid_email(message.text) == True)
 async def email_sent(message: Message, state: FSMContext):  
     """
     Если почта корректна, выводим итоговое сообщение
@@ -252,7 +251,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"• Группа: {data.get('group', 'Не указано')}\n"
             f"• Год начала обучения: {data.get('start_year', 'Не указано')}\n"
             f"• Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
-            f"• Номер телефона: {data.get('phone', 'Не указано')}\n"
+            f"• Номер телефона: {data.get('phone_number', 'Не указано')}\n"
             f"• Email: {data.get('email', 'Не указано')}\n"
         )
         moderator_confirm_form = RegisterNewUserInlineButtons.get_inline_keyboard(
@@ -311,7 +310,7 @@ async def choice_edit(callback:CallbackQuery, state: FSMContext):
 async def show_updated_form(message: Message, state: FSMContext):
     """Показываем обновленную анкету"""
     data = await state.get_data()
-    await message.answer("✅ Анкета успешно заполнена!\nПодтвердите данные или выберите что вы хотите изменить\n\n"
+    await message.answer("✅ Анкета успешно обновлена!\nПодтвердите данные или выберите что вы хотите изменить\n\n"
                          f"ФИО: {data.get('full_name', 'Не указано')}\n"
                          f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
                          f"Направление: {data.get('direction', 'Не указано')}\n"
@@ -323,59 +322,91 @@ async def show_updated_form(message: Message, state: FSMContext):
                          f"Email: {data.get('email', 'Не указано')}\n", reply_markup=confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
-@user_router.message(StateFilter(EditRegistrationForm.edit_full_name))
+@user_router.message(StateFilter(EditRegistrationForm.edit_full_name), lambda message: is_valid_full_name(message.text) == True)
 async def edit_full_name(message:Message, state: FSMContext):
     await state.update_data(full_name=message.text)
-    await message.answer("Данные изменены")
     await show_updated_form(message, state)
 
-@user_router.message(StateFilter(EditRegistrationForm.edit_institute))
-async def edit_institute(message:Message, state: FSMContext):
-    await state.update_data(institute=message.text)
-    await message.answer("Данные изменены")
+@user_router.message(StateFilter(EditRegistrationForm.edit_full_name))
+async def edit_full_name_incorrect(message:Message):
+    await message.answer(text=LEXICON_TEXT["registration_incorrect_full_name"])
+
+@user_router.callback_query(StateFilter(EditRegistrationForm.edit_institute))
+async def edit_institute(callback: CallbackQuery, state: FSMContext):
+    institute_key = callback.data
+    institute_name = LEXICON_USER_KEYBOARD.get(institute_key, 'Неизвестый институт')
+    await callback.message.edit_text(f"✅ Вы выбрали: {institute_name}")   
+    await state.update_data(institute=institute_name)
+    await show_updated_form(callback.message, state)
+
+@user_router.message(StateFilter(EditRegistrationForm.edit_direction), lambda message: is_valid_direction(message.text) == True)
+async def edit_direction(message:Message, state: FSMContext):
+    await state.update_data(direction=message.text)
     await show_updated_form(message, state)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_direction))
-async def edit_direction(message:Message, state: FSMContext):
-    await state.update_data(direction=message.text)
-    await message.answer("Данные изменены")
+async def edit_direction_incorrect(message:Message):
+    await message.answer(text=LEXICON_TEXT["registration_incorrect_direction"])
+
+@user_router.message(StateFilter(EditRegistrationForm.edit_course),lambda message: is_valid_course(message.text) == True)
+async def edit_course(message:Message, state: FSMContext):
+    await state.update_data(course=message.text)
     await show_updated_form(message, state)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_course))
-async def edit_course(message:Message, state: FSMContext):
-    await state.update_data(course=message.text)
-    await message.answer("Данные изменены")
+async def edit_course_incorrect(message:Message):
+    await message.answer(text = LEXICON_TEXT["registration_incorrect_course"])
+    
+@user_router.message(StateFilter(EditRegistrationForm.edit_group),lambda message: is_valid_group(message.text) == True)
+async def edit_groupe(message:Message, state: FSMContext):
+    await state.update_data(groupe=message.text)
     await show_updated_form(message, state)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_group))
-async def edit_groupe(message:Message, state: FSMContext):
-    await state.update_data(groupe=message.text)
-    await message.answer("Данные изменены")
+async def edit_groupe_incorrect(message:Message):
+    await message.answer(text = LEXICON_TEXT["registration_incorrect_group"])
+
+@user_router.message(StateFilter(EditRegistrationForm.edit_start_year), lambda message: message.text.isdigit() 
+                     and len(message.text) == 4
+                     and 1900 <= int(message.text) <= 2200)
+async def edit_start_year(message:Message, state: FSMContext):
+    await state.update_data(start_year=message.text)
     await show_updated_form(message, state)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_start_year))
-async def edit_start_year(message:Message, state: FSMContext):
-    await state.update_data(start_year=message.text)
-    await message.answer("Данные изменены")
-    await show_updated_form(message, state)
+async def edit_start_year_incorrext(message:Message):
+    await message.answer(text = LEXICON_TEXT["registration_incorrect_start_year"])
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_end_year))
 async def edit_end_year(message:Message, state: FSMContext):
+    data = await state.get_data()
+    start_year = data.get("start_year")
+    if is_valid_study_years(start_year, message.text):
+        await state.update_data(end_year = message.text)
+        await message.answer(text = LEXICON_TEXT["registration_fill_phone_number"]) 
+        await state.set_state(RegistrationFormStates.phone_number)
+    else:
+        await message.answer(LEXICON_TEXT["registration_incorrect_end_year"])
     await state.update_data(end_year=message.text)
-    await message.answer("Данные изменены")
+    await show_updated_form(message, state)
+
+@user_router.message(StateFilter(EditRegistrationForm.edit_phone_number),lambda message: is_valid_phone_number(message.text) == True)
+async def edit_phone_number(message:Message, state: FSMContext):
+    await state.update_data(phone_number=message.text)
     await show_updated_form(message, state)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_phone_number))
-async def edit_phone_number(message:Message, state: FSMContext):
-    await state.update_data(phone=message.text)
-    await message.answer("Данные изменены")
+async def edit_phone_number_number_incorrect(message:Message):
+    await message.answer(text = LEXICON_TEXT["registration_incorrect_phone_number"])
+
+@user_router.message(StateFilter(EditRegistrationForm.edit_email),lambda message: is_valid_email(message.text) == True)
+async def edit_email(message:Message, state: FSMContext):
+    await state.update_data(email=message.text)
     await show_updated_form(message, state)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_email))
-async def edit_email(message:Message, state: FSMContext):
-    await state.update_data(email=message.text)
-    await message.answer("Данные изменены")
-    await show_updated_form(message, state)
+async def edit_email_incorrect(message:Message):
+    await message.answer(text = LEXICON_TEXT["registration_incorrect_email"])
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['submit_application'],StateFilter(default_state))
 async def aplication_start(message: Message, state: FSMContext):
@@ -407,9 +438,12 @@ async def name_of_event_sent(message: Message, state: FSMContext):
 
 @user_router.message(StateFilter(ApplicationStates.date_event))
 async def date_of_event_sent(message: Message, state: FSMContext):
-    await state.update_data(date_of_event=message.text)
-    await message.answer(LEXICON_TEXT["application_fill_event_location"])
-    await state.set_state(ApplicationStates.event_location)
+    if is_valid_event_date(message.text) == True:
+        await state.update_data(date_of_event=message.text)
+        await message.answer(LEXICON_TEXT["application_fill_event_location"])
+        await state.set_state(ApplicationStates.event_location)
+    else:
+        await message.answer(LEXICON_TEXT["application_incorrect_event_date"])
 
 @user_router.message(StateFilter(ApplicationStates.event_location))
 async def date_of_event_sent(message: Message, state: FSMContext):
@@ -434,6 +468,28 @@ async def supporting_material_sent(message:Message,state:FSMContext):
     data = await state.get_data()
     user_id = message.from_user.id
     material_info = None
+    
+    material_text = ""
+    
+    if message.text:
+        material_text = message.text
+    elif message.document:
+        material_text = message.document.file_name or ""
+    elif message.caption:  
+        material_text = message.caption
+    
+    if not is_valid_confirmation_material(material_text):
+        await message.answer(
+            "❌ Некорректный формат материала!\n\n"
+            "✅ Допустимые форматы:\n"
+            "• Ссылка: http:// или https://\n"
+            "• Документы: .doc, .docx, .txt, .pdf\n"
+            "• Изображения: .jpg, .jpeg, .png\n"
+            "• Видео: .mov, .mkv, .avi, .mp4\n\n"
+            "Отправьте материал заново:"
+        )
+        return
+    
     if message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
         material_info = {
             "type": "ссылка",
@@ -683,25 +739,25 @@ async def change_direction_name(callback:CallbackQuery, state:FSMContext):
         direction_name = direction_name
     )
     await callback.message.edit_text(f"✅ Вы выбрали: {direction_name}")     
-    await callback.message.answer("Данные изменены")
     await show_updated_application(callback.message, state)
 
 @user_router.message(StateFilter(ChangeApplicationStates.change_name_event))
 async def change_date_event(message:Message, state:FSMContext): 
     await state.update_data(name_of_event=message.text)   
-    await message.answer("Данные изменены")
     await show_updated_application(message, state)
 
 @user_router.message(StateFilter(ChangeApplicationStates.change_date_event))
 async def change_date_event(message:Message, state:FSMContext): 
-    await state.update_data(date_of_event=message.text)   
-    await message.answer("Данные изменены")
-    await show_updated_application(message, state)
+    if is_valid_event_date(message.text) == True:
+        await state.update_data(date_of_event=message.text)
+        await show_updated_application(message, state)
+    else:
+        await message.answer(LEXICON_TEXT["application_incorrect_event_date"])
+
 
 @user_router.message(StateFilter(ChangeApplicationStates.change_event_location))
 async def change_event_location (message:Message, state:FSMContext):   
     await state.update_data(event_location=message.text) 
-    await message.answer("Данные изменены")
     await show_updated_application(message, state)
 
 @user_router.callback_query(StateFilter(ChangeApplicationStates.change_role_at_the_event))
@@ -710,7 +766,6 @@ async def application_edit_role(callback:CallbackQuery, state:FSMContext):
     role_name = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
     await state.update_data(role_name=role_name)
     await callback.message.edit_text(f"✅ Вы выбрали: {role_name}")   
-    await callback.message.answer("Данные изменены")
     await show_updated_application(callback.message, state)
 
     

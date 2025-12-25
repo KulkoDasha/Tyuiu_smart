@@ -223,3 +223,17 @@ class SupportInlineButtons:
         
         return keyboard
 
+class ReRegister:
+    """
+    Инлайн-кнопка для перепрохождения регистрации
+    """
+
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["re_register"], callback_data= "re_register")]
+                                ])
+        
+        return keyboard
+
