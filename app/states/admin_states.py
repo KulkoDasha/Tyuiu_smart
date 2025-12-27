@@ -4,11 +4,13 @@ from aiogram.fsm.state import State, StatesGroup
 @dataclass
 class NotifificationAllUsers(StatesGroup):
     waiting_for_message = State()
+    bot_message_id = State()
 
 @dataclass
 class NotificationUser(StatesGroup):
     waiting_for_user_id = State()
     waiting_for_message = State()
+    bot_message_id = State()
 
 @dataclass
 class ModeratorStates(StatesGroup):
