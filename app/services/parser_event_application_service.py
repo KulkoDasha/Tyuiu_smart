@@ -10,11 +10,11 @@ def parse_event_application_from_message(message_text: str, user_id: int) -> Dic
     
     fields = [
         ("full_name", "ФИО"),
-        ("direction_name", "Направление внеучебной деятельности"),
-        ("event_name", "Название мероприятия"),
-        ("event_date", "Дата проведения"),
+        ("event_direction", "Направление внеучебной деятельности"),
+        ("name_of_event", "Название мероприятия"),
+        ("date_of_event", "Дата проведения"),
         ("event_location", "Место проведения"),
-        ("role_name", "Роль в мероприятии")
+        ("event_role", "Роль в мероприятии")
     ]
     
     row_match = re.search(r"Строка:\s*(\d+)", message_text)

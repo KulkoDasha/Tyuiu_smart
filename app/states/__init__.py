@@ -4,8 +4,8 @@ from .admin_states import (NotifificationAllUsers,
 
 from .user_states import (RegistrationFormStates,
                           EditRegistrationForm,
-                          ApplicationStates,
-                          ChangeApplicationStates,
+                          EventApplicationStates,
+                          ChangeEventApplicationStates,
                           SupportStates)
 
 __all__ = ["NotifificationAllUsers",
@@ -13,6 +13,6 @@ __all__ = ["NotifificationAllUsers",
            "ModeratorStates",
            "RegistrationFormStates",
            "EditRegistrationForm",
-           "ApplicationStates",
-           "ChangeApplicationStates",
+           "EventApplicationStates",
+           "ChangeEventApplicationStates",
            "SupportStates"]

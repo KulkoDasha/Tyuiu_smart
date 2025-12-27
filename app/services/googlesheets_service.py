@@ -77,7 +77,7 @@ class GoogleSheetsService:
                 "group": data.get("group", ""),
                 "start_year": data.get("start_year", ""),
                 "end_year": data.get("end_year", ""),
-                "phone": data.get("phone", ""),
+                "phone_number": data.get("phone_number", ""),
                 "email": data.get("email", ""),
                 "tiukoins": data.get("tiukoins", 0),
                 "approval_date": data.get("approval_date", ""),

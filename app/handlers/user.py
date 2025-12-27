@@ -1,10 +1,11 @@
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import Message, Update, CallbackQuery,FSInputFile
+from aiogram.types import Message, CallbackQuery,FSInputFile
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
+from aiogram.fsm.state import default_state
 from datetime import datetime
 import pytz
+import logging
 
 from ..states import *
 from ..keyboards import *
@@ -23,7 +24,7 @@ choice_role = ChoiceOfRoleInlineButtons.get_inline_keyboard()
 direction_of_activities_keyboard = DirectionOfActivitiesInlineButtons.get_inline_keyboard()
 application_confirm_keyboard = ApplicationConfirmationInlineButtons.get_inline_keyboard()
 change_of_application_keyboard = ChangeOfApplicationInlineButtons.get_inline_keyboard()
-
+logger = logging.getLogger(__name__)
 
 competition_regulations_path = "app/files/Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.docx"
 
@@ -213,15 +214,15 @@ async def email_sent(message: Message, state: FSMContext):
     await state.update_data(email = message.text)
     data = await state.get_data()
     await message.answer("✅ Анкета успешно заполнена!\nПодтвердите данные или выберите что изменить\n\n"
-                         f"ФИО: {data.get('full_name', 'Не указано')}\n"
-                         f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
-                         f"Направление: {data.get('direction', 'Не указано')}\n"
-                         f"Курс: {data.get('course', 'Не указано')}\n"
-                         f"Группа: {data.get('group', 'Не указано')}\n"
-                         f"Год начала обучения: {data.get('start_year', 'Не указано')}\n"
-                         f"Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
-                         f"Номер телефона: {data.get('phone', 'Не указано')}\n"
-                         f"Email: {message.text}\n",reply_markup= confirm_registration_form)
+                         f"<b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
+                         f"<b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
+                         f"<b>Направление:</b> {data.get('direction', 'Не указано')}\n"
+                         f"<b>Курс:</b> {data.get('course', 'Не указано')}\n"
+                         f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
+                         f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
+                         f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
+                         f"<b>Номер телефона:</b> {data.get('phone', 'Не указано')}\n"
+                         f"<b>Email:</b> {message.text}\n",reply_markup= confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
 @user_router.message(StateFilter(RegistrationFormStates.email))
@@ -240,19 +241,19 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
         moderator_message = (
             "📋 Новая анкета на проверку\n\n"
-            f"👤 Пользователь: @{callback.from_user.username or 'без username'} "
-            f"(ID: {callback.from_user.id})\n"
-            f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
+            f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
+            f"(<b>ID:</b> {callback.from_user.id})\n"
+            f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 Данные анкеты:\n"
-            f"• ФИО: {data.get('full_name', 'Не указано')}\n"
-            f"• Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
-            f"• Направление: {data.get('direction', 'Не указано')}\n"
-            f"• Курс: {data.get('course', 'Не указано')}\n"
-            f"• Группа: {data.get('group', 'Не указано')}\n"
-            f"• Год начала обучения: {data.get('start_year', 'Не указано')}\n"
-            f"• Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
-            f"• Номер телефона: {data.get('phone_number', 'Не указано')}\n"
-            f"• Email: {data.get('email', 'Не указано')}\n"
+            f"• <b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
+            f"• <b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
+            f"• <b>Направление:</b> {data.get('direction', 'Не указано')}\n"
+            f"• <b>Курс:</b> {data.get('course', 'Не указано')}\n"
+            f"• <b>Группа:</b> {data.get('group', 'Не указано')}\n"
+            f"• <b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
+            f"• <b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
+            f"• <b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}\n"
+            f"• <b>Email:</b> {data.get('email', 'Не указано')}\n"
         )
         moderator_confirm_form = RegisterNewUserInlineButtons.get_inline_keyboard(
             user_id=callback.from_user.id 
@@ -311,15 +312,15 @@ async def show_updated_form(message: Message, state: FSMContext):
     """Показываем обновленную анкету"""
     data = await state.get_data()
     await message.answer("✅ Анкета успешно обновлена!\nПодтвердите данные или выберите что вы хотите изменить\n\n"
-                         f"ФИО: {data.get('full_name', 'Не указано')}\n"
-                         f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
-                         f"Направление: {data.get('direction', 'Не указано')}\n"
-                         f"Курс: {data.get('course', 'Не указано')}\n"
-                         f"Группа: {data.get('group', 'Не указано')}\n"
-                         f"Год начала обучения: {data.get('start_year', 'Не указано')}\n"
-                         f"Год окончания программы обучения: {data.get('end_year', 'Не указано')}\n"
-                         f"Номер телефона: {data.get('phone', 'Не указано')}\n"
-                         f"Email: {data.get('email', 'Не указано')}\n", reply_markup=confirm_registration_form)
+                         f"<b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
+                         f"<b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
+                         f"<b>Направление:</b> {data.get('direction', 'Не указано')}\n"
+                         f"<b>Курс:</b> {data.get('course', 'Не указано')}\n"
+                         f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
+                         f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
+                         f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
+                         f"<b>Номер телефона:</b> {data.get('phone', 'Не указано')}\n"
+                         f"<b>Email:</b> {data.get('email', 'Не указано')}\n", reply_markup=confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_full_name), lambda message: is_valid_full_name(message.text) == True)
@@ -414,53 +415,53 @@ async def aplication_start(message: Message, state: FSMContext):
     Обработка кнопки подать заявку
     """
     await message.answer(LEXICON_TEXT["application_select_event_topic"],reply_markup=direction_of_activities_keyboard )
-    await state.set_state(ApplicationStates.direction_name)
+    await state.set_state(EventApplicationStates.event_direction)
 
-@user_router.callback_query(StateFilter(ApplicationStates.direction_name))
-async def direction_name(callback: CallbackQuery, state: FSMContext):
+@user_router.callback_query(StateFilter(EventApplicationStates.event_direction))
+async def event_direction(callback: CallbackQuery, state: FSMContext):
     """
     Обработка выбора направления
     """
-    direction_name, thread_id = TOPIC_MAPPING[callback.data]
+    event_direction, thread_id = TOPIC_MAPPING[callback.data]
     await state.update_data(
         thread_id=thread_id,
-        direction_name = direction_name
+        event_direction = event_direction
     )
-    await callback.message.edit_text(f"✅ Вы выбрали: {direction_name}")
+    await callback.message.edit_text(f"✅ Вы выбрали: {event_direction}")
     await callback.message.answer(text=LEXICON_TEXT["application_fill_event_name"])
-    await state.set_state(ApplicationStates.name_event)
+    await state.set_state(EventApplicationStates.name_event)
 
-@user_router.message(StateFilter(ApplicationStates.name_event))
+@user_router.message(StateFilter(EventApplicationStates.name_event))
 async def name_of_event_sent(message: Message, state: FSMContext):
     await state.update_data(name_of_event=message.text)
     await message.answer(LEXICON_TEXT["application_fill_event_date"])
-    await state.set_state(ApplicationStates.date_event)
+    await state.set_state(EventApplicationStates.date_event)
 
-@user_router.message(StateFilter(ApplicationStates.date_event))
+@user_router.message(StateFilter(EventApplicationStates.date_event))
 async def date_of_event_sent(message: Message, state: FSMContext):
     if is_valid_event_date(message.text) == True:
         await state.update_data(date_of_event=message.text)
         await message.answer(LEXICON_TEXT["application_fill_event_location"])
-        await state.set_state(ApplicationStates.event_location)
+        await state.set_state(EventApplicationStates.event_location)
     else:
         await message.answer(LEXICON_TEXT["application_incorrect_event_date"])
 
-@user_router.message(StateFilter(ApplicationStates.event_location))
+@user_router.message(StateFilter(EventApplicationStates.event_location))
 async def date_of_event_sent(message: Message, state: FSMContext):
     await state.update_data(event_location=message.text)
     await message.answer(LEXICON_TEXT["application_event_select_role"],reply_markup=choice_role)
-    await state.set_state(ApplicationStates.role_at_the_event)
+    await state.set_state(EventApplicationStates.role_at_the_event)
 
-@user_router.callback_query(StateFilter(ApplicationStates.role_at_the_event))
+@user_router.callback_query(StateFilter(EventApplicationStates.role_at_the_event))
 async def role_at_the_event_sent(callback: CallbackQuery, state: FSMContext):
     role_key = callback.data
-    role_name = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
-    await state.update_data(role_name=role_name)
-    await callback.message.edit_text(f"✅ Вы выбрали: {role_name}")
+    event_role = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
+    await state.update_data(event_role=event_role)
+    await callback.message.edit_text(f"✅ Вы выбрали: {event_role}")
     await callback.message.answer(text=LEXICON_TEXT["application_event_material"])
-    await state.set_state(ApplicationStates.supporting_manerial)
+    await state.set_state(EventApplicationStates.supporting_manerial)
     
-@user_router.message(StateFilter(ApplicationStates.supporting_manerial))
+@user_router.message(StateFilter(EventApplicationStates.supporting_manerial))
 async def supporting_material_sent(message:Message,state:FSMContext):
     """
     Сохраняем отправленный материал
@@ -468,27 +469,6 @@ async def supporting_material_sent(message:Message,state:FSMContext):
     data = await state.get_data()
     user_id = message.from_user.id
     material_info = None
-    
-    material_text = ""
-    
-    if message.text:
-        material_text = message.text
-    elif message.document:
-        material_text = message.document.file_name or ""
-    elif message.caption:  
-        material_text = message.caption
-    
-    if not is_valid_confirmation_material(material_text):
-        await message.answer(
-            "❌ Некорректный формат материала!\n\n"
-            "✅ Допустимые форматы:\n"
-            "• Ссылка: http:// или https://\n"
-            "• Документы: .doc, .docx, .txt, .pdf\n"
-            "• Изображения: .jpg, .jpeg, .png\n"
-            "• Видео: .mov, .mkv, .avi, .mp4\n\n"
-            "Отправьте материал заново:"
-        )
-        return
     
     if message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
         material_info = {
@@ -539,11 +519,11 @@ async def supporting_material_sent(message:Message,state:FSMContext):
         await state.update_data(supporting_material=material_info)
     updated_data = await state.get_data()
     await message.answer("✅ Заявка успешно заполнена!\nПодтвердите данные или выберите что изменить\n\n"
-                         f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('direction_name', 'Не указано')}\n"
+                         f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
                          f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
                          f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
                          f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
-                         f"👤 <b>Роль в мероприятии:</b> {data.get('role_name', 'Не указано')}\n"
+                         f"👤 <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
                          f"📎 <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n", reply_markup = application_confirm_keyboard)
     material = updated_data.get('supporting_material')
     if material and isinstance(material, dict):
@@ -563,7 +543,7 @@ async def supporting_material_sent(message:Message,state:FSMContext):
             )
         elif material_type == 'ссылка':
             await message.answer(f"🔗 Ссылка: {material.get('content')}")
-        await state.set_state(ApplicationStates.application_process_end )
+        await state.set_state(EventApplicationStates.application_process_end )
 
 async def show_updated_application(message:Message, state: FSMContext):
     """
@@ -571,15 +551,15 @@ async def show_updated_application(message:Message, state: FSMContext):
     """
     data = await state.get_data()
     await message.answer("✅ Заявка успешно обновлена!\nПодтвердите данные или выберите что изменить\n\n"
-                         f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('direction_name', 'Не указано')}\n"
+                         f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
                          f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
                          f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
                          f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
-                         f"👤 <b>Роль в мероприятии:</b> {data.get('role_name', 'Не указано')}\n"
+                         f"👤 <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
                          f"📎 <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n", reply_markup = application_confirm_keyboard)
-    await state.set_state(ApplicationStates.application_process_end)
+    await state.set_state(EventApplicationStates.application_process_end)
 
-@user_router.callback_query(StateFilter(ApplicationStates.application_process_end ))
+@user_router.callback_query(StateFilter(EventApplicationStates.application_process_end ))
 async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot):
     """
     Обрабатываем нажатие на кнопки отправить отправить заявку/изменить заявку
@@ -598,37 +578,37 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         "tg_id": user_id,
         "user_id": user_id,
         "full_name": user_full_name,
-        "direction_name": data.get("direction_name", ""),
-        "event_name": data.get("name_of_event", ""),
-        "event_date": data.get("date_of_event", ""),
+        "event_direction": data.get("event_direction", ""),
+        "name_of_event": data.get("name_of_event", ""),
+        "date_of_event": data.get("date_of_event", ""),
         "event_location": data.get("event_location", ""),
-        "role_name": data.get("role_name", ""),
+        "event_role": data.get("event_role", ""),
         "application_time": ekaterinburg_time.strftime('%d.%m.%Y %H:%M'),
         "status": "На рассмотрении",
         "moderator": "",
-        "sheet_name": data.get("direction_name", ""),
+        "sheet_name": data.get("event_direction", ""),
         "thread_id": thread_id
         }
 
-        direction_name = app_data["direction_name"]
-        sheets_result = googlesheet_service.add_event_application(app_data, direction_name)
+        event_direction = app_data["event_direction"]
+        sheets_result = googlesheet_service.add_event_application(app_data, event_direction)
 
         moderator_message = (
             "📋 Новая заявка на проверку\n\n"
-            f"👤 Пользователь: @{callback.from_user.username or 'без username'} "
-            f"(ID: {user_id})\n"
-            f"📊 Google Sheets: {'✅' if sheets_result.get('success') else '❌'}\n"
-            f"📁 Лист: {direction_name}\n"
-            f"📄 Строка: {sheets_result.get('row', 'N/A')}\n"
-            f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
-            f"📝 Данные заявки:\n"
-            f"• ФИО: {user_full_name}\n"
-            f"• Направление внеучебной деятельности: {data.get('direction_name', 'Не указано')}\n"
-            f"• Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
-            f"• Дата проведения: {data.get('date_of_event', 'Не указано')}\n"
-            f"• Место проведения: {data.get('event_location', 'Не указано')}\n"
-            f"• Роль в мероприятии: {data.get('role_name', 'Не указано')}\n"
-            f"• Подтверждающий материал: Прикреплен ниже 👇\n"
+            f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
+            f"(<b>ID:</b> {user_id})\n"
+            f"📊 <b>Google Sheets:</b> {'✅' if sheets_result.get('success') else '❌'}\n"
+            f"📁 <b>Лист:</b> {event_direction}\n"
+            f"📄 <b>Строка:</b> {sheets_result.get('row', 'N/A')}\n"
+            f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
+            f"📝 <b>Данные заявки:</b>\n"
+            f"• <b>ФИО</b>: {user_full_name}\n"
+            f"• <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
+            f"• <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
+            f"• <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
+            f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
+            f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
+            f"• <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n"
         )
         moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(user_id)
         send_params = {
@@ -691,13 +671,13 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     elif callback.data == "edit_application":
         await callback.message.delete()
         await callback.message.answer(LEXICON_TEXT["application_edit"],reply_markup = change_of_application_keyboard)
-        await state.set_state(ChangeApplicationStates.start)
+        await state.set_state(ChangeEventApplicationStates.start)
     else:
         await callback.message.answer(
             text = LEXICON_TEXT["application_other_answer"]
         )
 
-@user_router.callback_query(StateFilter(ChangeApplicationStates.start))
+@user_router.callback_query(StateFilter(ChangeEventApplicationStates.start))
 async def start_change_of_application(callback: CallbackQuery, state:FSMContext):
     """
     Начало изменения заявки
@@ -705,48 +685,48 @@ async def start_change_of_application(callback: CallbackQuery, state:FSMContext)
     if callback.data == "edit_direction_of_activities":
         await callback.message.delete()
         await callback.message.answer(LEXICON_TEXT["application_edit_topic"],reply_markup = direction_of_activities_keyboard)
-        await state.set_state(ChangeApplicationStates.change_direction_name)
+        await state.set_state(ChangeEventApplicationStates.change_event_direction)
     elif callback.data == "edit_event_name":
         await callback.message.delete()
         await callback.message.answer(LEXICON_TEXT["application_edit_name"])
-        await state.set_state(ChangeApplicationStates.change_name_event)
+        await state.set_state(ChangeEventApplicationStates.change_name_event)
     elif callback.data == "edit_event_date":
         await callback.message.delete()
         await callback.message.answer(LEXICON_TEXT["application_edit_date"])
-        await state.set_state(ChangeApplicationStates.change_date_event)
+        await state.set_state(ChangeEventApplicationStates.change_date_event)
     elif callback.data == "edit_event_location":
         await callback.message.delete()
         await callback.message.answer(LEXICON_TEXT["application_edit_location"])
-        await state.set_state(ChangeApplicationStates.change_event_location)
+        await state.set_state(ChangeEventApplicationStates.change_event_location)
     elif callback.data == "edit_role":
         await callback.message.delete()
         await callback.message.answer(LEXICON_TEXT["application_edit_role"], reply_markup = choice_role)
-        await state.set_state(ChangeApplicationStates.change_role_at_the_event)
+        await state.set_state(ChangeEventApplicationStates.change_role_at_the_event)
     elif callback.data == "edit_confirmation_material":
         await callback.message.delete()
         await callback.message.answer(LEXICON_TEXT["application_edit_material"])
-        await state.set_state(ApplicationStates.supporting_manerial)
+        await state.set_state(EventApplicationStates.supporting_manerial)
     else:
         await callback.message.answer(
             text = LEXICON_TEXT["application_other_answer"]
         )
 
-@user_router.callback_query(StateFilter(ChangeApplicationStates.change_direction_name))
-async def change_direction_name(callback:CallbackQuery, state:FSMContext):  
-    direction_name, thread_id = TOPIC_MAPPING[callback.data]
+@user_router.callback_query(StateFilter(ChangeEventApplicationStates.change_event_direction))
+async def change_event_direction(callback:CallbackQuery, state:FSMContext):  
+    event_direction, thread_id = TOPIC_MAPPING[callback.data]
     await state.update_data(
         thread_id=thread_id,
-        direction_name = direction_name
+        event_direction = event_direction
     )
-    await callback.message.edit_text(f"✅ Вы выбрали: {direction_name}")     
+    await callback.message.edit_text(f"✅ Вы выбрали: {event_direction}")     
     await show_updated_application(callback.message, state)
 
-@user_router.message(StateFilter(ChangeApplicationStates.change_name_event))
+@user_router.message(StateFilter(ChangeEventApplicationStates.change_name_event))
 async def change_date_event(message:Message, state:FSMContext): 
     await state.update_data(name_of_event=message.text)   
     await show_updated_application(message, state)
 
-@user_router.message(StateFilter(ChangeApplicationStates.change_date_event))
+@user_router.message(StateFilter(ChangeEventApplicationStates.change_date_event))
 async def change_date_event(message:Message, state:FSMContext): 
     if is_valid_event_date(message.text) == True:
         await state.update_data(date_of_event=message.text)
@@ -755,17 +735,17 @@ async def change_date_event(message:Message, state:FSMContext):
         await message.answer(LEXICON_TEXT["application_incorrect_event_date"])
 
 
-@user_router.message(StateFilter(ChangeApplicationStates.change_event_location))
+@user_router.message(StateFilter(ChangeEventApplicationStates.change_event_location))
 async def change_event_location (message:Message, state:FSMContext):   
     await state.update_data(event_location=message.text) 
     await show_updated_application(message, state)
 
-@user_router.callback_query(StateFilter(ChangeApplicationStates.change_role_at_the_event))
+@user_router.callback_query(StateFilter(ChangeEventApplicationStates.change_role_at_the_event))
 async def application_edit_role(callback:CallbackQuery, state:FSMContext):
     role_key = callback.data
-    role_name = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
-    await state.update_data(role_name=role_name)
-    await callback.message.edit_text(f"✅ Вы выбрали: {role_name}")   
+    event_role = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
+    await state.update_data(event_role=event_role)
+    await callback.message.edit_text(f"✅ Вы выбрали: {event_role}")   
     await show_updated_application(callback.message, state)
 
     
@@ -788,6 +768,7 @@ async def competition_regulations_start(message: Message, state: FSMContext):
         )
     await message.answer_document(document=document)
 
+@user_router.message(Command(commands='support'),StateFilter(default_state))
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['support'],StateFilter(default_state))
 async def support_start(message:Message, state: FSMContext):
     """
@@ -810,23 +791,23 @@ async def support_process(callback:CallbackQuery,state:FSMContext):
         await callback.message.edit_text(
             text = LEXICON_TEXT["feedback_text"]
         )
-        await state.set_state(SupportStates.support_feedback_and_error)
+        await state.set_state(SupportStates.support_feedback)
     else:
         await callback.message.edit_text(
             text = LEXICON_TEXT["support_text"]
         )
-        await state.set_state(SupportStates.support_feedback_and_error)
+        await state.set_state(SupportStates.support_error)
 
 @user_router.callback_query(StateFilter(SupportStates.support_choice_direction))
 async def support_choice_direction(callback:CallbackQuery, state:FSMContext):
     """
     Обработчки инлайн-кнопки написать модератору направления
     """
-    direction_name, thread_id = TOPIC_MAPPING[callback.data]
+    event_direction, thread_id = TOPIC_MAPPING[callback.data]
     await state.update_data(
         thread_id=thread_id
     )
-    await callback.message.edit_text(f"✅ Вы выбрали: {direction_name}")
+    await callback.message.edit_text(f"✅ Вы выбрали: {event_direction}")
     await callback.message.answer(text=LEXICON_TEXT["support_text"])
     await state.set_state(SupportStates.support_write_moderator)
 
@@ -846,7 +827,7 @@ async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
         f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"Сообщение: {message.text}"
     )
-    moderator_support_keyboard = ModeratorSupportInlineButtons.get_inline_keyboard(message.from_user.id)
+    moderator_support_keyboard = ModeratorSupportInlineButtons.get_inline_keyboard(message.from_user.id, message.text)
     send_params = {
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
@@ -857,10 +838,10 @@ async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
     await message.answer(text = LEXICON_TEXT["support_end"])
     await state.clear()
     
-@user_router.message(StateFilter(SupportStates.support_feedback_and_error))
+@user_router.message(StateFilter(SupportStates.support_feedback))
 async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot):
     """
-    Обработчки инлайн-кнопок обратная связь и сообщить об ошибке
+    Обработчки инлайн-кнопок обратная связь 
     """
     utc_time = message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
@@ -871,7 +852,32 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
         f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"Сообщение: {message.text}"
     )
-    moderator_support_keyboard = ModeratorSupportInlineButtons.get_inline_keyboard(message.from_user.id)
+    moderator_support_keyboard = ModeratorSupportInlineButtons.get_inline_keyboard(message.from_user.id,message.text)
+    send_params = {
+                "chat_id": config.moderator_chat_id,
+                "text": moderator_message,
+                "reply_markup": moderator_support_keyboard,
+                "message_thread_id": 425
+            }
+    await bot.send_message(**send_params)
+    await message.answer(text = LEXICON_TEXT["support_end"])
+    await state.clear()
+
+@user_router.message(StateFilter(SupportStates.support_error))
+async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot):
+    """
+    Обработчки инлайн-кнопок сообщить об ошибке
+    """
+    utc_time = message.date
+    ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+    moderator_message = (
+        "❗️ Новое сообщение от пользователя: \n\n"
+        f"👤 Пользователь: @{message.from_user.username or 'без username'} "
+        f"(ID: {message.from_user.id})\n"
+        f"📅 Время подачи: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Сообщение: {message.text}"
+    )
+    moderator_support_keyboard = ModeratorSupportInlineButtons.get_inline_keyboard(message.from_user.id,message.text)
     send_params = {
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
@@ -881,5 +887,9 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
     await bot.send_message(**send_params)
     await message.answer(text = LEXICON_TEXT["support_end"])
     await state.clear()
+
+@user_router.message(Command(commands="getmytgid"),StateFilter(default_state))
+async def getmytgid(message: Message):
+    await message.answer(f"🆔 Ваш телеграмм айди: <b>{message.from_user.id}</b>")
     
 
