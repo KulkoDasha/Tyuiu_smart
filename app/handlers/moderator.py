@@ -40,11 +40,26 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     moderator_username = f'@{callback.from_user.username}' or callback.from_user.full_name or "Unknown"
     approval_date = ekaterinburg_time.strftime('%d.%m.%Y %H:%M')
 
+    # Логгер
+    bot_logger.log_moderator_msg(
+    tg_id=str(callback.message.from_user.id),
+    username= moderator_username,
+    message=f"РЕГИСТРАЦИЯ: Начал принимать анкету пользователя {user_id}"
+    )
+
     # Парсим анкету из сообщения
     form_data = parse_registration_form_from_message(callback.message.text or "", user_id, moderator_username, approval_date)
 
     if not form_data:
         await callback.answer("❌ Не удалось извлечь данные анкеты", show_alert=True)
+
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id=str(callback.message.from_user.id),
+        username= moderator_username,
+        message=f"РЕГИСТРАЦИЯ: Ошибка извлечения данных из анкеты пользователя {user_id}"
+        )
+
         return
     
     # Отправляем в Google Sheets
@@ -61,6 +76,14 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
         f"👮 <b>Модератор:</b> @{callback.from_user.username or callback.from_user.full_name}\n"
         f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
         reply_markup=None)
+    
+    # Логгер
+    bot_logger.log_moderator_msg(
+    tg_id=str(callback.message.from_user.id),
+    username= moderator_username,
+    message=f"РЕГИСТРАЦИЯ: заявка {user_id} одобрена, GoogleSheets: {sheets_status}"
+    )
+
     try:
         await bot.send_message(
             chat_id=user_id,
@@ -75,6 +98,13 @@ async def decline_application(callback: CallbackQuery, state: FSMContext):
     Обрабатывает нажатие на кнопку отклонить анкету пользователя
     """
     user_id = int(callback.data.split("_")[-1])
+    
+    # Логгер
+    bot_logger.log_moderator_msg(
+    tg_id=str(callback.from_user.id),
+    username= callback.from_user.username,
+    message=f"РЕГИСТРАЦИЯ: Начал отклонять анкету пользователя {user_id}"
+    )
 
     await callback.answer("❔ Укажите причину отклонения анкеты пользователя", show_alert=False)
     await state.update_data(
@@ -112,6 +142,14 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
             f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup=None
         )
+
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id=str(message.from_user.id),
+        username= message.from_user.username,
+        message=f"РЕГИСТРАЦИЯ: Отклонил анкету {user_id} по причине: {reason}"
+        )
+
         reason_msg = await message.answer(f"✅ Анкета пользователя {user_id} отклонена. Причина отправлена.")
         await sleep(10)
         await reason_msg.delete()
@@ -179,6 +217,14 @@ async def process_the_request_answer(message: Message, state: FSMContext, bot: B
         )
         await message.answer(f"✅ Ответ пользователю {user_id} отправлен!")
         await state.clear()
+
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id=str(message.from_user.id),
+        username= message.from_user.username,
+        message=f"ПОДДЕРЖКА: Ответил пользователю {user_id} по вопросу: {original_message}, Ответ: {answer}"
+        )
+
     except Exception as e:
         await message.answer(f"❗️ Не удалось отправить ответ пользователю")
         await state.clear()
@@ -192,6 +238,13 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_username = callback.from_user.username or callback.from_user.full_name
+
+    # Логгер
+    bot_logger.log_moderator_msg(
+    tg_id=str(callback.from_user.id),
+    username= moderator_username,
+    message=f"ЗАЯВКА: Начал принимать заявку {user_id} на получение 'ТИУКоинов'"
+    )
     
     # Парсим заявку извлекаем row_id из сообщения
     message_text = callback.message.text or ""
@@ -223,6 +276,13 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
         f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
         reply_markup=None,
         parse_mode="HTML"
+    )
+
+    # Логгер
+    bot_logger.log_moderator_msg(
+    tg_id=str(callback.from_user.id),
+    username= moderator_username,
+    message=f"ЗАЯВКА: Принял заявку {user_id} на получение 'ТИУКоинов': {app_data.get("name_of_event")}, GoogleSheets: {app_data.get('event_direction', 'Неизвестно')}, {row_id}, {sheets_status}"
     )
     
     # Уведомляем пользователя
@@ -295,6 +355,14 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         # Обновляем сообщение модератора
         moder_chat_id = data.get("moder_chat_id")
         moder_message_id = data.get("moder_message_id")
+
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id=str(message.from_user.id),
+        username= moderator_username,
+        message=f"ЗАЯВКА: Отклонил заявку {user_id} на получение 'ТИУКоинов': {app_data.get("name_of_event")}, Причина: {reason} GoogleSheets: {app_data.get('event_direction', 'Неизвестно')}, {row_id}, {sheets_status}"
+        )
+
         await bot.edit_message_text(
             chat_id=moder_chat_id,
             message_id=moder_message_id,

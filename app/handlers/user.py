@@ -30,12 +30,20 @@ competition_regulations_path = "app/files/Polozhenie_o_Konkurse_nematerialnoy_mo
 
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 
-@user_router.message(CommandStart(),StateFilter(default_state))
+@user_router.message(CommandStart(), StateFilter(default_state))
 async def start(message: Message):
     """
-    Хендлер на команду старт
+    Хендлер на /start
     """
-    await message.answer(text=LEXICON_TEXT["start_text"], reply_markup = keyboard_start)
+
+    # Логгер
+    bot_logger.log_user_msg(
+        tg_id=str(message.from_user.id),
+        username=message.from_user.username,
+        message="РЕГИСТРАЦИЯ: Пользователь написал /start"
+    )
+
+    await message.answer(text=LEXICON_TEXT["start_text"], reply_markup=keyboard_start)
 
 @user_router.callback_query(F.data == "read_the_agreement")
 async def send_the_agreement(callback: CallbackQuery):
@@ -50,6 +58,14 @@ async def give_agreement(callback:CallbackQuery, state: FSMContext):
     """
     Хендлер на принятие согласия
     """
+    
+    # Логгер
+    bot_logger.log_user_msg(
+        tg_id=str(callback.from_user.id),
+        username=callback.from_user.username,
+        message="РЕГИСТРАЦИЯ: Пользователь принял согласие и начал регистрацию"
+    )
+
     await callback.message.edit_text(text=LEXICON_TEXT["give_agreement"])
     await callback.message.answer(text=LEXICON_TEXT["registration_fill_full_name"])
     await state.set_state(RegistrationFormStates.full_name)
@@ -60,6 +76,14 @@ async def refuse_agreement(callback:CallbackQuery, state: FSMContext):
     """
     Хендлер на отказ от согласия
     """
+
+    # Логгер
+    bot_logger.log_user_msg(
+        tg_id=str(callback.from_user.id),
+        username=callback.from_user.username,
+        message="РЕГИСТРАЦИЯ: Пользователь НЕ принял согласие"
+    )
+
     await callback.message.answer(text=LEXICON_TEXT["refuse_agreement"])
     await callback.answer()
     
@@ -90,6 +114,14 @@ async def re_register_start(callback: CallbackQuery,state:FSMContext):
     """
     Нажатие на кнопку пройти регистрацию заново
     """
+
+    # Логгер
+    bot_logger.log_user_msg(
+        tg_id=str(callback.from_user.id),
+        username=callback.from_user.username,
+        message="РЕГИСТРАЦИЯ: Пользователь начал регистрацию заново"
+    )
+
     await callback.message.edit_text(LEXICON_TEXT["re_register_text"])
     await state.set_state(RegistrationFormStates.full_name)
 
@@ -197,7 +229,7 @@ async def phone_sent(message: Message, state: FSMContext):
     """
     Ввели номер телефон, запрашиваем почту
     """
-    await state.update_data(phone = message.text)
+    await state.update_data(phone_number = message.text)
     await message.answer(text = LEXICON_TEXT["registration_fill_email"])  
     await state.set_state(RegistrationFormStates.email)
 
@@ -221,7 +253,7 @@ async def email_sent(message: Message, state: FSMContext):
                          f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
                          f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
                          f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
-                         f"<b>Номер телефона:</b> {data.get('phone', 'Не указано')}\n"
+                         f"<b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}\n"
                          f"<b>Email:</b> {message.text}\n",reply_markup= confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
@@ -264,6 +296,14 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
                 "reply_markup": moderator_confirm_form,
                 "message_thread_id": TOPIC_REGISTRATION_NEW_USER
             }
+        
+        # Логгер
+        bot_logger.log_user_msg(
+        tg_id=str(callback.from_user.id),
+        username=callback.from_user.username,
+        message=f"РЕГИСТРАЦИЯ: Пользователь отправил анкету на регистрацию:\n{moderator_message}"
+        )
+
         await bot.send_message(**send_params)
         await callback.message.edit_text(text = LEXICON_TEXT["registration_end"])
         await state.clear()
@@ -319,7 +359,7 @@ async def show_updated_form(message: Message, state: FSMContext):
                          f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
                          f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
                          f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
-                         f"<b>Номер телефона:</b> {data.get('phone', 'Не указано')}\n"
+                         f"<b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}\n"
                          f"<b>Email:</b> {data.get('email', 'Не указано')}\n", reply_markup=confirm_registration_form)
     await state.set_state(RegistrationFormStates.registration_end)
 
@@ -617,6 +657,14 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
                 "reply_markup": moderator_proceesing_application_keyboard,
                 "message_thread_id": thread_id 
             }
+        
+        # Логгер
+        bot_logger.log_user_msg(
+        tg_id=str(callback.from_user.id),
+        username=callback.from_user.username,
+        message=f"ЗАЯВКА: Пользователь {user_id} отправил заявку на получение 'ТИУКоинов':\n{moderator_message}"
+        )
+
         await bot.send_message(**send_params)
         material = updated_data.get('supporting_material')
         if material:
@@ -801,7 +849,7 @@ async def support_process(callback:CallbackQuery,state:FSMContext):
 @user_router.callback_query(StateFilter(SupportStates.support_choice_direction))
 async def support_choice_direction(callback:CallbackQuery, state:FSMContext):
     """
-    Обработчки инлайн-кнопки написать модератору направления
+    Обработчик инлайн-кнопки написать модератору направления
     """
     event_direction, thread_id = TOPIC_MAPPING[callback.data]
     await state.update_data(
@@ -814,7 +862,7 @@ async def support_choice_direction(callback:CallbackQuery, state:FSMContext):
 @user_router.message(StateFilter(SupportStates.support_write_moderator))
 async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
     """
-    Обработчки инлайн-кнопки написать модератору направления
+    Обработчик инлайн-кнопки написать модератору направления
     """
     data = await state.get_data()
     thread_id = data.get("thread_id")
@@ -834,6 +882,14 @@ async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
                 "reply_markup": moderator_support_keyboard,
                 "message_thread_id": thread_id
             }
+    
+    # Логгер
+    bot_logger.log_user_msg(
+    tg_id=str(message.from_user.id),
+    username= message.from_user.username,
+    message=f"ПОДДЕРЖКА: Пользователь написал модератору направления '{thread_id}': {message.text}"
+    )
+
     await bot.send_message(**send_params)
     await message.answer(text = LEXICON_TEXT["support_end"])
     await state.clear()
@@ -857,7 +913,7 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
                 "reply_markup": moderator_support_keyboard,
-                "message_thread_id": 425
+                "message_thread_id": USER_FEEDBACK
             }
     await bot.send_message(**send_params)
     await message.answer(text = LEXICON_TEXT["support_end"])
@@ -882,8 +938,16 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
                 "reply_markup": moderator_support_keyboard,
-                "message_thread_id": 3
+                "message_thread_id": TOPIC_SUPPORT
             }
+    
+    # Логгер
+    bot_logger.log_user_msg(
+    tg_id=str(message.from_user.id),
+    username= message.from_user.username,
+    message=f"ПОДДЕРЖКА: Пользователь написал в поддержку: {message.text}"
+    )
+
     await bot.send_message(**send_params)
     await message.answer(text = LEXICON_TEXT["support_end"])
     await state.clear()

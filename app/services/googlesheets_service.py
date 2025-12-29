@@ -1,9 +1,7 @@
 from typing import Dict, Any
 import requests
-import logging
 from ..config import config
-
-logger = logging.getLogger(__name__)
+from .logger import bot_logger
 
 class GoogleSheetsService:
     """
@@ -39,21 +37,49 @@ class GoogleSheetsService:
                 result = response.json()
             
             except ValueError:
-                logger.error("Google Sheets: не удалось распарсить JSON-ответ")
+
+                # Логгер
+                bot_logger.log_moderator_msg(
+                tg_id="googlesheet_service",
+                username= "googlesheet_service",
+                message=f"РЕГИСТРАЦИЯ: Google Sheets: не удалось распарсить JSON-ответ"
+                )
+
                 return {"success": False, "error": "Некорректный ответ от сервера"}
 
             return result
         
         except requests.exceptions.Timeout:
-            logger.error("Google Sheets: таймаут запроса")
+            
+            # Логгер
+            bot_logger.log_moderator_msg(
+            tg_id="googlesheet_service",
+            username= "googlesheet_service",
+            message=f"РЕГИСТРАЦИЯ: Google Sheets: таймаут запроса"
+            )
+
             return {"success": False, "error": "Таймаут запроса к Google Sheets"}
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Google Sheets: сетевая ошибка: {e}")
+
+            # Логгер
+            bot_logger.log_moderator_msg(
+            tg_id="googlesheet_service",
+            username= "googlesheet_service",
+            message=f"РЕГИСТРАЦИЯ: Google Sheets: сетевая ошибка: {e}"
+            )
+
             return {"success": False, "error": f"Сетевая ошибка: {e}"}
 
         except Exception as e:
-            logger.error(f"Google Sheets: непредвиденная ошибка: {e}")
+
+            # Логгер
+            bot_logger.log_moderator_msg(
+            tg_id="googlesheet_service",
+            username= "googlesheet_service",
+            message=f"РЕГИСТРАЦИЯ: Google Sheets: непредвиденная ошибка: {e}"
+            )
+
             return {"success": False, "error": f"Непредвиденная ошибка: {e}"}
     
     def add_participant(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -85,15 +111,35 @@ class GoogleSheetsService:
             },
         }
 
-        logger.info(f"Google Sheets: отправка участника tg_id={tg_id}")
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id="googlesheet_service",
+        username= data.get("moderator_username", ""),
+        message=f"РЕГИСТРАЦИЯ: Google Sheets: отправка участника tg_id={tg_id}"
+        )
+
         result = self.make_request(payload)
         if result.get("success"):
             row = result.get("row")
-            logger.info(f"Google Sheets: участник tg_id={tg_id} добавлен (row={row})")
+
+            # Логгер
+            bot_logger.log_moderator_msg(
+            tg_id="googlesheet_service",
+            username= data.get("moderator_username", ""),
+            message=f"РЕГИСТРАЦИЯ: Google Sheets: участник tg_id={tg_id} добавлен (row={row})"
+            )
+
             return {"success": True, "row": row, "tg_id": tg_id}
 
         error = result.get("error") or result.get("message") or "Неизвестная ошибка"
-        logger.error(f"Google Sheets: ошибка добавления tg_id={tg_id}: {error}")
+
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id="googlesheet_service",
+        username= data.get("moderator_username", ""),
+        message=f"РЕГИСТРАЦИЯ: Google Sheets: ошибка добавления tg_id={tg_id}: {error}"
+        )
+
         return {"success": False, "error": error}
     
     def add_event_application(self, data: Dict[str, Any], sheet_name: str) -> Dict[str, Any]:

@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import traceback
+from pathlib import Path
+import shutil
+from .services import bot_logger
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-import shutil
-from pathlib import Path
 
 from .config import config
 from .handlers import *
@@ -24,7 +26,7 @@ async def main():
         shutil.rmtree(session_path)
         print("Старые сессии удалены")
         logger.info("Старые сессии удалены")
-    logger.info(f"Загружен полный токен: {config.bot.token}")
+    
     bot = Bot(
         token=config.bot.token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -37,8 +39,21 @@ async def main():
     dp.startup.register(set_main_menu)
     dp.include_router(other_router)
 
-    await bot.delete_webhook(drop_pending_updates=True) 
-    await dp.start_polling(bot)
+    try:
+        print("🚀 Бот запущен!")
+        await dp.start_polling(bot)
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("🛑 Остановка по Ctrl+C")
+    except Exception as e:
+        bot_logger.log_error(
+            error_msg=f"Критическая ошибка бота: {str(e)}",
+            error_type="CRITICAL",
+            traceback=traceback.format_exc()
+        )
+    finally:
+        await bot.session.close()
+        print("✅ Бот остановлен")
+
     
 if __name__ == "__main__":
     asyncio.run(main())
