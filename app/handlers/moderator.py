@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from datetime import datetime
 import pytz
+from asyncio import sleep
 
 from ..services import *
 
@@ -55,10 +56,10 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     await callback.answer(f"✅ Анкета пользователя {user_id} одобрена!", show_alert=True)
     await callback.message.edit_text(
         f"✅ Анкета одобрена\n"
-        f"👤 ID пользователя: {user_id}\n"
-        f"📊 Google Sheets: {sheets_status}\n"
-        f"👮 Модератор: @{callback.from_user.username or callback.from_user.full_name}\n"
-        f"🕐 Время: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+        f"👤 <b>ID пользователя:</b> {user_id}\n"
+        f"📊 <b>Google Sheets:</b> {sheets_status}\n"
+        f"👮 <b>Модератор:</b> @{callback.from_user.username or callback.from_user.full_name}\n"
+        f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
         reply_markup=None)
     try:
         await bot.send_message(
@@ -96,7 +97,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=f"😔 Ваша анкета отклонена.\nПричина: {reason}\n\nПожалуйста, заполните анкету заново.",
+            text=f"😔 Ваша анкета отклонена.\n<b>Причина:</b> {reason}\n\nПожалуйста, заполните анкету заново.",
             reply_markup=re_register_keyboard
         )
         moder_chat_id = data.get("moder_chat_id")
@@ -105,13 +106,15 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         chat_id=moder_chat_id,
         message_id=moder_message_id,
         text=f"❌ Анкета отклонена\n"
-            f"👤 Пользователь ID: {user_id}\n"
-            f"👮 Модератор: @{message.from_user.username or message.from_user.full_name}\n"
-            f"📝 Причина: {reason}\n"
-            f"🕐 Время: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+            f"👤 <b>Пользователь ID:</b> {user_id}\n"
+            f"👮 <b>Модератор:</b> @{message.from_user.username or message.from_user.full_name}\n"
+            f"📝 <b>Причина:</b> {reason}\n"
+            f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup=None
         )
-        await message.answer(f"✅ Анкета пользователя {user_id} отклонена. Причина отправлена.")
+        reason_msg = await message.answer(f"✅ Анкета пользователя {user_id} отклонена. Причина отправлена.")
+        await sleep(10)
+        await reason_msg.delete()
         await state.clear()
     except Exception as e:
         await message.answer(f"❗️ Не удалось уведомить пользователя")
@@ -131,19 +134,18 @@ async def close_the_request(callback: CallbackQuery, bot: Bot, state: FSMContext
             message_line = line.strip()
             break
         
-    user_id = int(callback.data.split("_")[-1])
+    parts = callback.data.split("_")
+    user_id = int(parts[3]) 
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
 
-    moderator_username = f'@{callback.from_user.username}' or callback.from_user.full_name or "Unknown"
-    approval_date = ekaterinburg_time.strftime('%d.%m.%Y %H:%M')
     await callback.answer(f"✅ Обращение пользователя {user_id} закрыто!", show_alert=True)
     await callback.message.edit_text(
         f"✅ Вопрос закрыт\n"
-        f"👤 ID пользователя: {user_id}\n"
+        f"👤 <b>ID пользователя:</b> {user_id}\n"
         f"📝 {message_line}\n"
-        f"👮 Модератор: @{callback.from_user.username or callback.from_user.full_name}\n"
-        f"🕐 Время: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+        f"👮 <b>Модератор:</b> @{callback.from_user.username or callback.from_user.full_name}\n"
+        f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
         reply_markup=None)
 
 @moderator_router.callback_query(F.data.startswith("answer_user_"))
@@ -151,11 +153,13 @@ async def the_request_answer(callback: CallbackQuery, bot: Bot, state: FSMContex
     """
     Обрабатывает нажатие на кнопку ответить
     """
-    user_id = int(callback.data.split("_")[-1])
-
+    parts = callback.data.split("_")
+    user_id = int(parts[2])  
+    message = parts[3]
     await state.update_data(
         support_user_id=user_id,
         moder_message_id=callback.message.message_id,
+        original_message=message
     )
     await callback.message.answer(f"Введите ответ на обращение пользователя {user_id}:" )
     await state.set_state(ModeratorStates.waiting_edit_comment)
@@ -166,11 +170,12 @@ async def process_the_request_answer(message: Message, state: FSMContext, bot: B
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     data = await state.get_data()
     user_id = data.get("support_user_id")
+    original_message = data.get("original_message")
     answer = message.text
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=f"📨 <b>Ответ от службы поддержки</b>\n\n{answer}\n\n💬 Если у вас остались вопросы, напишите нам снова!"
+            text=f"📨 <b>Ответ от службы поддержки\nВаш вопрос:</b> {original_message}\n<b>Ответ:</b> {answer}\n\n💬 Если у вас остались вопросы, напишите нам снова!"
         )
         await message.answer(f"✅ Ответ пользователю {user_id} отправлен!")
         await state.clear()
@@ -199,7 +204,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     
     # Обновляем статус в Google Sheets
     result = googlesheet_service.update_application_status(
-        app_data.get("direction_name", ""), 
+        app_data.get("event_direction", ""), 
         row_id, 
         "Принята", 
         f"@{moderator_username}"
@@ -211,11 +216,11 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert=True)
     await callback.message.edit_text(
         f"✅ Заявка одобрена\n"
-        f"👤 Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
+        f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
         f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
-        f"📁 Лист: {app_data.get('direction_name', 'Неизвестно')}\n"
-        f"👮 Модератор: @{moderator_username}\n"
-        f"🕐 Время одобрения: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+        f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
+        f"👮 <b>Модератор:</b> @{moderator_username}\n"
+        f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
         reply_markup=None,
         parse_mode="HTML"
     )
@@ -271,7 +276,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     try:
         # Обновляем статус в Google Sheets
         sheets_result = googlesheet_service.update_application_status(
-            app_data.get("direction_name", ""), 
+            app_data.get("event_direction", ""), 
             row_id, 
             "Отклонена", 
             f"@{moderator_username}"
@@ -281,8 +286,8 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         # Уведомляем пользователя
         await bot.send_message(
             chat_id=user_id,
-            text=f"😔 Ваша заявка на мероприятия «» отклонена.\n"
-                 f"📝 Причина: {reason}\n\n"
+            text=f"😔 Ваша заявка на получение ТИУКионов отклонена.\n<b>Мероприятие:</b> «{app_data.get("name_of_event")}»\n<b>Направление внеучебной деятельности:<b> «{app_data.get("event_direction")}»\n"
+                 f"📝 <b>Причина:</b> {reason}\n\n"
                  f"Пожалуйста, заполните заявку заново.",
             parse_mode="HTML"
         )
@@ -294,16 +299,18 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
             chat_id=moder_chat_id,
             message_id=moder_message_id,
             text=f"❌ Заявка <b>отклонена</b>\n\n"
-                 f"👤 Пользователь {app_data.get('full_name', '')}(ID: {user_id})\n"
+                 f"👤 <b>Пользователь</b> {app_data.get('full_name', '')}(ID: {user_id})\n"
                  f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
-                 f"📁 Лист: {app_data.get('direction_name', 'Неизвестно')}\n"
-                 f"👮 Модератор: @{moderator_username}\n"
-                 f"📝 Причина: {reason}\n"
-                 f"🕐 Время отклонения: {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+                 f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
+                 f"👮 <b>Модератор:</b> @{moderator_username}\n"
+                 f"📝 <b>Причина:</b> {reason}\n"
+                 f"🕐 <b>Время отклонения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup=None,
             parse_mode="HTML"
         )
-        
+        reason_msg = await message.answer(f"✅ Заявка пользователя {user_id} отклонена. Причина отправлена.")
+        await sleep(10)
+        await reason_msg.delete()
         await state.clear()
         
     except Exception as e:

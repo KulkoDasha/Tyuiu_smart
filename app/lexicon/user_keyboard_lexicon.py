@@ -2,7 +2,7 @@ LEXICON_USER_KEYBOARD = {
     "submit_application": "📝 Подать заявку",
     "my_tyuiu_coins": "💎 Мои ТИУкоины",
     "catalog_of_rewards": "📖 Каталог поощрений",
-    "agreement_of_contest": "📃 Положение конкурса",
+    "agreement_of_contest": "📃 О конкурсе",
     "support": "❓ Поддержка",
 
     "read_the_agreement": "📃 Ознакомиться с текстом согласия",

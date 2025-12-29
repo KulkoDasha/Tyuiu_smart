@@ -77,5 +77,5 @@ def is_valid_confirmation_material(confirmation_material: str) -> bool:
     if confirmation_material_lower.startswith(('http://', 'https://')):
         return True
 
-    file_pattern = r'.+\.(docx?|txt|pdf|jpe?g|png|mov|mkv|avi|mp4)$'
+    file_pattern = r'.+\.(docx?|heic|heif|txt|pdf|jpe?g|png|mov|mkv|avi|mp4)$'
     return bool(re.fullmatch(file_pattern, confirmation_material_lower))

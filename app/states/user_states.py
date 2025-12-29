@@ -35,11 +35,11 @@ class EditRegistrationForm(StatesGroup):
     edit_email = State()
 
 @dataclass
-class ApplicationStates(StatesGroup):
+class EventApplicationStates(StatesGroup):
     """
     Состояния при заполнения заявки
     """
-    direction_name = State()
+    event_direction = State()
     name_event = State()
     date_event = State()
     event_location = State()
@@ -48,12 +48,12 @@ class ApplicationStates(StatesGroup):
     application_process_end = State()
 
 @dataclass
-class ChangeApplicationStates(StatesGroup):
+class ChangeEventApplicationStates(StatesGroup):
     """
     Состояния при изменении заявки
     """
     start = State()
-    change_direction_name = State()
+    change_event_direction = State()
     change_name_event = State()
     change_date_event = State()
     change_event_location = State()
@@ -68,5 +68,6 @@ class SupportStates(StatesGroup):
     support_start = State()
     support_write_moderator = State()
     support_choice_direction = State()
-    support_feedback_and_error = State()
+    support_feedback = State()
+    support_error = State()
     
