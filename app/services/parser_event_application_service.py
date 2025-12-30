@@ -1,8 +1,6 @@
 import re
-import logging
+from .logger import bot_logger
 from typing import Dict
-
-logger = logging.getLogger(__name__)
 
 def parse_event_application_from_message(message_text: str, user_id: int) -> Dict:
     """Парсит заявку из сообщения модератора"""
@@ -26,7 +24,13 @@ def parse_event_application_from_message(message_text: str, user_id: int) -> Dic
         if value: 
             data[key] = value
     
-    logger.info(f"🎯 Парсер вернул: {data}")
+    # Логгер
+    bot_logger.log_moderator_msg(
+    tg_id="parser_event_application_service",
+    username= "parser_event_application_service",
+    message=f"ЗАЯВКА: Парсер для пользователя {user_id} вернул: {data}"
+    )
+
     return data
 
 def _extract_field(text: str, field_name: str) -> str:

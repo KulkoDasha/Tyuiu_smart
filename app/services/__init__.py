@@ -1,6 +1,7 @@
 from .googlesheets_service import googlesheet_service
 from .parser_registration_form_service import parse_registration_form_from_message
 from .parser_event_application_service import parse_event_application_from_message
+from .logger import bot_logger
 
 from .validation_service import (is_valid_full_name,
                                  is_valid_group,
@@ -24,4 +25,5 @@ __all__=["googlesheet_service",
          "is_valid_phone_number",
          "is_valid_email",
          "is_valid_event_date",
-         "is_valid_confirmation_material"]
+         "is_valid_confirmation_material",
+         "bot_logger"]

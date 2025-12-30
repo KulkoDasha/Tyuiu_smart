@@ -1,8 +1,6 @@
 import re
-import logging
+from .logger import bot_logger
 from typing import Dict, Optional
-
-logger = logging.getLogger(__name__)
 
 def parse_registration_form_from_message(message_text: str, user_id: int,
                             moderator_username:str, approval_date:str) -> Optional[Dict]:
@@ -10,13 +8,11 @@ def parse_registration_form_from_message(message_text: str, user_id: int,
     Извлекает данные анкеты.
     """
     try:
-        # ✅ tg_id извлекаем из параметра
         data = {"tg_id": user_id,
                 "approval_date": approval_date,
                 "moderator_username": moderator_username
                 }
         
-        # Остальные поля парсим
         fields = [
             ("full_name", "ФИО"),
             ("institute", "Структурное подразделение обучения"),
@@ -25,35 +21,40 @@ def parse_registration_form_from_message(message_text: str, user_id: int,
             ("group", "Группа"),
             ("start_year", "Год начала обучения"), 
             ("end_year", "Год окончания программы обучения"), 
-            ("phone", "Номер телефона"),
+            ("phone_number", "Номер телефона"),
             ("email", "Email")
         ]
         
         found_fields = []
         for key, field_name in fields:
             value = _extract_field(message_text, field_name)
-            logger.info(f"Поле '{field_name}' -> '{value}'")
             if value:
                 data[key] = value
                 found_fields.append(key)
-        
-        logger.info(f"✅ Найдено полей: {found_fields}")
 
         for key, field_name in fields:
             value = _extract_field(message_text, field_name)
-            if value:  # Только непустые значения
+            if value:
                 data[key] = value
         
-        # ✅ Проверяем только ФИО (критичное поле)
-        if not data.get("full_name"):
-            logger.warning(f"Парсер: анкета без ФИО для user_id {user_id}")
-            return None
-            
-        logger.info(f"🎯 ИТОГОВЫЕ данные: {data}")
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id="parser_registration_form_service",
+        username= f"{moderator_username}",
+        message= f"РЕГИСТРАЦИЯ: Данные заявки {user_id}: {data}"
+        )
+
         return data
         
     except Exception as e:
-        logger.error(f"Ошибка парсинга анкеты для {user_id}: {e}")
+
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id="parser_registration_form_service",
+        username= f"{moderator_username}",
+        message= f"РЕГИСТРАЦИЯ: Ошибка парсинга анкеты для {user_id}: {e}"
+        )
+        
         # даже при ошибке возвращаем хотя бы tg_id + full_name (если есть)
         return {"tg_id": user_id, "moderator_username": moderator_username, 
                  "approval_date": approval_date} if message_text else None
@@ -80,5 +81,12 @@ def _extract_field(text: str, field_name: str) -> str:
             return match.group(1).strip()
             
     except Exception as e:
-        logger.error(f"Ошибка поиска '{field_name}': {e}")
+
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id="parser_registration_form_service",
+        username= "parser_registration_form_service",
+        message= f"РЕГИСТРАЦИЯ: Ошибка поиска '{field_name}': {e}"
+        )
+
     return ""

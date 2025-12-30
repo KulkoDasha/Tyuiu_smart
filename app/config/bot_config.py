@@ -8,6 +8,7 @@ from .moderator_topics import *
 class LogSettings:
     level: str    
     format: str  
+    logs_dir: str = "logs"
 
 @dataclass
 class TgBot:
@@ -39,8 +40,9 @@ def load_config(path: str | None = None) -> Config:
     return Config(
         bot=TgBot(token=token),
         log=LogSettings(
-            level=os.getenv("LOG_LEVEL", "INFO"), 
-            format=os.getenv("LOG_FORMAT", "{asctime} - {levelname} - {name} - {message}"),
+        level=os.getenv("LOG_LEVEL", "INFO"),
+        format=os.getenv("LOG_FORMAT", "{asctime} - {levelname} - {name} - {message}"),
+        logs_dir=os.getenv("LOGS_DIR", "logs")
         ),
         moderator_chat_id = int(moderator_chat_id),
         admin_panel_id = admin_panel_id,
