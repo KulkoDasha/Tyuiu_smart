@@ -428,12 +428,10 @@ async def edit_end_year(message:Message, state: FSMContext):
     start_year = data.get("start_year")
     if is_valid_study_years(start_year, message.text):
         await state.update_data(end_year = message.text)
-        await message.answer(text = LEXICON_TEXT["registration_fill_phone_number"]) 
-        await state.set_state(RegistrationFormStates.phone_number)
+        await show_updated_form(message, state)
     else:
         await message.answer(LEXICON_TEXT["registration_incorrect_end_year"])
-    await state.update_data(end_year=message.text)
-    await show_updated_form(message, state)
+    
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_phone_number),lambda message: is_valid_phone_number(message.text) == True)
 async def edit_phone_number(message:Message, state: FSMContext):
