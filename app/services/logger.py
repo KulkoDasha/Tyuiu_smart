@@ -58,7 +58,7 @@ class BotLogger:
         self.user_logger.info(full_msg)
 
     def log_moderator_msg(self, tg_id: str, username: str, message: str, level: str = "INFO"):
-        full_msg = f"tg_id={tg_id} | username={username or 'no_username'} | {message}"
+        full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
         self.moderator_logger.info(full_msg)
 
     def log_error(self, error_msg: str, error_type: str = "", traceback: str = ""):

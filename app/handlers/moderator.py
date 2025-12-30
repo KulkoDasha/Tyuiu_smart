@@ -346,9 +346,9 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         # Уведомляем пользователя
         await bot.send_message(
             chat_id=user_id,
-            text=f"😔 Ваша заявка на получение ТИУКионов отклонена.\n<b>Мероприятие:</b> «{app_data.get("name_of_event")}»\n<b>Направление внеучебной деятельности:<b> «{app_data.get("event_direction")}»\n"
+            text=(f"😔 Ваша заявка на получение ТИУКионов отклонена.\n<b>Мероприятие:</b> «{app_data.get("name_of_event")}»\n<b>Направление внеучебной деятельности:</b> «{app_data.get("event_direction")}»\n"
                  f"📝 <b>Причина:</b> {reason}\n\n"
-                 f"Пожалуйста, заполните заявку заново.",
+                 f"Пожалуйста, заполните заявку заново."),
             parse_mode="HTML"
         )
         

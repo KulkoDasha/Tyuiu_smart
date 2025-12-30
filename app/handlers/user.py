@@ -301,7 +301,11 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         bot_logger.log_user_msg(
         tg_id=str(callback.from_user.id),
         username=callback.from_user.username,
-        message=f"РЕГИСТРАЦИЯ: Пользователь отправил анкету на регистрацию:\n{moderator_message}"
+        message=f"РЕГИСТРАЦИЯ: Пользователь отправил анкету на регистрацию\n"
+            f"ФИО: {data.get('full_name', 'Не указано')}\n"
+            f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
+            f"Направление: {data.get('direction', 'Не указано')}\n"
+            f"Номер телефона: {data.get('phone_number', 'Не указано')}"
         )
 
         await bot.send_message(**send_params)
@@ -662,7 +666,13 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         bot_logger.log_user_msg(
         tg_id=str(callback.from_user.id),
         username=callback.from_user.username,
-        message=f"ЗАЯВКА: Пользователь {user_id} отправил заявку на получение 'ТИУКоинов':\n{moderator_message}"
+        message=f"ЗАЯВКА: Пользователь отправил заявку на получение 'ТИУКоинов'\n"
+            f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'}\n"
+            f"Лист: {event_direction}, {sheets_result.get('row', 'N/A')} строка\n"
+            f"ФИО: {user_full_name}\n"
+            f"Направление внеучебной деятельности: {data.get('event_direction', 'Не указано')}\n"
+            f"Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
+            f"Роль в мероприятии: {data.get('event_role', 'Не указано')}\n"
         )
 
         await bot.send_message(**send_params)
