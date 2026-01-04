@@ -9,14 +9,22 @@ from .user_keyboard import (MenuKeyboard,
                            ChangeRegistrationFormInlineButtons,
                            ConfirmRegistrationFormInlineButtons,
                            ReRegister,
-                           SupportInlineButtons)
+                           SupportInlineButtons,
+                           AddMaterial,
+                           AddMaterialConfirm)
 
 from .moderator_keyboard import (AdminPanelInlineButtons,
                                  RegisterNewUserInlineButtons,
                                  ProcessingUserApplicationInlineButtons,
-                                 ModeratorSupportInlineButtons)
+                                 ModeratorSupportInlineButtons,
+                                 ModeratorCloseRewards)
 
 from .set_menu import(set_main_menu)
+
+from .item_catalog_keyboard import(ItemKeyboard,
+                                  show_item_details,
+                                  show_purchase_confirmation,
+                                  ITEM_DETAILS)
 
 __all__ = [
     "MenuKeyboard",
@@ -35,4 +43,11 @@ __all__ = [
     "ProcessingUserApplicationInlineButtons",
     "ReRegister",
     "ModeratorSupportInlineButtons",
-    "set_main_menu"]
+    "set_main_menu",
+    "ItemKeyboard",
+    "show_item_details",
+    "show_purchase_confirmation",
+    "ITEM_DETAILS",
+    "ModeratorCloseRewards",
+    "AddMaterial",
+    "AddMaterialConfirm"]

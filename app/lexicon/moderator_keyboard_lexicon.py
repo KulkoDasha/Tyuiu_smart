@@ -9,5 +9,7 @@ LEXICON_MODERATOR_KEYBOARD = {
     'decline_application': '❌ Отклонить заявку',
     
     'answer_user': '💬 Ответить',
-    'close_the_request': '✅ Завершить'
+    'close_the_request': '✅ Завершить',
+    
+    'accept_application_reward':'✅ Подтвердить выдачу поощрения'
 }

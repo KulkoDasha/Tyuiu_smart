@@ -29,7 +29,7 @@ LEXICON_USER_KEYBOARD = {
     "topic_scenic_creativity": "🎭 Сценическое творчество",
     "topic_applied_creativity": "⭐️ Прикладное творчество",
     "topic_media_communications": "🎬 Медиа и коммуникации",
-    "topic_volunteering": "📣 Добровольческо и волонтерство",
+    "topic_volunteering": "📣 Добровольчество и волонтерство",
     "topic_ecology_nature": "⛅️ Экология и охрана природы",
     "topic_sport": "🏆 Спорт",
     "topic_tourism_travel": "🏕 Туризм и путешествия",
@@ -48,6 +48,9 @@ LEXICON_USER_KEYBOARD = {
     "role_mentor":"👨‍🏫 Наставник/куратор",
     "role_speaker":"🎤 Спикер/эксперт/член жюри",
     "role_leader":"👑 Руководитель/лидер/староста/командир",
+    
+    "add_more_material":"➕ Добавить еще материал",
+    "finish_application":"✅ Завершить заполнение заявки",
 
     "confirm_application": "✅ Подтвердить заявку",
     "edit_application": "✏️ Изменить данные",
