@@ -652,7 +652,7 @@ async def show_updated_application(message:Message, state: FSMContext):
                          f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
                          f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
                          f"👤 <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
-                         f"📎 <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n", reply_markup = application_confirm_keyboard)
+                         f"📎 <b>Подтверждающие материалы:</b> Прикреплены ниже 👇\n", reply_markup = application_confirm_keyboard)
     await state.set_state(EventApplicationStates.application_process_end)
 
 @user_router.callback_query(StateFilter(EventApplicationStates.application_process_end ))
@@ -704,7 +704,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"• <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
             f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
-            f"• <b>Подтверждающий материал:</b> {len(data.get('supporting_materials', []))} шт. 👇\n"
+            f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n"
         )
         clean_role = data.get('event_role', 'Не указано')[2:14].replace("/", "_")
         moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(user_id, clean_role)
