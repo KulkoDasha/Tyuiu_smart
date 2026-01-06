@@ -2,11 +2,14 @@ from sqlalchemy import func
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine, AsyncSession
+from dotenv import load_dotenv
+from os.path import dirname, abspath, join
+import os
 
-# Строка подключения для PostgreSQL с asyncpg (локально)
-engine = create_async_engine(
-    url='postgresql+asyncpg://username:password@localhost:5432/dbname'
-)
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+database_url = os.getenv("DATABASE_URL")
+
+engine = create_async_engine(database_url, echo=True)
 
 async_session = async_sessionmaker(engine, class_=AsyncSession)
 
