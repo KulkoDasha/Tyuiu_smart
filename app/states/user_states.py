@@ -58,6 +58,7 @@ class ChangeEventApplicationStates(StatesGroup):
     change_date_event = State()
     change_event_location = State()
     change_role_at_the_event = State()
+    change_materials_of_the_event = State()
     
 
 @dataclass
@@ -70,4 +71,13 @@ class SupportStates(StatesGroup):
     support_choice_direction = State()
     support_feedback = State()
     support_error = State()
+    
+@dataclass
+class CatalogOfRewardsStates(StatesGroup):
+    """
+    Состояния при просмотре каталога поощрений
+    """
+    catalog_of_revards_start = State()
+    show_item_details_state = State()
+    show_purchase_confirmation_state = State()
     

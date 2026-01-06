@@ -237,3 +237,32 @@ class ReRegister:
         
         return keyboard
 
+class AddMaterial:
+    """
+    Кнопки для добавления дополнительных материалов в заявку 
+    """
+    
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+            [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["add_more_material"], callback_data="add_more_material")],
+            [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["finish_application"], callback_data="finish_application")]
+        ])
+        
+        return keyboard
+
+class AddMaterialConfirm:
+    """
+    Кнопки для завершения заявки
+    """
+    
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+            [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["finish_application"], callback_data="finish_application")]
+        ])
+        
+        return keyboard
+

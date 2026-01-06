@@ -38,11 +38,11 @@ class ProcessingUserApplicationInlineButtons:
     """
 
     @staticmethod
-    def get_inline_keyboard(user_id: int):
+    def get_inline_keyboard(user_id: int, event_role: str):
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["approve_application"],callback_data=f"approve_application_{user_id}")],
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["decline_application"], callback_data=f"decline_application_{user_id}")]
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["approve_application"],callback_data=f"approve_application_{user_id}_{event_role}")],
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["decline_application"], callback_data=f"decline_application_{user_id}_{event_role}")]
                                 ])
         
         return keyboard
@@ -58,6 +58,20 @@ class ModeratorSupportInlineButtons:
             inline_keyboard=[
                                 [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["answer_user"],callback_data=f"answer_user_{user_id}_{message}")],
                                 [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["close_the_request"], callback_data=f"close_the_request_{user_id}_{message}")]
+                                ])
+        
+        return keyboard
+
+class ModeratorCloseRewards:
+    """
+    Кнопка "Подтвердить выдачу поощрения"
+    """
+    
+    @staticmethod
+    def get_inline_keyboard(user_id: int, application_reward: int):
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["accept_application_reward"],callback_data=f"accept_application_reward_{user_id}_{application_reward}")]
                                 ])
         
         return keyboard

@@ -24,9 +24,13 @@ choice_role = ChoiceOfRoleInlineButtons.get_inline_keyboard()
 direction_of_activities_keyboard = DirectionOfActivitiesInlineButtons.get_inline_keyboard()
 application_confirm_keyboard = ApplicationConfirmationInlineButtons.get_inline_keyboard()
 change_of_application_keyboard = ChangeOfApplicationInlineButtons.get_inline_keyboard()
+catalog_of_rewards = ItemKeyboard()
+additional_material_keyboard = AddMaterial.get_inline_keyboard()
+confirm_material_keyboard = AddMaterialConfirm.get_inline_keyboard()
 logger = logging.getLogger(__name__)
 
-competition_regulations_path = "app/files/Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.docx"
+competition_regulations_path = "app\\files\\Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.pdf"
+agreement_path = "app\\files\\Soglasie_na_obrabotku_personalnx_dannx.pdf"
 
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 
@@ -48,9 +52,14 @@ async def start(message: Message):
 @user_router.callback_query(F.data == "read_the_agreement")
 async def send_the_agreement(callback: CallbackQuery):
     """
-    Хендлер на обработку согласия
+    Высылает согласие
     """
-    await callback.message.answer("Вставить согласие")
+    await callback.answer()
+    document = FSInputFile(
+            path = agreement_path,
+            filename = "Согласие на обработку персональных данных.pdf"
+        )
+    await callback.message.answer_document(document=document)
     await callback.answer()
 
 @user_router.callback_query(F.data == "give_agreement")
@@ -472,6 +481,7 @@ async def event_direction(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(f"✅ Вы выбрали: {event_direction}")
     await callback.message.answer(text=LEXICON_TEXT["application_fill_event_name"])
     await state.set_state(EventApplicationStates.name_event)
+    await callback.answer()
 
 @user_router.message(StateFilter(EventApplicationStates.name_event))
 async def name_of_event_sent(message: Message, state: FSMContext):
@@ -499,9 +509,11 @@ async def role_at_the_event_sent(callback: CallbackQuery, state: FSMContext):
     role_key = callback.data
     event_role = LEXICON_USER_KEYBOARD.get(role_key, 'Неизвестая роль')
     await state.update_data(event_role=event_role)
+    await state.update_data(supporting_materials=[])
     await callback.message.edit_text(f"✅ Вы выбрали: {event_role}")
     await callback.message.answer(text=LEXICON_TEXT["application_event_material"])
     await state.set_state(EventApplicationStates.supporting_manerial)
+    await callback.answer()
     
 @user_router.message(StateFilter(EventApplicationStates.supporting_manerial))
 async def supporting_material_sent(message:Message,state:FSMContext):
@@ -509,35 +521,47 @@ async def supporting_material_sent(message:Message,state:FSMContext):
     Сохраняем отправленный материал
     """
     data = await state.get_data()
-    user_id = message.from_user.id
+    materials_list = data.get('supporting_materials', [])
     material_info = None
+    
+    if len(materials_list) >= 3:
+        await message.answer(LEXICON_TEXT["application_event_material_incorrect"], reply_markup = confirm_material_keyboard)
+        await state.set_state(EventApplicationStates.application_process_end)
+        return
     
     if message.text and (message.text.startswith("http://") or message.text.startswith("https://")):
         material_info = {
             "type": "ссылка",
             "content": message.text,
-            "timestamp": message.date.isoformat()
+            "timestamp": message.date.isoformat(),
+            "description": None
         }
-        await message.answer("✅ Ссылка сохранена")
-    elif message.document:
+        await message.answer(f"✅ Ссылка сохранена ({len(materials_list) + 1}/3)")
+        
+    elif message.document:   
         material_info = {
             "type": "документ",
             "file_id": message.document.file_id,
             "file_name": message.document.file_name,
             "file_size": message.document.file_size,
             "mime_type": message.document.mime_type,
-            "timestamp": message.date.isoformat()
+            "timestamp": message.date.isoformat(),
+            "description": None
         }
-        await message.answer("✅ Документ сохранен")
+        await message.answer(f"✅ Документ сохранен ({len(materials_list) + 1}/3)")
+        
     elif message.photo:
+        photo = message.photo[-1]
         material_info = {
             "type": "фото",
-            "file_id": message.photo[-1].file_id,
-            "width": message.photo[-1].width,
-            "height": message.photo[-1].height,
-            "timestamp": message.date.isoformat()
+            "file_id": photo.file_id,
+            "width": photo.width,
+            "height": photo.height,
+            "timestamp": message.date.isoformat(),
+            "description": message.caption
         }
-        await message.answer("✅ Фото сохранено")
+        await message.answer(f"✅ Фото сохранено ({len(materials_list) + 1}/3)")
+        
     elif message.video:
         material_info = {
             "type": "видео",
@@ -545,48 +569,78 @@ async def supporting_material_sent(message:Message,state:FSMContext):
             "file_name": message.video.file_name,
             "duration": message.video.duration,
             "file_size": message.video.file_size,
-            "timestamp": message.date.isoformat()
+            "timestamp": message.date.isoformat(),
+            "description": message.caption
         }
-        await message.answer("✅ Видео сохранено")
+        await message.answer(f"✅ Видео сохранено ({len(materials_list) + 1}/3)")
+        
     else:
         await message.answer(
-            "❌ Пожалуйста, отправьте:\n"
-            "• Ссылку (начинается с http:// или https://)\n"
-            "• Документ (Word, PDF, Excel)\n"
-            "• Фото или видео\n\n"
-            "Вы можете прислать только один файл или ссылку."
+            f"❌ Неподдерживаемый формат. Вы добавили {len(materials_list)} из 3 материалов.\n\n"
+            "✅ <b>Поддерживаемые форматы:</b>\n"
+            "• Ссылки (http:// или https://)\n"
+            "• Документы (Word, PDF)\n"
+            "• Фото (JPG, PNG)\n"
+            "• Видео (MP4, MOV)\n\n"
         )
-        return
+    
     if material_info:
-        await state.update_data(supporting_material=material_info)
-    updated_data = await state.get_data()
-    await message.answer("✅ Заявка успешно заполнена!\nПодтвердите данные или выберите что изменить\n\n"
-                         f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
-                         f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
-                         f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
-                         f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
-                         f"👤 <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
-                         f"📎 <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n", reply_markup = application_confirm_keyboard)
-    material = updated_data.get('supporting_material')
-    if material and isinstance(material, dict):
-        file_id = material.get('file_id')
-        material_type = material.get('type')
-        
-        if material_type == 'фото' and file_id:
-            await message.answer_photo(
-                photo=file_id,
-                caption="🖼️ Ваше подтверждающее фото"
-            )
-        elif material_type == 'документ' and file_id:
-            file_name = material.get('file_name', 'Документ')
-            await message.answer_document(
-                document=file_id,
-                caption=f"📄 {file_name}"
-            )
-        elif material_type == 'ссылка':
-            await message.answer(f"🔗 Ссылка: {material.get('content')}")
-        await state.set_state(EventApplicationStates.application_process_end )
+        materials_list.append(material_info)
+        await state.update_data(supporting_materials=materials_list)
+        await show_current_materials(message, materials_list)
+    await state.set_state(EventApplicationStates.application_process_end)
 
+@user_router.callback_query(F.data == "finish_application", StateFilter(EventApplicationStates.application_process_end))
+async def finish_application_handler(callback: CallbackQuery, state: FSMContext):
+    """
+    Завершение заявки и показ итоговой информации
+    """
+    data = await state.get_data()
+    materials_list = data.get('supporting_materials', [])
+    await callback.message.edit_text(text= f"✅ <b>Заявка успешно заполнена!</b>\n\n"
+                                     f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
+                                     f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
+                                     f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
+                                     f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
+                                     f"👤 <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
+                                     f"\n📎 <b>Подтверждающие материалы:</b> ({len(materials_list)} шт.)\n", reply_markup=application_confirm_keyboard)
+    await callback.answer()
+
+@user_router.callback_query(F.data == "add_more_material",StateFilter(EventApplicationStates.application_process_end))
+async def add_more_material(callback: CallbackQuery, state: FSMContext):
+    """
+    Обработчик кнопки "Добавить еще материал"
+    """
+    await callback.message.edit_text(
+        "📤 Отправьте следующий материал\n\n"
+    )
+    await state.set_state(EventApplicationStates.supporting_manerial)
+    await callback.answer()
+    
+async def show_current_materials(message: Message, materials_list: list):
+    """
+    Показывает текущий список материалов
+    """
+    if not materials_list:
+        await message.answer("📎 Материалы еще не добавлены")
+        return
+    
+    text = "📎 <b>Текущие материалы:</b>\n\n"
+    for i, material in enumerate(materials_list, 1):
+        text += f"{i}. <b>{material['type'].upper()}</b>\n"
+        if material['type'] == 'ссылка':
+            text += f"   🔗 {material['content'][:50]}...\n"
+        elif material['type'] == 'документ':
+            text += f"   📄 {material['file_name']}\n"
+        elif material['type'] == 'фото':
+            text += f"   🖼️ Фото ({material['width']}x{material['height']})\n"
+        elif material['type'] == 'видео':
+            text += f"   🎥 Видео ({material['duration']} сек.)\n"
+        text += "\n"
+    
+    text += f"<i>Всего материалов: {len(materials_list)} из 3</i>"
+    await message.answer(text, reply_markup = additional_material_keyboard, parse_mode="HTML")
+    
 async def show_updated_application(message:Message, state: FSMContext):
     """
     Показывает обновленную заявку
@@ -598,7 +652,7 @@ async def show_updated_application(message:Message, state: FSMContext):
                          f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
                          f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
                          f"👤 <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
-                         f"📎 <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n", reply_markup = application_confirm_keyboard)
+                         f"📎 <b>Подтверждающие материалы:</b> Прикреплены ниже 👇\n", reply_markup = application_confirm_keyboard)
     await state.set_state(EventApplicationStates.application_process_end)
 
 @user_router.callback_query(StateFilter(EventApplicationStates.application_process_end ))
@@ -650,9 +704,10 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"• <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
             f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
-            f"• <b>Подтверждающий материал:</b> Прикреплен ниже 👇\n"
+            f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n"
         )
-        moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(user_id)
+        clean_role = data.get('event_role', 'Не указано')[2:14].replace("/", "_")
+        moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(user_id, clean_role)
         send_params = {
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
@@ -672,56 +727,69 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
             f"Роль в мероприятии: {data.get('event_role', 'Не указано')}\n"
         )
-
         await bot.send_message(**send_params)
-        material = updated_data.get('supporting_material')
-        if material:
-            try:
-                if isinstance(material, dict):
-                    file_id = material.get('file_id')
-                    material_type = material.get('type')
+        
+        materials_list = data.get('supporting_materials', [])
+        materials_list = data.get('supporting_materials', [])
+        if materials_list:
+            await bot.send_message(
+                chat_id=config.moderator_chat_id,
+                text=f"📎 <b>Подтверждающие материалы ({len(materials_list)} шт.):</b>",
+                message_thread_id=thread_id,
+                parse_mode="HTML"
+            )
+                
+            for i, material in enumerate(materials_list, 1):
+                try:
+                    caption = (
+                        f"📎 <b>Материал {i} из {len(materials_list)}</b>\n"
+                        f"👤 <b>От:</b> @{callback.from_user.username or user_id}\n"
+                    )
                     
-                    if material_type == 'фото' and file_id:
-                        await bot.send_photo(
-                            chat_id=config.moderator_chat_id,
-                            photo=file_id,
-                            caption="🖼️ Подтверждающее фото от пользователя",
-                            message_thread_id=thread_id
-                        )
-                    elif material_type == 'документ' and file_id:
-                        file_name = material.get('file_name', 'Документ')
-                        await bot.send_document(
-                            chat_id=config.moderator_chat_id,
-                            document=file_id,
-                            caption=f"📄 {file_name}",
-                            message_thread_id=thread_id
-                        )
-                    elif material_type == 'видео' and file_id:
-                        await bot.send_video(
-                            chat_id=config.moderator_chat_id,
-                            video=file_id,
-                            caption="🎥 Видео от пользователя",
-                            message_thread_id=thread_id
-                        )
-                    elif material_type == 'ссылка' and material.get('content'):
+                    if material['type'] == 'ссылка':
                         await bot.send_message(
                             chat_id=config.moderator_chat_id,
-                            text=f"🔗 Ссылка от пользователя: {material['content']}",
-                            message_thread_id=thread_id
+                            text=f"🔗 <b>Ссылка {i}:</b>\n{material['content']}",
+                            message_thread_id=thread_id,
+                            parse_mode="HTML"
                         )
-                else:
-                    await bot.send_document(
+                    elif material['type'] == 'документ':
+                        await bot.send_document(
+                            chat_id=config.moderator_chat_id,
+                            document=material['file_id'],
+                            caption=caption,
+                            message_thread_id=thread_id,
+                            parse_mode="HTML"
+                        )
+                    elif material['type'] == 'фото':
+                        await bot.send_photo(
+                            chat_id=config.moderator_chat_id,
+                            photo=material['file_id'],
+                            caption=caption,
+                            message_thread_id=thread_id,
+                            parse_mode="HTML"
+                        )
+                    elif material['type'] == 'видео':
+                        await bot.send_video(
+                            chat_id=config.moderator_chat_id,
+                            video=material['file_id'],
+                            caption=caption,
+                            message_thread_id=thread_id,
+                            parse_mode="HTML"
+                        )
+                except Exception as e:
+                    await bot.send_message(
                         chat_id=config.moderator_chat_id,
-                        document=material,
-                        caption="📎 Подтверждающий материал",
+                        text=f"❌ Ошибка отправки материала {i}",
                         message_thread_id=thread_id
-                    )
-            except Exception as e:
-                await bot.send_message(
-                    chat_id=config.moderator_chat_id,
-                    text=f"⚠️ Не удалось отправить материал.",
-                    message_thread_id=thread_id
-                )
+                        )
+        else:
+            await bot.send_message(
+                chat_id=config.moderator_chat_id,
+                text="⚠️ <b>Подтверждающие материалы не приложены</b>",
+                message_thread_id=thread_id,
+                parse_mode="HTML"
+            )
         await callback.message.edit_text(text = LEXICON_TEXT["application_event_end"])
         await state.clear()
     elif callback.data == "edit_application":
@@ -732,6 +800,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         await callback.message.answer(
             text = LEXICON_TEXT["application_other_answer"]
         )
+    await callback.answer()
 
 @user_router.callback_query(StateFilter(ChangeEventApplicationStates.start))
 async def start_change_of_application(callback: CallbackQuery, state:FSMContext):
@@ -760,6 +829,7 @@ async def start_change_of_application(callback: CallbackQuery, state:FSMContext)
         await state.set_state(ChangeEventApplicationStates.change_role_at_the_event)
     elif callback.data == "edit_confirmation_material":
         await callback.message.delete()
+        await state.update_data(supporting_materials=[])
         await callback.message.answer(LEXICON_TEXT["application_edit_material"])
         await state.set_state(EventApplicationStates.supporting_manerial)
     else:
@@ -811,7 +881,102 @@ async def tyuiu_coins_start(message: Message, state: FSMContext):
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['catalog_of_rewards'],StateFilter(default_state))
 async def catalog_start(message: Message, state: FSMContext):
-    await message.answer("Здась будет каталог. Лексикон")
+    """
+    Обрабатывает нажатие на кнопку 'Каталог Поощрений'
+    """
+    keyboard_markup = await catalog_of_rewards.create_table_keyboard()
+    await message.answer(LEXICON_TEXT["select_item"],reply_markup = keyboard_markup)
+    await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
+
+@user_router.callback_query(F.data == "cancel_item" ,StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+async def cancel_item(callback:CallbackQuery,state: FSMContext):
+    await callback.message.edit_text(LEXICON_TEXT["cancel_fsm"])
+    await state.clear()
+    await callback.answer()
+
+@user_router.callback_query(F.data.startswith("view_item_"),StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+async def show_item_details_hendler(callback: CallbackQuery,state: FSMContext):
+    """
+    Просмотр выбранного поощрения
+    """
+    await show_item_details(callback)
+    await state.set_state(CatalogOfRewardsStates.show_item_details_state)
+    await callback.answer()
+
+@user_router.callback_query(F.data == "close_all",StateFilter(CatalogOfRewardsStates.show_item_details_state))
+async def close_all(callback:CallbackQuery,state: FSMContext):
+    await callback.message.edit_text(LEXICON_TEXT["cancel_fsm"])
+    await state.clear()
+    await callback.answer()
+    
+@user_router.callback_query(F.data == "show_table",StateFilter(CatalogOfRewardsStates.show_item_details_state))   
+async def show_table(callback:CallbackQuery,state: FSMContext):
+    keyboard_markup = await catalog_of_rewards.create_table_keyboard()
+    await callback.message.edit_text(LEXICON_TEXT["select_item"],reply_markup = keyboard_markup)
+    await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
+
+@user_router.callback_query(F.data.startswith("select_item_"),StateFilter(CatalogOfRewardsStates.show_item_details_state))
+async def select_item(callback:CallbackQuery,state: FSMContext):
+    """
+    Обрабатывает нажатие на кнопку "Выбрать этот товар"
+    """
+    await show_purchase_confirmation(callback)
+    await state.set_state(CatalogOfRewardsStates.show_purchase_confirmation_state)
+    await callback.answer()
+
+@user_router.callback_query(F.data.startswith("confirm_purchase_"),StateFilter(CatalogOfRewardsStates.show_purchase_confirmation_state))
+async def confirm_purchase(callback:CallbackQuery,state: FSMContext, bot: Bot):
+    """
+    Подтверждение списания ТИУкоинов
+    """
+    # TODO:Сделать проверку есть ли данное количество коинов на балансе студента
+    item_key = callback.data.replace("confirm_purchase_", "")
+    details = ITEM_DETAILS[item_key]
+    name_of_item = details["title"]
+    spend_amount = details["price"]
+    purchase_date = datetime.now().strftime("%d.%m.%Y")
+    confirm_text = LEXICON_TEXT["confirm_purchase"].format(
+        name_of_item=name_of_item,
+        spend_amount=spend_amount,
+        purchase_date=purchase_date
+    )
+    await callback.message.edit_text(text=confirm_text, parse_mode="HTML")
+    await state.clear()
+    await callback.answer("✅ Покупка успешно завершена!",show_alert=True)
+    user_full_name = "Не указано"  # TODO: из БД участников
+    status = "Ожидает выдачи"
+    application_id = 1 # TODO: из Гугл таблиц
+    user_id = callback.from_user.id
+    moderator_message = (
+        "🔔 <b>Новая заявка на получение поощрения</b>\n\n"
+        f"🆔 <b>ID заявки:</b> {application_id}\n"
+        f"👤 <b>Студент:</b> {user_full_name}\n"
+        f"👤 <b>ID Студента:</b> {user_id}\n"
+        f"📞 <b>Username:</b> @{callback.from_user.username or 'без username'}\n"
+        f"🎁 <b>Товар:</b> {name_of_item}\n"
+        f"💰 <b>Стоимость:</b> {spend_amount} ТИУкоинов\n"
+        f"📅 <b>Дата:</b> {purchase_date}\n"
+        f"📍 <b>Место выдачи:</b> Володарского, 38, кабинет ....Уточнить\n"
+        f"📋 <b>Статус:</b> {status}\n"
+    )
+    moderator_keyboards = ModeratorCloseRewards.get_inline_keyboard(user_id,application_id)
+    send_params = {
+                "chat_id": config.moderator_chat_id,
+                "text": moderator_message,
+                "reply_markup": moderator_keyboards,
+                "message_thread_id": 496
+            }
+    await bot.send_message(**send_params)
+
+@user_router.callback_query(F.data.startswith("cancel_purchase_"),StateFilter(CatalogOfRewardsStates.show_purchase_confirmation_state))
+async def cancel_purchase(callback:CallbackQuery,state: FSMContext):
+    """
+    Отмена списания ТИУкоинов
+    """
+    keyboard_markup = await catalog_of_rewards.create_table_keyboard()
+    await callback.message.edit_text(LEXICON_TEXT["select_item"],reply_markup = keyboard_markup)
+    await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
+    await callback.answer("❌ Покупка отменена", show_alert=True)
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['agreement_of_contest'],StateFilter(default_state))
 async def competition_regulations_start(message: Message, state: FSMContext):
@@ -819,8 +984,8 @@ async def competition_regulations_start(message: Message, state: FSMContext):
     Высылает положение о конкурсе
     """
     document = FSInputFile(
-            path =competition_regulations_path,
-            filename="Положение_о_конкурсе_ТИУмничка.docx"  
+            path = competition_regulations_path,
+            filename = "Положение_о_конкурсе_ТИУмничка.pdf"
         )
     await message.answer_document(document=document)
 

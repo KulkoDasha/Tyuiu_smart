@@ -1,5 +1,6 @@
+import asyncio
 from aiogram.types import Message, CallbackQuery
-from aiogram import Router, Bot, F
+from aiogram import Router, Bot, F, Dispatcher
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
@@ -9,7 +10,7 @@ from asyncio import sleep
 
 from ..services import *
 
-from ..lexicon import LEXICON_TEXT
+from ..lexicon import LEXICON_TEXT, LEXICON_USER_KEYBOARD
 from ..config import config
 from ..filters import ModeratorChatFilter
 from ..states import ModeratorStates
@@ -230,14 +231,23 @@ async def process_the_request_answer(message: Message, state: FSMContext, bot: B
         await state.clear()
 
 @moderator_router.callback_query(F.data.startswith("approve_application_"))
-async def approve_application(callback: CallbackQuery, bot: Bot):
+async def approve_application(callback: CallbackQuery, bot: Bot,state: FSMContext):
     """
     Обработка нажатия на кнопку Одобрить заявку
     """
-    user_id = int(callback.data.split("_")[-1])
+    parts = callback.data.split("_")
+    user_id = int(parts[2])
+    event_role = "_".join(parts[3:])
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_username = callback.from_user.username or callback.from_user.full_name
+    await state.update_data(
+        user_id=user_id,
+        moderator_username=moderator_username,
+        event_role=event_role,
+        callback_message_id=callback.message.message_id,
+        chat_id=callback.message.chat.id
+    )
 
     # Логгер
     bot_logger.log_moderator_msg(
@@ -245,6 +255,12 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     username= moderator_username,
     message=f"ЗАЯВКА: Начал принимать заявку {user_id} на получение 'ТИУКоинов'"
     )
+    
+    if event_role == LEXICON_USER_KEYBOARD["role_leader"][2:14]:
+        await callback.message.answer(f"🔢 Введите коэффициент повторяемости для пользователя {user_id}:")
+        await state.set_state(ModeratorStates.waiting_repeatability_factor)
+        await callback.answer()
+        return
     
     # Парсим заявку извлекаем row_id из сообщения
     message_text = callback.message.text or ""
@@ -295,7 +311,79 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     except Exception as e:
         await callback.message.answer(f"❗️ Не удалось уведомить пользователя {user_id}")
 
+@moderator_router.message(StateFilter(ModeratorStates.waiting_repeatability_factor))
+async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMContext):
+    """
+    Обработка введенного коэффициента повторяемости
+    """
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    moderator_username = data.get("moderator_username")
+    row_id = data.get("row_id")
+    app_data = data.get("app_data", {})
+    
+    utc_time = message.date
+    ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+    
+    try:
+        coefficient_float = float(message.text.strip())
+        coins = 8  
+        awarded_amount = coins * coefficient_float
+        
+        await message.answer(f"✅ Коэффициент {coefficient_float} сохранен для пользователя {user_id}")
+        
+        result = googlesheet_service.update_application_status(
+            app_data.get("event_direction", ""), 
+            row_id, 
+            "Принята", 
+            f"@{moderator_username}"
+        )
 
+        sheets_status = "✅ Обновлено" if result.get("success") else f"❌ {result.get('error', 'Ошибка')}"
+
+        try:
+            callback_message_id = data.get("callback_message_id")
+            chat_id = data.get("chat_id")
+            
+            await bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=callback_message_id,
+                text=(
+                    f"✅ Заявка одобрена\n"
+                    f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
+                    f"📈 <b>Коэффициент:</b> {coefficient_float}\n"
+                    f"💰 <b>Начислено:</b> {awarded_amount:.1f} ТИУкоинов\n"
+                    f"📊 <b>Строка в Google Sheets</b> <b>{row_id}</b>: {sheets_status}\n"
+                    f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
+                    f"👮 <b>Модератор:</b> @{moderator_username}\n"
+                    f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
+                ),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            print(f"Не удалось отредактировать сообщение: {e}")
+        
+        # Логгер
+        bot_logger.log_moderator_msg(
+            tg_id=str(message.from_user.id),
+            username=moderator_username,
+            message=f"ЗАЯВКА: Принял заявку {user_id} на получение 'ТИУКоинов': {app_data.get('name_of_event', '')}, Коэффициент: {coefficient_float}, Начислено: {awarded_amount}"
+        )
+        
+        # Уведомляем пользователя
+        try:
+            await bot.send_message(
+                chat_id=user_id,
+                text=LEXICON_TEXT["application_event_completed"].format(awarded_amount=awarded_amount),
+                reply_markup=menu_keyboard
+            )
+        except Exception as e:
+            await message.answer(f"❗️ Не удалось уведомить пользователя {user_id}")
+        await state.clear()
+        
+    except ValueError:
+        await message.answer("❌ Пожалуйста, введите число (например: 1.5 или 2). Попробуйте снова:")
+    
 @moderator_router.callback_query(F.data.startswith("decline_application_"))
 async def decline_application(callback: CallbackQuery, state: FSMContext):
     """
@@ -384,3 +472,36 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     except Exception as e:
         await message.answer(f"❗️ Не удалось отклонить заявку: {e}")
         await state.clear()
+
+@moderator_router.callback_query(F.data.startswith("accept_application_reward_"))
+async def accept_application_reward(callback: CallbackQuery, bot: Bot):
+    """
+    Обрабатывает нажатие на кнопку Подтвердить выдачу поощрения
+    """
+    parts = callback.data.split("_")
+    user_id = int(parts[3]) 
+    application_id = int(parts[4])
+    name_of_item = "Нет" # TODO: Взять из гугл таблиц 
+    utc_time = callback.message.date
+    ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+
+    await callback.answer(f"✅ Поощрение пользователя {user_id} отдано!", show_alert=True)
+    await callback.message.edit_text(
+        f"✅ Поощрение отдано!\n"
+        f"🆔 <b>ID заявки:</b> {application_id}\n"
+        f"👤 <b>ID пользователя:</b> {user_id}\n"
+        f"🎁 <b>Товар:</b> {name_of_item}\n"
+        f"👮 <b>Модератор:</b> @{callback.from_user.username or callback.from_user.full_name}\n"
+        f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+        reply_markup=None)
+    date=ekaterinburg_time.strftime('%d.%m.%Y')
+    time=ekaterinburg_time.strftime('%H:%M')
+    await bot.send_message(
+            chat_id=user_id,
+            text=(f"✅ <b>Поощрение выдано</b>\n\n"
+                  f"🎁 <b>Товар:</b> {name_of_item}\n"
+                  f"📅 <b>Дата выдачи:</b> {date}\n"
+                  f"⏰ <b>Время:</b> {time}\n\n"
+                  f"Если что-то пошло не так, обратитесь в поддержку\n\n"),
+            parse_mode="HTML"
+        )
