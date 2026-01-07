@@ -1,4 +1,4 @@
-import database  # ← замените from .database
+import database 
 from database.models import Base
 from database.database import engine, async_session
 

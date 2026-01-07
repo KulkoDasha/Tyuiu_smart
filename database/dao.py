@@ -1,6 +1,4 @@
-# В начале database/dao.py
 import logging
-logger = logging.getLogger(__name__)
 
 from .database_service import connection
 from .models import Users, Event_applications 
@@ -9,7 +7,7 @@ from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, time, date, timedelta
 
-
+logger = logging.getLogger(__name__)
 
 @connection
 async def set_user(session, 
@@ -25,7 +23,7 @@ async def set_user(session,
                    email: str,
                    moderator_username: str
                    ) -> Optional[Tuple[bool, str]]:
-    """Метод для добавления нового пользователя (проверка по tg_id)"""
+    """Метод для добавления нового пользователя (проверка по tg_id и почте)"""
     try:
         tg_id = int(tg_id_str)
         start_year = int(start_year_str)
@@ -70,8 +68,8 @@ async def set_user(session,
 
 @connection
 async def delete_graduated_users(session) -> Tuple[int, str]:
-    """
-    Удаляет пользователей, у которых год окончания обучения равен текущему году. Возвращает: (количество_удаленных, сообщение)"""
+    """ Удаляет пользователей, у которых год окончания обучения равен текущему году.
+     Возвращает: (количество_удаленных, сообщение) """
     try:
         from datetime import datetime
         current_year = datetime.now().year

@@ -29,6 +29,7 @@ class Users(Base):
         "Event_applications", 
         back_populates="user"
     )
+    
 class Event_applications(Base):
     __tablename__='event_applications'
     id: Mapped[int]=mapped_column(BigInteger,nullable=False, primary_key = True, autoincrement=True)
