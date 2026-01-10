@@ -93,6 +93,57 @@ class DirectionOfActivitiesInlineButtons:
                                 ])        
                 
         return keyboard
+
+class ChangeRegistrationFormInlineButtons:
+    """
+    Инлайн кнопки для изменения анкеты
+    """
+
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard = [
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["full_name"], callback_data="full_name")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute"], callback_data="institute")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["direction"], callback_data="direction")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["course"], callback_data="course")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["group"], callback_data="group")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["start_year"], callback_data="start_year")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["end_year"], callback_data="end_year")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["phone_number"], callback_data="phone_number")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["email"], callback_data="email")]
+                            ])        
+                
+        return keyboard
+
+class ConfirmRegistrationFormInlineButtons:
+    """
+    Инлайн-кнопки подтверждения заявки
+    """
+
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["save_registration_form"], callback_data="save_registration_form")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["change_registration_form"], callback_data= "change_registration_form")]
+                                ])
+        
+        return keyboard
+    
+class ReRegister:
+    """
+    Инлайн-кнопка для перепрохождения регистрации
+    """
+
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["re_register"], callback_data= "re_register")]
+                                ])
+        
+        return keyboard
     
 class ChoiceOfRoleInlineButtons:
     """
@@ -151,92 +202,6 @@ class ChangeOfApplicationInlineButtons:
         
         return keyboard
 
-class RewardsChoiceInlineButtons:
-    """
-    Инлайн-кнопки получения поощрений (ПОЗЖЕ СДЕЛАТЬ ДИНАМИЧЕСКИМИ: возможность добавления определённых подарков)
-    """
-    
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard = [
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["item_pencil"], callback_data="item_pencil")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["item_sticker_pack"], callback_data="item_stickerpack")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["item_notebook"], callback_data="item_notebook")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["item_shopper"], callback_data="item_shopper")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["item_sweatshirt"], callback_data="item_sweatshirt")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["item_olympia_course"], callback_data="item_olympia_course")]
-                            ])
-        
-        return keyboard
-
-
-class ChangeRegistrationFormInlineButtons:
-    """
-    Инлайн кнопки для изменения анкеты
-    """
-
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard = [
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["full_name"], callback_data="full_name")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute"], callback_data="institute")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["direction"], callback_data="direction")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["course"], callback_data="course")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["group"], callback_data="group")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["start_year"], callback_data="start_year")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["end_year"], callback_data="end_year")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["phone_number"], callback_data="phone_number")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["email"], callback_data="email")]
-                            ])        
-                
-        return keyboard
-
-class ConfirmRegistrationFormInlineButtons:
-    """
-    Инлайн-кнопки подтверждения заявки
-    """
-
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["save_registration_form"], callback_data="save_registration_form")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["change_registration_form"], callback_data= "change_registration_form")]
-                                ])
-        
-        return keyboard
-
-class SupportInlineButtons:
-    """
-    Инлайн-клавиатура поддержки
-    """
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_write_moderator_of_the_direct"], callback_data="write_moderator_of_the_direct")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_feedback"], callback_data="feedback")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_error"], callback_data= "error")]
-                                ])
-        
-        return keyboard
-
-class ReRegister:
-    """
-    Инлайн-кнопка для перепрохождения регистрации
-    """
-
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["re_register"], callback_data= "re_register")]
-                                ])
-        
-        return keyboard
-
 class AddMaterial:
     """
     Кнопки для добавления дополнительных материалов в заявку 
@@ -263,6 +228,57 @@ class AddMaterialConfirm:
             inline_keyboard=[
             [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["finish_application"], callback_data="finish_application")]
         ])
+        
+        return keyboard
+
+class SupportInlineButtons:
+    """
+    Инлайн-клавиатура поддержки
+    """
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_write_moderator_of_the_direct"], callback_data="write_moderator_of_the_direct")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_feedback"], callback_data="feedback")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["support_error"], callback_data= "error")]
+                                ])
+        
+        return keyboard
+
+
+class SelectingRewardInlineButtons:
+    """
+    Инлайн-кнопки выбора поощрения
+    """
+    
+    @staticmethod
+    def get_inline_keyboard(item_id: int):
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard = [
+                                [InlineKeyboardButton(text="✅ Выбрать этот товар", callback_data=f"select_item_{item_id}")],
+                                [
+                                    InlineKeyboardButton(text="⬅️ Назад к каталогу", callback_data="show_catalog"),
+                                    InlineKeyboardButton(text="❌ Закрыть", callback_data="close_all")
+                                ]
+                            ])
+        
+        return keyboard
+
+class ConfirmationRewardInlineButtons:
+    """
+    Инлайн-кнопки подтверждения выбора поощрения
+    """
+    
+    @staticmethod
+    def get_inline_keyboard(item_id: int):
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                            [
+                                InlineKeyboardButton(text="✅ Да, подтверждаю", callback_data=f"confirm_purchase_{item_id}"),
+                                InlineKeyboardButton(text="❌ Нет, отменить", callback_data=f"cancel_purchase_{item_id}")
+                            ]
+                        ])
         
         return keyboard
 

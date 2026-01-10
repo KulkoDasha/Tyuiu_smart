@@ -1,11 +1,13 @@
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery,FSInputFile
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from datetime import datetime
 import pytz
 import logging
+import asyncio
 
 from ..states import *
 from ..keyboards import *
@@ -24,9 +26,9 @@ choice_role = ChoiceOfRoleInlineButtons.get_inline_keyboard()
 direction_of_activities_keyboard = DirectionOfActivitiesInlineButtons.get_inline_keyboard()
 application_confirm_keyboard = ApplicationConfirmationInlineButtons.get_inline_keyboard()
 change_of_application_keyboard = ChangeOfApplicationInlineButtons.get_inline_keyboard()
-catalog_of_rewards = ItemKeyboard()
 additional_material_keyboard = AddMaterial.get_inline_keyboard()
 confirm_material_keyboard = AddMaterialConfirm.get_inline_keyboard()
+catalog_of_rewards = catalog_of_rewards
 logger = logging.getLogger(__name__)
 
 competition_regulations_path = "app\\files\\Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.pdf"
@@ -860,7 +862,6 @@ async def change_date_event(message:Message, state:FSMContext):
     else:
         await message.answer(LEXICON_TEXT["application_incorrect_event_date"])
 
-
 @user_router.message(StateFilter(ChangeEventApplicationStates.change_event_location))
 async def change_event_location (message:Message, state:FSMContext):   
     await state.update_data(event_location=message.text) 
@@ -874,7 +875,6 @@ async def application_edit_role(callback:CallbackQuery, state:FSMContext):
     await callback.message.edit_text(f"✅ Вы выбрали: {event_role}")   
     await show_updated_application(callback.message, state)
 
-    
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['my_tyuiu_coins'],StateFilter(default_state))
 async def tyuiu_coins_start(message: Message, state: FSMContext):
     await message.answer(text = LEXICON_TEXT["balance"])
@@ -885,22 +885,43 @@ async def catalog_start(message: Message, state: FSMContext):
     Обрабатывает нажатие на кнопку 'Каталог Поощрений'
     """
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
-    await message.answer(LEXICON_TEXT["select_item"],reply_markup = keyboard_markup)
+    await message.answer(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:",reply_markup = keyboard_markup)
     await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
 
-@user_router.callback_query(F.data == "cancel_item" ,StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
-async def cancel_item(callback:CallbackQuery,state: FSMContext):
+@user_router.callback_query(F.data == "cancel_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+async def cancel_catalog(callback: CallbackQuery, state: FSMContext):
+    """
+    Кнопка "Закрыть каталог"
+    """
     await callback.message.edit_text(LEXICON_TEXT["cancel_fsm"])
     await state.clear()
     await callback.answer()
 
-@user_router.callback_query(F.data.startswith("view_item_"),StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
-async def show_item_details_hendler(callback: CallbackQuery,state: FSMContext):
-    """
-    Просмотр выбранного поощрения
-    """
-    await show_item_details(callback)
-    await state.set_state(CatalogOfRewardsStates.show_item_details_state)
+@user_router.callback_query(F.data.startswith("view_item_"), StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+async def show_item_details_handler(callback: CallbackQuery, state: FSMContext):
+    """Просмотр выбранного поощрения из Google Sheets"""
+    item_id = callback.data.replace("view_item_", "")
+    
+    # Получаем данные из Google Sheets
+    catalog = googlesheet_service.get_catalog_items()
+    item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
+    
+    if item:
+        keyboard = SelectingRewardInlineButtons.get_inline_keyboard(item_id)
+        
+        await callback.message.edit_text(
+            f"🎁 <b>{item['name']}</b>\n\n"
+            f"📦 <b>Количество:</b> {item['quantity']}\n"
+            f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n"
+            f"📝 <b>Примечание:</b> {item['notes']}\n\n"
+            f"<i>Хотите выбрать это поощрение?</i>",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await state.set_state(CatalogOfRewardsStates.show_item_details_state)
+    else:
+        await callback.answer("❌ Товар не найден", show_alert=True)
+    
     await callback.answer()
 
 @user_router.callback_query(F.data == "close_all",StateFilter(CatalogOfRewardsStates.show_item_details_state))
@@ -909,69 +930,180 @@ async def close_all(callback:CallbackQuery,state: FSMContext):
     await state.clear()
     await callback.answer()
     
-@user_router.callback_query(F.data == "show_table",StateFilter(CatalogOfRewardsStates.show_item_details_state))   
-async def show_table(callback:CallbackQuery,state: FSMContext):
+@user_router.callback_query(F.data == "show_catalog", StateFilter(CatalogOfRewardsStates.show_item_details_state))
+async def show_catalog(callback: CallbackQuery, state: FSMContext):
+    """Возврат к каталогу"""
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
-    await callback.message.edit_text(LEXICON_TEXT["select_item"],reply_markup = keyboard_markup)
+    await callback.message.edit_text(
+        "🛒 <b>Каталог поощрений</b>\n\nВыберите товар:",
+        reply_markup=keyboard_markup,
+        parse_mode="HTML"
+    )
     await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
-
-@user_router.callback_query(F.data.startswith("select_item_"),StateFilter(CatalogOfRewardsStates.show_item_details_state))
-async def select_item(callback:CallbackQuery,state: FSMContext):
-    """
-    Обрабатывает нажатие на кнопку "Выбрать этот товар"
-    """
-    await show_purchase_confirmation(callback)
-    await state.set_state(CatalogOfRewardsStates.show_purchase_confirmation_state)
     await callback.answer()
 
-@user_router.callback_query(F.data.startswith("confirm_purchase_"),StateFilter(CatalogOfRewardsStates.show_purchase_confirmation_state))
-async def confirm_purchase(callback:CallbackQuery,state: FSMContext, bot: Bot):
+
+@user_router.callback_query(F.data.startswith("select_item_"), StateFilter(CatalogOfRewardsStates.show_item_details_state))
+async def select_item(callback: CallbackQuery, state: FSMContext):
+    """Подтверждение покупки"""
+    item_id = callback.data.replace("select_item_", "")
+    catalog = googlesheet_service.get_catalog_items()
+    item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
+    
+    if item:
+        keyboard = ConfirmationRewardInlineButtons.get_inline_keyboard(item_id)
+        
+        await callback.message.edit_text(
+            f"✅ <b>Подтверждение покупки</b>\n\n"
+            f"🎁 <b>Поощрение:</b> {item['name']}\n"
+            f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n\n"
+            f"<i>Подтверждаете списание {item['price']} ТИУкоинов?</i>",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await state.set_state(CatalogOfRewardsStates.show_purchase_confirmation_state)
+    await callback.answer()
+
+
+@user_router.callback_query(F.data.startswith("confirm_purchase_"), StateFilter(CatalogOfRewardsStates.show_purchase_confirmation_state))
+async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot):
     """
-    Подтверждение списания ТИУкоинов
+    Обработка подтверждения покупки
     """
-    # TODO:Сделать проверку есть ли данное количество коинов на балансе студента
-    item_key = callback.data.replace("confirm_purchase_", "")
-    details = ITEM_DETAILS[item_key]
-    name_of_item = details["title"]
-    spend_amount = details["price"]
+    
+    try:
+        await callback.answer("⏳ Обрабатываем...", show_alert=False)
+    except Exception:
+        pass
+
+    item_id = callback.data.replace("confirm_purchase_", "")
+    catalog = googlesheet_service.get_catalog_items()
+    item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
+    
+    if not item:
+        await callback.answer("❌ Товар не найден", show_alert=True)
+        await state.clear()
+        return
+    
     purchase_date = datetime.now().strftime("%d.%m.%Y")
-    confirm_text = LEXICON_TEXT["confirm_purchase"].format(
-        name_of_item=name_of_item,
-        spend_amount=spend_amount,
-        purchase_date=purchase_date
-    )
-    await callback.message.edit_text(text=confirm_text, parse_mode="HTML")
-    await state.clear()
-    await callback.answer("✅ Покупка успешно завершена!",show_alert=True)
-    user_full_name = "Не указано"  # TODO: из БД участников
-    status = "Ожидает выдачи"
-    application_id = 1 # TODO: из Гугл таблиц
-    user_id = callback.from_user.id
-    moderator_message = (
-        "🔔 <b>Новая заявка на получение поощрения</b>\n\n"
-        f"🆔 <b>ID заявки:</b> {application_id}\n"
-        f"👤 <b>Студент:</b> {user_full_name}\n"
-        f"👤 <b>ID Студента:</b> {user_id}\n"
-        f"📞 <b>Username:</b> @{callback.from_user.username or 'без username'}\n"
-        f"🎁 <b>Товар:</b> {name_of_item}\n"
-        f"💰 <b>Стоимость:</b> {spend_amount} ТИУкоинов\n"
-        f"📅 <b>Дата:</b> {purchase_date}\n"
-        f"📍 <b>Место выдачи:</b> Володарского, 38, кабинет ....Уточнить\n"
-        f"📋 <b>Статус:</b> {status}\n"
-    )
-    moderator_keyboards = ModeratorCloseRewards.get_inline_keyboard(user_id,application_id)
-    send_params = {
-                "chat_id": config.moderator_chat_id,
-                "text": moderator_message,
-                "reply_markup": moderator_keyboards,
-                "message_thread_id": 496
-            }
-    await bot.send_message(**send_params)
+
+    purchase_result = googlesheet_service.purchase_item(item_id)
+    
+    # TODO: Списывать ТИУкоины у пользователя из БД
+
+    if purchase_result.get("success"):
+        request_data = {
+            "tg_id": callback.from_user.id,
+            "full_name": "Не указано",  # TODO: из БД участников
+            "item_id": item_id,
+            "item_name": item['name'],
+            "price": item['price'],
+            "order_date": purchase_date
+        }
+    
+        reward_request = googlesheet_service.add_reward_request(request_data)
+
+        sheets_status = "✅" if reward_request.get("success") else "❌"
+        sheets_row = reward_request.get('row', 'N/A') if reward_request.get("success") else "Ошибка"
+    
+        if reward_request.get("success"):
+            request_id = reward_request['request_id']
+            confirm_text = (
+                f"✅ <b>Заявка на получение поощрения оформлена!</b>\n\n"
+                f"<b>Заявка №{request_id}</b>\n"
+                f"🎁 <b>Поощрение:</b> {item['name']}\n"
+                f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n"
+                f"📅 <b>Дата оформления:</b> {purchase_date}\n"
+                f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Володарского, 38"
+            )
+        
+            await callback.message.edit_text(text=confirm_text, parse_mode="HTML")
+            await state.clear()
+            await callback.answer("✅ Покупка завершена!", show_alert=True)
+
+            user_full_name = "Не указано"  # TODO: из БД участников
+            status = "Ожидает выдачи"
+            user_id = callback.from_user.id
+
+            moderator_message = (
+                "🔔 <b>Новая заявка на получение поощрения</b>\n\n"
+                f"<b>Заявка №{request_id}</b>\n"
+                f"<b>ФИО студента:</b> {user_full_name}\n"
+                f"👤 <b>ID Студента:</b> {user_id} (@{callback.from_user.username or 'без username'})\n"
+                f"🎁 <b>Поощрение:</b> {item['name']}\n"
+                f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
+                f"📦 <b>Осталось:</b> {purchase_result['new_quantity']} шт.\n"
+                f"📊 <b>Google Sheets:</b> {sheets_status} Строка <b>{sheets_row}</b>\n"
+                f"📅 <b>Дата оформления:</b> {purchase_date}\n"
+                f"📍 <b>Место выдачи:</b> г Тюмень, ул. Володарского, 38\n"
+                f"📋 <b>Статус:</b> {status}\n"
+            )
+
+            moderator_keyboard = ModeratorCloseRewards.get_inline_keyboard(request_id, user_id, item['id'], item['price'])
+            send_params = {
+                        "chat_id": config.moderator_chat_id,
+                        "text": moderator_message,
+                        "reply_markup": moderator_keyboard,
+                        "message_thread_id": ISSUANCE_OF_INCENTIVES,
+                        "parse_mode":"HTML"
+                    }
+            
+            # Логгер
+            bot_logger.log_user_msg(
+            tg_id=str(callback.from_user.id),
+            username=callback.from_user.username,
+            message=f"ПООЩРЕНИЕ: Пользователь отправил заявку на выдачу поощрения\n"
+                f"Заявка №{request_id}\n"
+                f"ФИО: {user_full_name}\n"
+                f"Google Sheets:{sheets_status} Строка {sheets_row}\n"
+                f"Поощрение: {item['name']}\n"
+                f"Стоимость: {item['price']}\n"
+            )
+
+            asyncio.create_task(bot.send_message(**send_params))
+               
+        else:
+            confirm_text = f"❌ Ошибка создания заявки: {reward_request.get('error')}"
+            await callback.message.edit_text(confirm_text, parse_mode="HTML")
+            await state.clear()
+    else:
+        confirm_text = f"❌ {purchase_result.get('error', 'Ошибка покупки')}"
+        await callback.message.edit_text(confirm_text, parse_mode="HTML")
+        await state.clear()
+
+@user_router.callback_query(F.data == "refresh_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+async def refresh_catalog(callback: CallbackQuery, state: FSMContext):
+    """🔄 Обновление каталога БЕЗ ошибки "not modified" """
+    
+    keyboard = await catalog_of_rewards.create_table_keyboard()
+    ekaterinburg_time = callback.message.date.astimezone(ekaterinburg_tz)
+
+    timestamp = ekaterinburg_time.strftime('%d.%m.%Y %H:%M')
+    text = f"🛒 <b>Каталог поощрений (обновлен {timestamp})</b>\n\nВыберите поощрение:"
+    
+    try:
+        await callback.message.edit_text(
+            text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await callback.answer("🔄 Обновлено!")
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            # Если данные не изменились - просто уведомляем
+            await callback.answer("✅ Каталог актуален!")
+        else:
+            # Другие ошибки пробрасываем
+            raise
+
+@user_router.callback_query(F.data == "error_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+async def error_catalog(callback: CallbackQuery, state: FSMContext):
+    await callback.answer("❌ Ошибка загрузки каталога. Попробуйте позже.", show_alert=True)
 
 @user_router.callback_query(F.data.startswith("cancel_purchase_"),StateFilter(CatalogOfRewardsStates.show_purchase_confirmation_state))
 async def cancel_purchase(callback:CallbackQuery,state: FSMContext):
     """
-    Отмена списания ТИУкоинов
+    Отмена покупки
     """
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
     await callback.message.edit_text(LEXICON_TEXT["select_item"],reply_markup = keyboard_markup)

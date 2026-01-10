@@ -26,4 +26,10 @@ __all__=["googlesheet_service",
          "is_valid_email",
          "is_valid_event_date",
          "is_valid_confirmation_material",
-         "bot_logger"]
+         "bot_logger",
+         "get_item_name"]
+
+
+def get_item_name(item_id: str) -> str:
+    """Быстрое название по ID"""
+    return googlesheet_service.get_item_name_by_id(item_id)

@@ -5,13 +5,14 @@ from .user_keyboard import (MenuKeyboard,
                            ApplicationConfirmationInlineButtons,
                            ChangeOfApplicationInlineButtons,
                            ChoiceOfRoleInlineButtons,
-                           RewardsChoiceInlineButtons,
                            ChangeRegistrationFormInlineButtons,
                            ConfirmRegistrationFormInlineButtons,
                            ReRegister,
                            SupportInlineButtons,
                            AddMaterial,
-                           AddMaterialConfirm)
+                           AddMaterialConfirm,
+                           SelectingRewardInlineButtons,
+                           ConfirmationRewardInlineButtons)
 
 from .moderator_keyboard import (AdminPanelInlineButtons,
                                  RegisterNewUserInlineButtons,
@@ -21,10 +22,7 @@ from .moderator_keyboard import (AdminPanelInlineButtons,
 
 from .set_menu import(set_main_menu)
 
-from .item_catalog_keyboard import(ItemKeyboard,
-                                  show_item_details,
-                                  show_purchase_confirmation,
-                                  ITEM_DETAILS)
+from .item_catalog_keyboard import(catalog_of_rewards)
 
 __all__ = [
     "MenuKeyboard",
@@ -34,7 +32,7 @@ __all__ = [
     "ApplicationConfirmationInlineButtons",
     "ChangeOfApplicationInlineButtons",
     "ChoiceOfRoleInlineButtons",
-    "RewardsChoiceInlineButtons",
+    "SelectingRewardInlineButtons",
     "ChangeRegistrationFormInlineButtons",
     "ConfirmRegistrationFormInlineButtons",
     "SupportInlineButtons",
@@ -44,10 +42,8 @@ __all__ = [
     "ReRegister",
     "ModeratorSupportInlineButtons",
     "set_main_menu",
-    "ItemKeyboard",
-    "show_item_details",
-    "show_purchase_confirmation",
-    "ITEM_DETAILS",
+    "catalog_of_rewards",
     "ModeratorCloseRewards",
     "AddMaterial",
-    "AddMaterialConfirm"]
+    "AddMaterialConfirm",
+    "ConfirmationRewardInlineButtons"]
