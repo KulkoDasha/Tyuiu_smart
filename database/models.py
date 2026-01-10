@@ -27,7 +27,8 @@ class Users(Base):
 
     event_applications: Mapped[list["Event_applications"]] = relationship(
         "Event_applications", 
-        back_populates="user"
+        back_populates="user",
+        cascade="all, delete-orphan"
     )
     
 class Event_applications(Base):
