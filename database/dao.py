@@ -2,7 +2,7 @@ import logging
 
 from .database_service import connection
 from .models import Users, Event_applications 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, time, date, timedelta
@@ -10,7 +10,7 @@ from datetime import datetime, time, date, timedelta
 logger = logging.getLogger(__name__)
 
 @connection
-async def set_user(session, 
+async def db_set_user(session, 
                    tg_id_str: str, 
                    full_name: str, 
                    institute: str, 
@@ -70,7 +70,7 @@ async def set_user(session,
     
 
 @connection
-async def delete_graduated_users(session) -> Tuple[int, str]:
+async def db_delete_graduated_users(session) -> Tuple[int, str]:
     """ Удаляет пользователей, у которых год окончания обучения равен текущему году.
      Возвращает: (количество_удаленных, сообщение) """
     try:
@@ -118,7 +118,7 @@ async def delete_graduated_users(session) -> Tuple[int, str]:
 
 
 @connection 
-async def get_user_full_name(session, tg_id_str:str ) -> str:
+async def db_get_user_full_name(session, tg_id_str:str ) -> str:
     """
     Получение ФИО студента по его tg ID
     """
@@ -130,7 +130,7 @@ async def get_user_full_name(session, tg_id_str:str ) -> str:
         return ""
     
 @connection
-async def user_exists(session, tg_id_str: str) -> bool:
+async def db_user_exists(session, tg_id_str: str) -> bool:
     """
     Проверяет, существует ли пользователь с заданным tg_id
     Возвращает True если существует, False если нет
@@ -143,7 +143,7 @@ async def user_exists(session, tg_id_str: str) -> bool:
     
 
 @connection
-async def submit_event_application (session,
+async def db_submit_event_application (session,
                                     tg_id_str: str,
                                     event_direction: str,
                                     event_name: str,
@@ -157,8 +157,8 @@ async def submit_event_application (session,
     """
     
     tg_id = int(tg_id_str)
-    full_name = await get_user_full_name(tg_id_str)
-    bool_user_exists = await user_exists(tg_id_str)
+    full_name = await db_get_user_full_name(tg_id_str)
+    bool_user_exists = await db_user_exists(tg_id_str)
 
     try:
         if bool_user_exists == False:
@@ -169,16 +169,18 @@ async def submit_event_application (session,
     
 
     try:
-        existing_application = await session.scalars(
+        event_date = datetime.strptime(date_of_event, "%d.%m.%Y")
+
+        existing_application = await session.scalar(
             select(Event_applications).where(
                 Event_applications.tg_id == tg_id,
                 Event_applications.event_name == event_name,
-                Event_applications.date_of_event == date_of_event
-            ).limit(1))
+                Event_applications.date_of_event == event_date
+            ))
 
         if existing_application:
             existing_application_status = existing_application.event_application_status
-            if existing_application_status in ['подтверждено', 'на рассмотрении']:
+            if existing_application_status in ['Принята', 'На рассмотрении ']:
                 return -1, "Заявка уже существует"
     except Exception as e:
         logger.error(f"Ошибка при проверке дубликатов заявки {tg_id}: {e}")
@@ -190,17 +192,18 @@ async def submit_event_application (session,
             full_name = full_name,
             event_direction = event_direction,
             event_name = event_name,
-            date_of_event = date_of_event,
+            date_of_event = event_date,
             event_place = event_place,
             event_role = event_role,
-            event_application_status = "на рассмотрении",
+            event_application_status = "На рассмотрении",
             amount_tiukoins = 0.0,
-            moderator = "не назначен"
+            moderator = "Не назначен"
         )
         session.add(new_event_application)
-        await session.commit()
-
+        await session.flush() 
         application_id = new_event_application.id
+        
+        await session.commit()
 
         logger.info(f"Студент с ID {tg_id} подал заявку")
         return application_id, "Заявка успешно подана"
@@ -212,7 +215,7 @@ async def submit_event_application (session,
     
 
 @connection
-async def approve_application(
+async def db_approve_application(
     session,
     application_id: int,
     moderator_username: str,
@@ -222,53 +225,45 @@ async def approve_application(
     Модератор принимает заявку и начисляет тиукоины
     """
     try:
-        # 1. Находим заявку
+        # ✅ 1. Обновляем заявку через CORE (без ORM!)
         result = await session.execute(
-            select(Event_applications).where(Event_applications.id == application_id)
+            update(Event_applications)
+            .where(
+                Event_applications.id == application_id,
+                Event_applications.event_application_status == 'На рассмотрении'
+            )
+            .values(
+                event_application_status='Принята',
+                moderator=moderator_username,
+                amount_tiukoins=tiukoins_amount
+            )
+            .returning(Event_applications.tg_id)
         )
-        application = result.scalar_one_or_none()
         
-        if not application:
-            return False, "Заявка не найдена"
-        
-        # 2. Проверяем, что заявка еще на рассмотрении
-        if application.event_application_status != 'На рассмотрении':
-            return False, f"Заявка уже имеет статус: {application.event_application_status}"
-        
-        # 3. Обновляем заявку
-        application.event_application_status = 'Принята'
-        application.moderator = moderator_username
-        application.amount_tiukoins = tiukoins_amount
-        
-        # 4. Находим пользователя и обновляем его баланс
-        result = await session.execute(
-            select(Users).where(Users.tg_id == application.tg_id)
+        app_data = result.fetchone()
+        if not app_data:
+            return False, "Заявка не найдена или уже обработана"
+
+        tg_id = app_data.tg_id
+
+        # ✅ 2. Обновляем баланс
+        await session.execute(
+            update(Users)
+            .where(Users.tg_id == tg_id)
+            .values(tiukoins=Users.tiukoins + tiukoins_amount)
         )
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            return False, "Пользователь не найден"
-        
-        current_tiukoins = user.tiukoins 
-        user.tiukoins = current_tiukoins + tiukoins_amount
-        
+
         await session.commit()
-        
-        logger.info(
-            f"Заявка #{application_id} принята модератором @{moderator_username}. "
-            f"Пользователю {application.tg_id} начислено {tiukoins_amount} тиукоинов"
-        )
-        
-        return True, "✅ Заявка принята и тиукоины начислены"
-        
-    except SQLAlchemyError as e:
+        return True, "Заявка принята и тиукоины начислены"
+
+    except Exception as e:
         await session.rollback()
         logger.error(f"Ошибка при принятии заявки {application_id}: {e}")
         return False, f"Ошибка базы данных: {str(e)}"
 
 
 @connection
-async def reject_application(
+async def db_reject_application(
     session,
     application_id: int,
     moderator_username: str
@@ -287,7 +282,7 @@ async def reject_application(
             return False, "Заявка не найдена"
         
         # 2. Проверяем статус
-        if application.event_application_status != 'на рассмотрении':
+        if application.event_application_status != 'На рассмотрении':
             return False, f"Заявка уже имеет статус: {application.event_application_status}"
         
         # 3. Обновляем заявку
@@ -301,7 +296,7 @@ async def reject_application(
             f"Заявка #{application_id} отклонена модератором @{moderator_username}"
         )
         
-        return True, "❌ Заявка отклонена"
+        return True, "Заявка отклонена"
         
     except SQLAlchemyError as e:
         await session.rollback()
@@ -310,7 +305,7 @@ async def reject_application(
     
 
 @connection
-async def deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_of_item: str) -> Tuple[bool, str]:
+async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_of_item: str) -> Tuple[bool, str]:
     """
     Списание тиукоинов у пользователя при заказе поощрения
     """
@@ -361,7 +356,7 @@ async def deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_of_
 
 
 @connection
-async def get_user_balance(session, tg_id_str: str) -> float:
+async def db_get_user_balance(session, tg_id_str: str) -> float:
     """
     Получает текущий баланс тиукоинов пользователя
     """
@@ -385,7 +380,7 @@ async def get_user_balance(session, tg_id_str: str) -> float:
         return 0.0
     
 @connection
-async def return_tiukoins(session,
+async def db_return_tiukoins(session,
                           tg_id_str: str,
                           item_price_str: str) -> Tuple[bool, str]:
     """

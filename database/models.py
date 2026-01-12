@@ -46,25 +46,17 @@ class Event_applications(Base):
     event_place: Mapped[str] = mapped_column(String, nullable=False)
     event_role: Mapped[str] = mapped_column(String, nullable=False)
 
-    role_id: Mapped[int] = mapped_column(
-        BigInteger, 
-        ForeignKey('roles.id'), 
-        nullable=False
-    )
+    
     event_application_status: Mapped[str] = mapped_column(String, nullable=False)
     amount_tiukoins: Mapped[float] = mapped_column(Float, nullable=False)
     moderator: Mapped[str] = mapped_column(String, nullable=False)
   
     user: Mapped["Users"] = relationship("Users", back_populates="event_applications") 
-    role: Mapped["Roles"] = relationship("Roles", back_populates="event_applications")
-
+    
 class Roles(Base):
     __tablename__='roles'
     id: Mapped[int]=mapped_column(BigInteger,primary_key = True, autoincrement=True)
     role: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     base_value_tiukoins: Mapped[float] = mapped_column(Float, nullable=False)
 
-    event_applications: Mapped[list["Event_applications"]] = relationship(
-        "Event_applications", 
-        back_populates="role"
-    )
+    
