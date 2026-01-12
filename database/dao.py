@@ -22,7 +22,7 @@ async def set_user(session,
                    phone_number:str,
                    email: str,
                    moderator_username: str
-                   ) -> Optional[Tuple[bool, str]]:
+                   ) -> Optional[Tuple[bool, str, Optional[int]]]:
     """Метод для добавления нового пользователя (проверка по tg_id и почте)"""
     try:
         tg_id = int(tg_id_str)
@@ -34,11 +34,11 @@ async def set_user(session,
 
         if user:
             logger.info(f"Студент с ID {tg_id} уже существует")
-            return False, "Пользователь уже зарегистрирован"
+            return False, "Участник уже зарегистрирован", None
         
         if existing_email:
             logger.info(f"Почта {email} уже используется")
-            return False, "Почта уже зарегистрирована"
+            return False, "Почта уже зарегистрирована", None
 
         new_user = Users(
             tg_id = tg_id,
@@ -56,14 +56,17 @@ async def set_user(session,
             moderator_username = moderator_username
         )
         session.add(new_user)
+        await session.flush()  
+        user_id = new_user.id
+
         await session.commit()
-        logger.info(f"Зарегистрировал студент с ID {tg_id}")
-        return None
+        logger.info(f"Зарегистрирован студент с TG ID {tg_id}, ID в БД: {user_id}")
+        return True, "Пользователь успешно добавлен", user_id
     
     except SQLAlchemyError as e:
         logger.error(f"Ошибка при добавлении студента: {e}")
         await session.rollback()
-        return False, f"Ошибка базы данных: {str(e)}"
+        return False, f"Ошибка базы данных: {str(e)}", None
     
 
 @connection
