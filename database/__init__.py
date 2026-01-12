@@ -14,7 +14,7 @@ from .dao import (
     return_tiukoins
 )
 
-# Экспорт для from database import *
+
 __all__ = [
     # Из database.py
     'engine',

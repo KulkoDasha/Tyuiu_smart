@@ -229,11 +229,11 @@ async def approve_application(
             return False, "Заявка не найдена"
         
         # 2. Проверяем, что заявка еще на рассмотрении
-        if application.event_application_status != 'на рассмотрении':
+        if application.event_application_status != 'На рассмотрении':
             return False, f"Заявка уже имеет статус: {application.event_application_status}"
         
         # 3. Обновляем заявку
-        application.event_application_status = 'подтверждено'
+        application.event_application_status = 'Принята'
         application.moderator = moderator_username
         application.amount_tiukoins = tiukoins_amount
         
@@ -288,7 +288,7 @@ async def reject_application(
             return False, f"Заявка уже имеет статус: {application.event_application_status}"
         
         # 3. Обновляем заявку
-        application.event_application_status = 'отклонено'
+        application.event_application_status = 'Отклонена'
         application.moderator = moderator_username
         application.amount_tiukoins = 0.0 
         
