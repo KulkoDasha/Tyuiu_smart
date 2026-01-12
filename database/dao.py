@@ -220,7 +220,7 @@ async def db_approve_application(
     application_id: int,
     moderator_username: str,
     tiukoins_amount: float
-) -> Tuple[bool, str]:
+) -> Tuple[bool, str, float]:
     """
     Модератор принимает заявку и начисляет тиукоины
     """
@@ -242,7 +242,7 @@ async def db_approve_application(
         
         app_data = result.fetchone()
         if not app_data:
-            return False, "Заявка не найдена или уже обработана"
+            return False, "Заявка не найдена или уже обработана", 0.0
 
         tg_id = app_data.tg_id
 
@@ -254,12 +254,12 @@ async def db_approve_application(
         )
 
         await session.commit()
-        return True, "Заявка принята и тиукоины начислены"
+        return True, "Заявка принята и тиукоины начислены", tiukoins_amount
 
     except Exception as e:
         await session.rollback()
         logger.error(f"Ошибка при принятии заявки {application_id}: {e}")
-        return False, f"Ошибка базы данных: {str(e)}"
+        return False, f"Ошибка базы данных: {str(e)}", 0.0
 
 
 @connection
@@ -355,7 +355,7 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
     
 
 
-@connection
+
 async def db_get_user_balance(session, tg_id_str: str) -> float:
     """
     Получает текущий баланс тиукоинов пользователя
@@ -365,15 +365,10 @@ async def db_get_user_balance(session, tg_id_str: str) -> float:
         tg_id = int(tg_id_str)
         
         # Получаем пользователя
-        result = await session.execute(
-            select(Users).where(Users.tg_id == tg_id)
-        )
-        user = result.scalar_one_or_none()
+        result = await session.execute(select(Users).where(Users.tg_id == tg_id))
+        user = result.scalars().first()
         
-        if not user:
-            return 0.0
-        
-        return user.tiukoins
+        return user.tiukoins if user else 0.0
     
     except Exception as e:
         logger.error(f"Ошибка получения баланса пользователя {tg_id}: {e}")

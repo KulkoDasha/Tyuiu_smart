@@ -16,16 +16,16 @@ async def seed_roles():
         
         if count == 0:  # Заполняем только если таблица пуста
             roles_data = [
-                {"id": 1, "role": "Зритель", "base_value_tiucoins": 0.2},
-                {"id": 2, "role": "Участник", "base_value_tiucoins": 1.0},
-                {"id": 3, "role": "Финалист", "base_value_tiucoins": 3.0},
-                {"id": 4, "role": "Победитель", "base_value_tiucoins": 10.0},
-                {"id": 5, "role": "Волонтёр", "base_value_tiucoins": 2.0},
-                {"id": 6, "role": "Соорганизатор", "base_value_tiucoins": 3.0},
-                {"id": 7, "role": "Организатор", "base_value_tiucoins": 5.0},
-                {"id": 8, "role": "Наставник", "base_value_tiucoins": 3.0},
-                {"id": 9, "role": "Спикер", "base_value_tiucoins": 4.0},
-                {"id": 10, "role": "Руководитель", "base_value_tiucoins": 8.0},
+                {"id": 1, "role": "Зритель", "base_value_tiukoins": 0.2},
+                {"id": 2, "role": "Участник", "base_value_tiukoins": 1.0},
+                {"id": 3, "role": "Финалист", "base_value_tiukoins": 3.0},
+                {"id": 4, "role": "Победитель", "base_value_tiukoins": 10.0},
+                {"id": 5, "role": "Волонтёр", "base_value_tiukoins": 2.0},
+                {"id": 6, "role": "Соорганизатор", "base_value_tiukoins": 3.0},
+                {"id": 7, "role": "Организатор", "base_value_tiukoins": 5.0},
+                {"id": 8, "role": "Наставник", "base_value_tiukoins": 3.0},
+                {"id": 9, "role": "Спикер", "base_value_tiukoins": 4.0},
+                {"id": 10, "role": "Руководитель", "base_value_tiukoins": 8.0},
             ]
             
             for role_data in roles_data:

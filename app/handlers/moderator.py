@@ -361,7 +361,7 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
 
     db_status = ""
     try:
-        success, db_message = await db_approve_application(
+        success, db_message, db_awarded_amount = await db_approve_application(
             application_id=application_id,
             moderator_username=moderator_username,
             tiukoins_amount=8.0  
@@ -374,6 +374,7 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
     await callback.message.edit_text(
         f"✅ Заявка одобрена\n"
         f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
+        f"💰 <b>Начислено:</b> {db_awarded_amount:.1f} ТИУкоинов\n"
         f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
         f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
         f"💾 <b>База данных:</b> {db_status}\n"
@@ -409,6 +410,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
     data = await state.get_data()
     user_id = data.get("user_id")
     application_id = data.get("application_id")
+    print (application_id)
     moderator_username = data.get("moderator_username")
     row_id = data.get("row_id")
     app_data = data.get("app_data", {})
@@ -433,10 +435,10 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
 
         db_status = ""
         try:
-            success, db_message = await approve_application(
+            success, db_message = await db_approve_application(
                 application_id=application_id,
                 moderator_username=moderator_username,
-                tiukoins_amount=8.0  
+                tiukoins_amount= awarded_amount  
             )
             db_status = f"✅ Обновлено (ID заявки: {application_id})" if success else f"❌ {db_message}"
         except Exception as e:
