@@ -8,6 +8,11 @@ from datetime import datetime
 import pytz
 import logging
 import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession 
+from typing import Optional, Tuple
+from sqlalchemy.exc import SQLAlchemyError
+
+from html import escape
 
 from ..states import *
 from ..keyboards import *
@@ -670,7 +675,22 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         utc_time = callback.message.date
         ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
 
-        user_full_name = "Не указано"  # TODO: из БД участников
+        user_full_name = await db_get_user_full_name(str(user_id))
+
+        db_application_id, db_message = await db_submit_event_application(
+            tg_id_str=str(user_id),
+            event_direction=data.get("event_direction", ""),
+            event_name=data.get("name_of_event", ""),
+            date_of_event=data.get("date_of_event", ""),
+            event_place=data.get("event_location", ""),
+            event_role=data.get("event_role", "")
+        )
+        
+        db_status = ""
+        if db_application_id > 0: 
+            db_status = f"✅ Заявка сохранена (ID: {db_application_id})"
+        else:
+            db_status = f"❌ {db_message}"
 
         app_data = {
         "tg_id": user_id,
@@ -700,7 +720,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"📄 <b>Строка:</b> {sheets_result.get('row', 'N/A')}\n"
             f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 <b>Данные заявки:</b>\n"
-            f"• <b>ФИО</b>: {user_full_name}\n"
+            f"• <b>ФИО</b>: {safe_full_name}\n"
             f"• <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
             f"• <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
             f"• <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
@@ -708,8 +728,14 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
             f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n"
         )
+
         clean_role = data.get('event_role', 'Не указано')[2:14].replace("/", "_")
-        moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(user_id, clean_role)
+        moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(
+            application_id=db_application_id,
+            user_id=user_id,
+            event_role=clean_role
+        )
+
         send_params = {
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
@@ -877,7 +903,9 @@ async def application_edit_role(callback:CallbackQuery, state:FSMContext):
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['my_tyuiu_coins'],StateFilter(default_state))
 async def tyuiu_coins_start(message: Message, state: FSMContext):
-    await message.answer(text = LEXICON_TEXT["balance"])
+    async with async_session() as session:
+        balance = await db_get_user_balance(session, str(message.from_user.id))
+    await message.answer(f"💎 Ваш баланс: {balance} ТИУКоинов")
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['catalog_of_rewards'],StateFilter(default_state))
 async def catalog_start(message: Message, state: FSMContext):
@@ -976,6 +1004,9 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     except Exception:
         pass
 
+    status = "Ожидает выдачи"
+    user_id = callback.from_user.id
+    user_full_name = await db_get_user_full_name(str(user_id))
     item_id = callback.data.replace("confirm_purchase_", "")
     catalog = googlesheet_service.get_catalog_items()
     item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
@@ -987,14 +1018,22 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     
     purchase_date = datetime.now().strftime("%d.%m.%Y")
 
+    success, message = await db_deduct_tiukoins(
+            tg_id_str=str(user_id),
+            spend_amount=item['price'],
+            name_of_item=item['name']
+        )    
+    if not success:
+        # Если не удалось списать тиукоины
+        await callback.answer(f"❌ Ошибка: {message}", show_alert=True)
+        return
+
     purchase_result = googlesheet_service.purchase_item(item_id)
     
-    # TODO: Списывать ТИУкоины у пользователя из БД
-
     if purchase_result.get("success"):
         request_data = {
             "tg_id": callback.from_user.id,
-            "full_name": "Не указано",  # TODO: из БД участников
+            "full_name": user_full_name,
             "item_id": item_id,
             "item_name": item['name'],
             "price": item['price'],
@@ -1005,6 +1044,8 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
 
         sheets_status = "✅" if reward_request.get("success") else "❌"
         sheets_row = reward_request.get('row', 'N/A') if reward_request.get("success") else "Ошибка"
+
+        db_status = "✅" if success else "❌"
     
         if reward_request.get("success"):
             request_id = reward_request['request_id']
@@ -1016,14 +1057,6 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                 f"📅 <b>Дата оформления:</b> {purchase_date}\n"
                 f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Володарского, 38"
             )
-        
-            await callback.message.edit_text(text=confirm_text, parse_mode="HTML")
-            await state.clear()
-            await callback.answer("✅ Покупка завершена!", show_alert=True)
-
-            user_full_name = "Не указано"  # TODO: из БД участников
-            status = "Ожидает выдачи"
-            user_id = callback.from_user.id
 
             moderator_message = (
                 "🔔 <b>Новая заявка на получение поощрения</b>\n\n"
@@ -1048,6 +1081,12 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                         "parse_mode":"HTML"
                     }
             
+            asyncio.create_task(bot.send_message(**send_params))
+
+            await callback.message.edit_text(text=confirm_text, parse_mode="HTML")
+            await state.clear()
+            await callback.answer("✅ Покупка завершена!", show_alert=True)
+            
             # Логгер
             bot_logger.log_user_msg(
             tg_id=str(callback.from_user.id),
@@ -1059,8 +1098,6 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                 f"Поощрение: {item['name']}\n"
                 f"Стоимость: {item['price']}\n"
             )
-
-            asyncio.create_task(bot.send_message(**send_params))
                
         else:
             confirm_text = f"❌ Ошибка создания заявки: {reward_request.get('error')}"
