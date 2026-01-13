@@ -14,6 +14,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from html import escape
 
+from database import *
+
 from ..states import *
 from ..keyboards import *
 from ..lexicon import *
@@ -720,7 +722,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"📄 <b>Строка:</b> {sheets_result.get('row', 'N/A')}\n"
             f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 <b>Данные заявки:</b>\n"
-            f"• <b>ФИО</b>: {safe_full_name}\n"
+            f"• <b>ФИО</b>: {user_full_name}\n"
             f"• <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
             f"• <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
             f"• <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"

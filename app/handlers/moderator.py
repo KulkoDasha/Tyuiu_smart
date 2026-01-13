@@ -41,45 +41,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     """
     Обрабатывает нажатие на кнопку принять анкету пользователя
     """
-    print(f"🔍 DEBUG approve_application: callback.data = '{callback.data}'")
-    
-    # Удаляем префикс
-    data_part = callback.data[len("approve_application_"):]
-    print(f"🔍 DEBUG: data_part = '{data_part}'")
-    
-    # Парсим части
-    parts = data_part.split("_")
-    print(f"🔍 DEBUG: parts = {parts}, len = {len(parts)}")
-    
-    # Определяем формат
-    if len(parts) >= 3:
-        try:
-            # Новый формат: {application_id}_{user_id}_{event_role...}
-            application_id = int(parts[0])
-            user_id = int(parts[1])
-            event_role = "_".join(parts[2:])
-            
-            print(f"✅ DEBUG: Новый формат - application_id={application_id}, user_id={user_id}, event_role='{event_role}'")
-            
-        except ValueError as e:
-            print(f"❌ DEBUG: Ошибка парсинга нового формата: {e}")
-            
-            # Пробуем старый формат
-            if len(parts) >= 2:
-                try:
-                    application_id = 1  # Заглушка для старых
-                    user_id = int(parts[0])
-                    event_role = "_".join(parts[1:])
-                    print(f"⚠️ DEBUG: Старый формат - user_id={user_id}, event_role='{event_role}'")
-                except:
-                    await callback.answer("❌ Ошибка формата данных", show_alert=True)
-                    return
-            else:
-                await callback.answer("❌ Ошибка формата данных", show_alert=True)
-                return
-    else:
-        await callback.answer("❌ Ошибка формата данных", show_alert=True)
-        return
+    user_id = int(callback.data.split("_")[-1])
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
 
@@ -435,7 +397,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
 
         db_status = ""
         try:
-            success, db_message = await db_approve_application(
+            success, db_message, db_awarded_amount = await db_approve_application(
                 application_id=application_id,
                 moderator_username=moderator_username,
                 tiukoins_amount= awarded_amount  
