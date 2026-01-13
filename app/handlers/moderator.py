@@ -327,7 +327,6 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
                 reply_markup=menu_keyboard
             )
         
-        
         # Обновляем статус в Google Sheets
         result = googlesheet_service.update_application_status(
             app_data.get("event_direction", ""), 
@@ -344,11 +343,16 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
             success, db_message, db_awarded_amount = await db_approve_application(
                 application_id=db_application_id,
                 moderator_username=moderator_username,
-                tiukoins_amount=8.0  
+                tiukoins_amount=coins
             )
             db_status = f"✅ Обновлено (ID заявки: {db_application_id})" if success else f"❌ {db_message}"
         except Exception as e:
             db_status = f"❌ Ошибка: {str(e)}"
+
+        result_add_tiucoins = googlesheet_service.add_tiukoins(
+            tg_id=user_id,
+            amount=coins
+        ) 
 
         await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert=True)
         await callback.message.edit_text(
@@ -393,7 +397,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         coins = 8  
         awarded_amount = coins * coefficient_float
         await message.answer(f"✅ Коэффициент {coefficient_float} сохранен для пользователя {user_id}")
-        result1 = googlesheet_service.update_application_status(
+        result_update_status = googlesheet_service.update_application_status(
             data.get("event_direction", ""), 
             row_id, 
             "Принята", 
@@ -403,7 +407,12 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
             sheet_name=data.get("event_direction", ""),
             row_id=row_id,
             tiukoins=str(awarded_amount)
+        )
+        result_add_tiucoins = googlesheet_service.add_tiukoins(
+            tg_id=user_id,
+            amount=awarded_amount
         ) 
+        print(result_add_tiucoins)
          
         db_status = ""
         try:
@@ -416,7 +425,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         except Exception as e:
             db_status = f"❌ Ошибка: {str(e)}"
 
-        sheets_status = "✅ Обновлено" if result.get("success") else f"❌ {result.get('error', 'Ошибка')}"
+        sheets_status = "✅ Обновлено" if result.get("success") and result_update_status.get("success")and result_add_tiucoins.get("success")  else f"❌ {result.get('error', 'Ошибка')}"
 
         try:
             callback_message_id = data.get("callback_message_id")
@@ -663,8 +672,9 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
     else:  # reject
         # Отмена: update_status + cancel_reward_purchase (+1)
         sheets_result = googlesheet_service.update_reward_status(request_id, "Отменено", moderator_username)
+        coins_status = googlesheet_service.refund_tiukoins(tg_id=user_id, amount= item_price)
         sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
-
+        print(coins_status)
         success, message = await db_return_tiukoins( user_id, item_price)
 
         if success:

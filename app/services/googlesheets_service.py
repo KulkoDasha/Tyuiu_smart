@@ -262,5 +262,33 @@ class GoogleSheetsService:
             }
         }
         return self.make_request(payload)
+    
+    def add_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
+        """Начисление ТИУКоинов"""
+        payload = {
+            "secret": self.secret,
+            "type": "add_tiukoins",
+            "data": {"tg_id": tg_id, "amount": amount}
+        }
+        return self.make_request(payload)
+
+    def deduct_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
+        """Списание ТИУКоинов при покупке"""
+        payload = {
+            "secret": self.secret,
+            "type": "deduct_tiukoins",
+            "data": {"tg_id": tg_id, "amount": amount}
+        }
+        return self.make_request(payload)
+
+    def refund_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
+        """Возврат ТИУКоинов при отмене"""
+        payload = {
+            "secret": self.secret,
+            "type": "refund_tiukoins",
+            "data": {"tg_id": tg_id, "amount": amount}
+        }
+        return self.make_request(payload)
+
 # Глобальный экземпляр сервиса
 googlesheet_service = GoogleSheetsService()

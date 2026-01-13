@@ -1031,13 +1031,14 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
             tg_id_str=str(user_id),
             spend_amount=item['price'],
             name_of_item=item['name']
-        )    
+        )
     if not success:
         # Если не удалось списать тиукоины
         await callback.answer(f"❌ Ошибка: {message}", show_alert=True)
         return
 
     purchase_result = googlesheet_service.purchase_item(item_id)
+    print(googlesheet_service.deduct_tiukoins(user_id, item['price']))
     
     if purchase_result.get("success"):
         request_data = {
@@ -1054,7 +1055,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         sheets_status = "✅" if reward_request.get("success") else "❌"
         sheets_row = reward_request.get('row', 'N/A') if reward_request.get("success") else "Ошибка"
 
-        db_status = "✅" if success else "❌"
+        # db_status = "✅" if success else "❌"
     
         if reward_request.get("success"):
             request_id = reward_request['request_id']
