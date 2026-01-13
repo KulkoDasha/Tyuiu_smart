@@ -11,7 +11,8 @@ from .dao import (
     db_reject_application,
     db_deduct_tiukoins,
     db_get_user_balance,
-    db_return_tiukoins
+    db_return_tiukoins,
+    db_delete_user_by_tg_id
 )
 
 
@@ -41,4 +42,5 @@ __all__ = [
     'db_deduct_tiukoins',
     'db_get_user_balance',
     'db_return_tiukoins',
+    'db_delete_user_by_tg_id'
 ]
