@@ -670,6 +670,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     Обрабатываем нажатие на кнопки отправить отправить заявку/изменить заявку
     """
     if callback.data == ("confirm_application"):
+        await callback.message.edit_text(text = LEXICON_TEXT["application_event_end"])
         data = await state.get_data()
         user_id = callback.from_user.id
         updated_data = await state.get_data()
@@ -694,6 +695,11 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         else:
             db_status = f"❌ {db_message}"
 
+        clean_role = data.get('event_role', 'Не указано')[2:9].replace("/", "_")
+        tiukoins = ROLE_LEXICON[clean_role]
+        await state.update_data(tiukoins=tiukoins)
+        data["tiukoins"] = tiukoins
+        
         app_data = {
         "tg_id": user_id,
         "user_id": user_id,
@@ -703,13 +709,13 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         "date_of_event": data.get("date_of_event", ""),
         "event_location": data.get("event_location", ""),
         "event_role": data.get("event_role", ""),
+        "tiukoins" : float(data.get("tiukoins", 0)),
         "application_time": ekaterinburg_time.strftime('%d.%m.%Y %H:%M'),
         "status": "На рассмотрении",
         "moderator": "",
         "sheet_name": data.get("event_direction", ""),
         "thread_id": thread_id
         }
-
         event_direction = app_data["event_direction"]
         sheets_result = googlesheet_service.add_event_application(app_data, event_direction)
 
@@ -730,12 +736,12 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
             f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n"
         )
-
-        clean_role = data.get('event_role', 'Не указано')[2:14].replace("/", "_")
+       
         moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(
-            application_id=db_application_id,
+            application_id = int(sheets_result.get('row', 'N/A'))-1,
             user_id=user_id,
-            event_role=clean_role
+            event_role=clean_role,
+            db_application_id = db_application_id
         )
 
         send_params = {
@@ -820,7 +826,8 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
                 message_thread_id=thread_id,
                 parse_mode="HTML"
             )
-        await callback.message.edit_text(text = LEXICON_TEXT["application_event_end"])
+    
+        await callback.answer()
         await state.clear()
     elif callback.data == "edit_application":
         await callback.message.delete()

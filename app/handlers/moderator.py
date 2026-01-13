@@ -15,7 +15,7 @@ from ..services import *
 from database import *
 
 
-from ..lexicon import LEXICON_TEXT, LEXICON_USER_KEYBOARD
+from ..lexicon import LEXICON_TEXT, LEXICON_USER_KEYBOARD, ROLE_LEXICON 
 from ..config import config
 from ..filters import ModeratorChatFilter
 from ..states import ModeratorStates
@@ -271,35 +271,20 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
     """
     Обработка нажатия на кнопку Одобрить заявку
     """
+    try:
+        await callback.answer("⏳ Обработка...", show_alert=False)
+    except Exception:
+        pass
+    
     parts = callback.data.split("_")
     application_id = int(parts[2])
+
     user_id = int(parts[3])
-    event_role = "_".join(parts[4:])
+    event_role = parts[4]
+    db_application_id = int(parts[5])
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_username = callback.from_user.username or callback.from_user.full_name
-
-    await state.update_data(
-        application_id=application_id,
-        user_id=user_id,
-        moderator_username=moderator_username,
-        event_role=event_role,
-        callback_message_id=callback.message.message_id,
-        chat_id=callback.message.chat.id
-    )
-
-    # Логгер
-    bot_logger.log_moderator_msg(
-    tg_id=str(callback.from_user.id),
-    username= moderator_username,
-    message=f"ЗАЯВКА: Начал принимать заявку {user_id} на получение 'ТИУКоинов'"
-    )
-    
-    if event_role == LEXICON_USER_KEYBOARD["role_leader"][2:14]:
-        await callback.message.answer(f"🔢 Введите коэффициент повторяемости для пользователя {user_id}:")
-        await state.set_state(ModeratorStates.waiting_repeatability_factor)
-        await callback.answer()
-        return
     
     # Парсим заявку извлекаем row_id из сообщения
     message_text = callback.message.text or ""
@@ -309,59 +294,81 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
     import re
     row_match = re.search(r"Строка:\s*(\d+)", message_text)
     row_id = int(row_match.group(1)) if row_match else 2
+    print(row_id)
+    await state.update_data(row_id = row_id)
     
-    # Обновляем статус в Google Sheets
-    result = googlesheet_service.update_application_status(
-        app_data.get("event_direction", ""), 
-        row_id, 
-        "Принята", 
-        f"@{moderator_username}"
+    await state.update_data(
+        application_id=application_id,
+        event_direction = app_data.get('event_direction'),
+        user_id=user_id,
+        name_of_event = app_data.get('name_of_event'),
+        moderator_username=moderator_username,
+        event_role=event_role,
+        callback_message_id=callback.message.message_id,
+        chat_id=callback.message.chat.id
     )
-
-    # Статус для модератора
-    sheets_status = "✅ Обновлено" if result.get("success") else f"❌ {result.get('error', 'Ошибка')}"
-
-    db_status = ""
-    try:
-        success, db_message, db_awarded_amount = await db_approve_application(
-            application_id=application_id,
-            moderator_username=moderator_username,
-            tiukoins_amount=8.0  
-        )
-        db_status = f"✅ Обновлено (ID заявки: {application_id})" if success else f"❌ {db_message}"
-    except Exception as e:
-        db_status = f"❌ Ошибка: {str(e)}"
-
-    await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert=True)
-    await callback.message.edit_text(
-        f"✅ Заявка одобрена\n"
-        f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
-        f"💰 <b>Начислено:</b> {db_awarded_amount:.1f} ТИУкоинов\n"
-        f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
-        f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
-        f"💾 <b>База данных:</b> {db_status}\n"
-        f"👮 <b>Модератор:</b> @{moderator_username}\n"
-        f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
-        reply_markup=None,
-        parse_mode="HTML"
-    )
-
+    
     # Логгер
     bot_logger.log_moderator_msg(
     tg_id=str(callback.from_user.id),
     username= moderator_username,
-    message=f"ЗАЯВКА: Принял заявку {user_id} на получение 'ТИУКоинов': {app_data.get('name_of_event')}, GoogleSheets: {app_data.get('event_direction', 'Неизвестно')}, {row_id}, {sheets_status}"
+    message=f"ЗАЯВКА: Начал принимать заявку {user_id} на получение 'ТИУКоинов'"
     )
-    
-    # Уведомляем пользователя
-    try:
+    if event_role == "Руковод":
+        await callback.message.answer(f"🔢 Введите коэффициент повторяемости для пользователя {user_id}:")
+        await state.set_state(ModeratorStates.waiting_repeatability_factor)
+        await callback.answer()
+        return
+    else:
+        coins = ROLE_LEXICON[event_role]
         await bot.send_message(
-            chat_id=user_id,
-            text=LEXICON_TEXT["application_event_completed"], 
-            reply_markup=menu_keyboard
+                chat_id=user_id,
+                text=LEXICON_TEXT["application_event_completed"].format(awarded_amount=coins,event_name = app_data.get('name_of_event')),
+                reply_markup=menu_keyboard
+            )
+        
+        
+        # Обновляем статус в Google Sheets
+        result = googlesheet_service.update_application_status(
+            app_data.get("event_direction", ""), 
+            row_id, 
+            "Принята", 
+            f"@{moderator_username}"
         )
-    except Exception as e:
-        await callback.message.answer(f"❗️ Не удалось уведомить пользователя {user_id}")
+                
+        # Статус для модератора
+        sheets_status = "✅ Обновлено" if result.get("success") else f"❌ {result.get('error', 'Ошибка')}"
+
+        db_status = ""
+        try:
+            success, db_message, db_awarded_amount = await db_approve_application(
+                application_id=db_application_id,
+                moderator_username=moderator_username,
+                tiukoins_amount=8.0  
+            )
+            db_status = f"✅ Обновлено (ID заявки: {db_application_id})" if success else f"❌ {db_message}"
+        except Exception as e:
+            db_status = f"❌ Ошибка: {str(e)}"
+
+        await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert=True)
+        await callback.message.edit_text(
+                f"✅ Заявка одобрена\n"
+                f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
+                f"💰 <b>Начислено:</b> {db_awarded_amount:.1f} ТИУкоинов\n"
+                f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
+                f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
+                f"💾 <b>База данных:</b> {db_status}\n"
+                f"👮 <b>Модератор:</b> @{moderator_username}\n"
+                f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+                reply_markup=None,
+                parse_mode="HTML"
+        )
+        # Логгер
+        bot_logger.log_moderator_msg(
+        tg_id=str(callback.from_user.id),
+            username= moderator_username,
+            message=f"ЗАЯВКА: Принял заявку {user_id} на получение 'ТИУКоинов': {app_data.get('name_of_event')}, GoogleSheets: {app_data.get('event_direction', 'Неизвестно')}, {row_id}, {sheets_status}"
+            )
 
 
 @moderator_router.message(StateFilter(ModeratorStates.waiting_repeatability_factor))
@@ -375,7 +382,8 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
     print (application_id)
     moderator_username = data.get("moderator_username")
     row_id = data.get("row_id")
-    app_data = data.get("app_data", {})
+    print(data)
+    print(row_id)
     
     utc_time = message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
@@ -384,17 +392,19 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         coefficient_float = float(message.text.strip())
         coins = 8  
         awarded_amount = coins * coefficient_float
-        
         await message.answer(f"✅ Коэффициент {coefficient_float} сохранен для пользователя {user_id}")
-
-        
-        result = googlesheet_service.update_application_status(
-            app_data.get("event_direction", ""), 
+        result1 = googlesheet_service.update_application_status(
+            data.get("event_direction", ""), 
             row_id, 
             "Принята", 
             f"@{moderator_username}"
         )
-
+        result = googlesheet_service.update_tiukoins(
+            sheet_name=data.get("event_direction", ""),
+            row_id=row_id,
+            tiukoins=str(awarded_amount)
+        ) 
+         
         db_status = ""
         try:
             success, db_message, db_awarded_amount = await db_approve_application(
@@ -417,12 +427,12 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
                 message_id=callback_message_id,
                 text=(
                     f"✅ Заявка одобрена\n"
-                    f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
+                    f"👤 <b>Пользователь:</b> {data.get('full_name', '')} (ID: {user_id})\n"
                     f"📈 <b>Коэффициент:</b> {coefficient_float}\n"
                     f"💰 <b>Начислено:</b> {awarded_amount:.1f} ТИУкоинов\n"
                     f"📊 <b>Строка в Google Sheets</b> <b>{row_id}</b>: {sheets_status}\n"
                     f"💾 <b>База данных:</b> {db_status}\n"
-                    f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
+                    f"📁 <b>Лист:</b> {data.get('event_direction', 'Неизвестно')}\n"
                     f"👮 <b>Модератор:</b> @{moderator_username}\n"
                     f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
                 ),
@@ -435,14 +445,14 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         bot_logger.log_moderator_msg(
             tg_id=str(message.from_user.id),
             username=moderator_username,
-            message=f"ЗАЯВКА: Принял заявку {user_id} на получение 'ТИУКоинов': {app_data.get('name_of_event', '')}, Коэффициент: {coefficient_float}, Начислено: {awarded_amount}"
+            message=f"ЗАЯВКА: Принял заявку {user_id} на получение 'ТИУКоинов': {data.get('name_of_event', '')}, Коэффициент: {coefficient_float}, Начислено: {awarded_amount}"
         )
         
         # Уведомляем пользователя
         try:
             await bot.send_message(
                 chat_id=user_id,
-                text=LEXICON_TEXT["application_event_completed"].format(awarded_amount=awarded_amount),
+                text=LEXICON_TEXT["application_event_completed"].format(awarded_amount=awarded_amount, event_name = data.get('name_of_event')),
                 reply_markup=menu_keyboard
             )
         except Exception as e:

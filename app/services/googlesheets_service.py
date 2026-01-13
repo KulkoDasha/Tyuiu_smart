@@ -250,5 +250,17 @@ class GoogleSheetsService:
         }
         return self.make_request(payload)
 
+    def update_tiukoins(self, sheet_name: str, row_id: int, tiukoins: str) -> Dict[str, Any]:
+        """Обновление только столбца H"""
+        payload = {
+            "secret": self.secret,
+            "type": "update_tiukoins", 
+            "data": {
+                "sheet_name": sheet_name,
+                "row_id": row_id,
+                "tiukoins": tiukoins
+            }
+        }
+        return self.make_request(payload)
 # Глобальный экземпляр сервиса
 googlesheet_service = GoogleSheetsService()
