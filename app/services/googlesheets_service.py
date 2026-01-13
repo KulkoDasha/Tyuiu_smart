@@ -1,7 +1,8 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import requests
 from ..config import config
 from .logger import bot_logger
+import time
 
 class GoogleSheetsService:
     """
@@ -11,6 +12,9 @@ class GoogleSheetsService:
     def __init__(self) -> None:
         self.url = config.apps_script_url
         self.secret = config.google_secret_key
+        self._catalog_cache: Optional[Dict[str, Any]] = None
+        self._catalog_cache_time: float = 0
+        self.CACHE_TTL = 300  # 5 минут
         
         if not self.url or not self.secret:
             raise ValueError("Не заданы обязательные переменные окружения:" \
@@ -160,7 +164,91 @@ class GoogleSheetsService:
             }
         }
         return self.make_request(payload)
+    
+    def _load_catalog_from_sheets(self) -> Dict[str, Any]:
+        """Получает каталог поощрений из Google Sheets"""
+        payload = {
+            "secret": self.secret,
+            "type": "get_catalog_items",
+            "data": {}
+        }
+        return self.make_request(payload)
+    
+    def _get_cached_catalog(self) -> Optional[Dict[str, Any]]:
+        """Проверяет кэш каталога"""
+        if (self._catalog_cache is None or 
+            time.time() - self._catalog_cache_time > self.CACHE_TTL):
+            return None
+        return self._catalog_cache
+    
+    def get_catalog_items(self) -> Dict[str, Any]:
+        """Возвращает каталог с автоматическим кэшированием"""
+        cached = self._get_cached_catalog()
+        if cached:
+            return cached
+        
+        catalog = self._load_catalog_from_sheets()
+        print(catalog)
+        self._catalog_cache = catalog
+        self._catalog_cache_time = time.time()
+        return catalog
+    
+    def get_item_name_by_id(self, item_id: str) -> str:
+        """
+        Название предмета по ID из кэша (0.1мс)
+        """
+        catalog = self.get_catalog_items() 
+        
+        for item in catalog.get("items", []):
+            if item["id"] == item_id:
+                return item["name"]
+        
+        return f"ID_{item_id[:8]}"  # Fallback короткий
+    
+    def invalidate_catalog_cache(self):
+        """Принудительно обновить кэш (для админов)"""
+        self._catalog_cache = None
+        print("🗑️ Кэш каталога сброшен!")
+    
+    def purchase_item(self, item_id: str) -> Dict[str, Any]:
+        """Уменьшает количество товара на 1"""
+        payload = {
+            "secret": self.secret,
+            "type": "purchase_item",
+            "data": {"item_id": item_id}
+        }
+        return self.make_request(payload)
+    
+    def cancel_reward_purchase(self, item_id: str) -> Dict[str, Any]:
+        """Восстанавливает количество товара при отмене выдачи (+1)"""
+        payload = {
+            "secret": self.secret,
+            "type": "cancel_reward_purchase",
+            "data": {"item_id": item_id}
+        }
+        return self.make_request(payload)
 
+    def add_reward_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Добавляет заявку на выдачу поощрения"""
+        payload = {
+            "secret": self.secret,
+            "type": "add_reward_request",
+            "data": request_data
+        }
+        return self.make_request(payload)
+
+    def update_reward_status(self, request_id: int, status: str, moderator: str) -> Dict[str, Any]:
+        """Обновляет статус заявки на поощрение"""
+        payload = {
+            "secret": self.secret,
+            "type": "update_reward_status",
+            "data": {
+                "request_id": request_id,
+                "status": status,
+                "moderator": f"@{moderator}"
+            }
+        }
+        return self.make_request(payload)
 
 # Глобальный экземпляр сервиса
 googlesheet_service = GoogleSheetsService()
