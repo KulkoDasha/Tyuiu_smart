@@ -38,11 +38,11 @@ class ProcessingUserApplicationInlineButtons:
     """
 
     @staticmethod
-    def get_inline_keyboard(application_id: int, user_id: int, event_role: str):
+    def get_inline_keyboard(application_id: int, user_id: int, event_role: str, db_application_id: int):
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["approve_application"],callback_data=f"approve_application_{application_id}_{user_id}_{event_role}")],
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["decline_application"], callback_data=f"decline_application_{application_id}_{user_id}_{event_role}")]
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["approve_application"],callback_data=f"approve_application_{application_id}_{user_id}_{event_role}_{db_application_id}")],
+                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["decline_application"], callback_data=f"decline_application_{application_id}_{user_id}_{event_role}_{db_application_id}")]
                                 ])
         
         return keyboard
