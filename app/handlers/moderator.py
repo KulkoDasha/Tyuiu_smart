@@ -719,3 +719,24 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
 
     except Exception:
         await callback.answer(f"❌ Студент не {user_id} уведомлён!", show_alert=True)
+
+
+
+@moderator_router.message(F.text == "ТЕСТ УДАЛЕНИЯ")
+async def cmd_delete_user(message: Message, state: FSMContext):
+    await message.answer(
+        "👤 Введите Telegram ID для удаления:\n"
+        "💡 Пример: `1293014025`",
+        parse_mode="Markdown"
+    )
+    await state.set_state(ModeratorStates.waiting_delete_user_tg_id)
+
+@moderator_router.message(ModeratorStates.waiting_delete_user_tg_id)
+async def process_delete_user(message: Message, state: FSMContext):
+    tg_id = message.text.strip()
+    await message.answer("🔄 Проверяю и удаляю...")
+    
+    success, result_msg = await db_delete_user_by_tg_id(tg_id)
+    
+    await message.answer(result_msg)
+    await state.clear()
