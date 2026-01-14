@@ -289,6 +289,35 @@ class GoogleSheetsService:
             "data": {"tg_id": tg_id, "amount": amount}
         }
         return self.make_request(payload)
+    
+    def refund_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
+        """Возврат ТИУКоинов при отмене"""
+        payload = {
+            "secret": self.secret,
+            "type": "refund_tiukoins",
+            "data": {"tg_id": tg_id, "amount": amount}
+        }
+        return self.make_request(payload)
+    
+    def clear_all_user_data(self) -> Dict[str, Any]:
+        """🗑️ Полная очистка всех пользовательских данных (кроме "Каталог Поощрений")"""
+        payload = {
+            "secret": self.secret,
+            "type": "clear_all_data",
+            "data": {}
+        }
+        return self.make_request(payload)
+    
+    def delete_user_by_tg_id(self, tg_id: int) -> Dict[str, Any]:
+        """❌ Удаление конкретного пользователя из листа "Участники" по TG_ID"""
+        payload = {
+            "secret": self.secret,
+            "type": "delete_user",
+            "data": {
+                "tg_id": tg_id
+            }
+        }
+        return self.make_request(payload)
 
 # Глобальный экземпляр сервиса
 googlesheet_service = GoogleSheetsService()
