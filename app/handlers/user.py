@@ -695,7 +695,8 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         else:
             db_status = f"❌ {db_message}"
 
-        clean_role = data.get('event_role', 'Не указано')[2:9].replace("/", "_")
+        print(data.get('event_role', 'Не указано')[2:8])
+        clean_role = data.get('event_role', 'Не указано')[2:8].replace("/", "_")
         tiukoins = ROLE_LEXICON[clean_role]
         await state.update_data(tiukoins=tiukoins)
         data["tiukoins"] = tiukoins
@@ -717,6 +718,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         "thread_id": thread_id
         }
         event_direction = app_data["event_direction"]
+        print (event_direction)
         sheets_result = googlesheet_service.add_event_application(app_data, event_direction)
 
         moderator_message = (
@@ -1055,7 +1057,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         sheets_status = "✅" if reward_request.get("success") else "❌"
         sheets_row = reward_request.get('row', 'N/A') if reward_request.get("success") else "Ошибка"
 
-        # db_status = "✅" if success else "❌"
+        db_status = "✅" if success else "❌"
     
         if reward_request.get("success"):
             request_id = reward_request['request_id']
@@ -1065,7 +1067,9 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                 f"🎁 <b>Поощрение:</b> {item['name']}\n"
                 f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n"
                 f"📅 <b>Дата оформления:</b> {purchase_date}\n"
-                f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Володарского, 38"
+                f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Мельникайте, 72, корпус 1, кабинет 103\n"
+                f"📞<b>Обязательная запись по телефону:</b> 8 (3452) 28-39-76 "
+
             )
 
             moderator_message = (

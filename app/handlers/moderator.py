@@ -41,6 +41,10 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     """
     Обрабатывает нажатие на кнопку принять анкету пользователя
     """
+    try:
+        await callback.answer("⏳ Обрабатываем...", show_alert=False)
+    except Exception:
+        pass
     user_id = int(callback.data.split("_")[-1])
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
@@ -299,6 +303,7 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
     
     await state.update_data(
         application_id=application_id,
+        dbs_application_id = db_application_id,
         event_direction = app_data.get('event_direction'),
         user_id=user_id,
         name_of_event = app_data.get('name_of_event'),
@@ -314,13 +319,14 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
     username= moderator_username,
     message=f"ЗАЯВКА: Начал принимать заявку {user_id} на получение 'ТИУКоинов'"
     )
-    if event_role == "Руковод":
+    if event_role == "Руково":
         await callback.message.answer(f"🔢 Введите коэффициент повторяемости для пользователя {user_id}:")
         await state.set_state(ModeratorStates.waiting_repeatability_factor)
         await callback.answer()
         return
     else:
         coins = ROLE_LEXICON[event_role]
+        print(coins, type(coins))
         await bot.send_message(
                 chat_id=user_id,
                 text=LEXICON_TEXT["application_event_completed"].format(awarded_amount=coins,event_name = app_data.get('name_of_event')),
@@ -358,7 +364,7 @@ async def approve_applications(callback: CallbackQuery, bot: Bot,state: FSMConte
         await callback.message.edit_text(
                 f"✅ Заявка одобрена\n"
                 f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
-                f"💰 <b>Начислено:</b> {db_awarded_amount:.1f} ТИУкоинов\n"
+                f"💰 <b>Начислено:</b> {coins} ТИУкоинов\n"
                 f"📊 Строка в Google Sheets <b>{row_id}</b>: {sheets_status}\n"
                 f"📁 <b>Лист:</b> {app_data.get('event_direction', 'Неизвестно')}\n"
                 f"💾 <b>База данных:</b> {db_status}\n"
@@ -383,6 +389,8 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
     data = await state.get_data()
     user_id = data.get("user_id")
     application_id = data.get("application_id")
+    dbs_application_id = data.get("dbs_application_id")
+    print (dbs_application_id, "жопа")
     print (application_id)
     moderator_username = data.get("moderator_username")
     row_id = data.get("row_id")
@@ -417,11 +425,11 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         db_status = ""
         try:
             success, db_message, db_awarded_amount = await db_approve_application(
-                application_id=application_id,
+                application_id=dbs_application_id,
                 moderator_username=moderator_username,
                 tiukoins_amount= awarded_amount  
             )
-            db_status = f"✅ Обновлено (ID заявки: {application_id})" if success else f"❌ {db_message}"
+            db_status = f"✅ Обновлено (ID заявки: {dbs_application_id})" if success else f"❌ {db_message}"
         except Exception as e:
             db_status = f"❌ Ошибка: {str(e)}"
 
@@ -476,13 +484,21 @@ async def decline_application(callback: CallbackQuery, state: FSMContext):
     """
     Обрабатывает нажатие на кнопку отклонить заявку пользователя
     """
+    try:
+        await callback.answer("⏳ Обработка...", show_alert=False)
+    except Exception:
+        pass
     parts = callback.data.split("_")
-    application_id = int(parts[2])  
+    application_id = int(parts[2])
     user_id = int(parts[3])
+    event_role = parts[4]
+    db_application_id = int(parts[5])
+    print (application_id, user_id, event_role, db_application_id)
 
     await callback.answer("❔ Укажите причину отклонения заявки пользователя", show_alert=False)
     await state.update_data(
         application_id=application_id,
+        dbs_application_id = db_application_id,
         reject_user_id=user_id,
         moder_message_id=callback.message.message_id,
         moder_chat_id=callback.message.chat.id,
@@ -500,6 +516,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     data = await state.get_data()
     application_id = data.get("application_id")
+    dbs_application_id = data.get("dbs_application_id")
     user_id = data.get("reject_user_id")
     reason = message.text
     message_text = data.get("message_text", "")
@@ -518,12 +535,12 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         db_status = ""
         try:
             success, db_message = await db_reject_application(
-                application_id,  
+                dbs_application_id,  
                 moderator_username
             )
                 
             if success:
-                db_status = f"✅ Обновлен статус (ID заявки: {application_id})"
+                db_status = f"✅ Обновлен статус (ID заявки: {dbs_application_id})"
             else:
                 db_status = f"❌ {db_message}"
         except Exception as e:
@@ -623,31 +640,33 @@ def parse_short_callback_data(callback_data: str) -> Dict[str, Any]:
 @moderator_router.callback_query(F.data.startswith(("i_r_", "r_r_")))
 async def reward_action(callback: CallbackQuery, bot: Bot):
     """Объединённый "Выдать+Отклонить" в один хендлер"""
-    
     try:
-        await callback.answer("⏳ Обработка...", show_alert=False)
+        await callback.answer("⏳ Обрабатываем...", show_alert=False)
     except Exception:
         pass
-
     # Парсим callback_data
     data = parse_short_callback_data(callback.data)
+    print(data)
     if not data:
         await callback.message.edit_text("❌ Ошибка данных кнопки!")
         return
     
     request_id = data["request_id"]
+
     user_id = data["user_id"]
     item_id = data["item_id"]
     item_price = data["item_price"]
     action = data["action"]
-    
+    print (request_id, user_id, item_id, item_price, action)
     # Быстрое название поощрения по айди
     item_name = get_item_name(item_id) if item_id else "Не указано"
+    print (item_name, type(item_name))
     
     utc_time = callback.message.date
     ekaterinburg_time = datetime.now()
     moderator_username = callback.from_user.username or callback.from_user.full_name
-    user_full_name = db_get_user_full_name( user_id)
+    user_full_name = await db_get_user_full_name( str(user_id))
+    print (user_full_name, type(user_full_name))
 
     # Логика действия
     if action == "issue":
@@ -678,7 +697,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         success, message = await db_return_tiukoins( user_id, item_price)
 
         if success:
-            tiukoins_status = f"💰 <b>ТИУКоины возвращены:</b> {item_price:.1f}"
+            tiukoins_status = f"💰 <b>ТИУКоины возвращены:</b> {item_price}"
         else:
             tiukoins_status = f"⚠️ <b>Ошибка возврата:</b> {message}"
         

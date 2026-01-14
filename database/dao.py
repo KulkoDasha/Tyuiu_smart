@@ -125,7 +125,7 @@ async def db_get_user_full_name(session, tg_id_str:str ) -> str:
     tg_id = int(tg_id_str)
     full_name = await session.scalar(select(Users.full_name).where(Users.tg_id == tg_id))
     if full_name:
-        return full_name
+        return str(full_name)
     else:
         return ""
     
@@ -225,6 +225,7 @@ async def db_approve_application(
     Модератор принимает заявку и начисляет тиукоины
     """
     try:
+        #tiukoins_amount = float( tiukoins_amount_str)
         # ✅ 1. Обновляем заявку через CORE (без ORM!)
         result = await session.execute(
             update(Event_applications)

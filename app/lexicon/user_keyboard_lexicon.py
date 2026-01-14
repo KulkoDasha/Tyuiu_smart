@@ -45,7 +45,7 @@ LEXICON_USER_KEYBOARD = {
     "role_volunteer":"🤝 Волонтёр/помощник",
     "role_coorganizer":"🤲 Соорганизатор",
     "role_organizer":"📋 Организатор",
-    "role_mentor":"👨‍🏫 Наставник/куратор",
+    "role_mentor":"🎤 Наставник/куратор",
     "role_speaker":"🎤 Спикер/эксперт/член жюри",
     "role_leader":"👑 Руководитель/лидер/староста/командир",
     
