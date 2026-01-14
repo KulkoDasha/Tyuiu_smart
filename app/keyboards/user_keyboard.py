@@ -161,7 +161,7 @@ class ChoiceOfRoleInlineButtons:
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["role_volunteer"], callback_data="role_volunteer")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["role_coorganizer"], callback_data="role_coorganizer")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["role_organizer"], callback_data="role_organizer")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["role_mentor"], callback_data="role_mentor")],
+                                [InlineKeyboardButton(text="🎤 Наставник/куратор", callback_data="role_mentor")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["role_speaker"], callback_data="role_speaker")],
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["role_leader"], callback_data="role_leader")]
                             ])        
