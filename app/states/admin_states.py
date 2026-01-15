@@ -20,3 +20,5 @@ class ModeratorStates(StatesGroup):
     waiting_reject_application_reason = State()
     waiting_repeatability_factor = State()
     waiting_delete_user_tg_id = State()
+    waiting_delete_user_reason = State()
+    waiting_accept_to_delete_all_users = State()

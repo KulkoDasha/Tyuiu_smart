@@ -20,7 +20,6 @@ class DynamicCatalogKeyboard:
             # Заголовок
             keyboard.append([
                 InlineKeyboardButton(text="🎁 Поощрение", callback_data="ignore"),
-                InlineKeyboardButton(text="📦 Кол-во", callback_data="ignore"),
                 InlineKeyboardButton(text="💎 Стоимость", callback_data="ignore")
             ])
             
@@ -31,7 +30,6 @@ class DynamicCatalogKeyboard:
                         text=item['name'][:20] + "..." if len(item['name']) > 20 else item['name'],
                         callback_data=f"view_item_{item['id']}"
                     ),
-                    InlineKeyboardButton(text=str(item['quantity']), callback_data="ignore"),
                     InlineKeyboardButton(text=f"{item['price']}", callback_data="ignore")
                 ])
             
