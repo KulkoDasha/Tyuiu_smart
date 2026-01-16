@@ -390,7 +390,7 @@ async def db_return_tiukoins(session,
     
 
 @connection
-async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str]:
+async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, Optional[int]]:
     """
     Удаляет пользователя по tg_id.
     """
@@ -405,21 +405,23 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str]:
         
         if not user:
             logger.info(f"Пользователь с tg_id {tg_id} не найден")
-            return False, f"Пользователь с ID {tg_id} не найден"
+            return False, f"Пользователь с ID {tg_id} не найден", None
         
         logger.info(f"Удаляю пользователя: {user.full_name} (tg_id: {tg_id})")
         
         # 2. Удаляем (cascade delete удалит связанные заявки автоматически)
+        user_db_id = user.id
+
         await session.delete(user)
         await session.commit()
         
         logger.info(f"✅ Успешно удален пользователь tg_id={tg_id}")
-        return True, f"✅ Удален пользователь: {user.full_name} ({user.tg_id})"
+        return True, f"✅ Удален пользователь: {user.full_name} ({user.tg_id})", user_db_id
         
     except Exception as e:
         logger.error(f"❌ Ошибка удаления пользователя {tg_id_str}: {e}")
         await session.rollback()
-        return False, f"❌ Ошибка: {str(e)}"
+        return False, f"❌ Ошибка: {str(e)}", None
 
     
 @connection
