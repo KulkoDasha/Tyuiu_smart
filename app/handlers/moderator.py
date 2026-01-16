@@ -451,7 +451,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
          
         db_status = await approve_db(dbs_application_id,moderator_username,coins)
         if db_status.startswith("❌"):
-            await message.edit_text("Произошла ошибка при сохранении в базу данных. Пожалуйста, попробуйте позже")
+            await message.edit_text("Произошла ошибка при сохранении в базу данных. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
             await state.clear()
             return
 
@@ -488,7 +488,8 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         try:
             await bot.send_message(
                 chat_id=user_id,
-                text=LEXICON_TEXT["application_event_completed"].format(awarded_amount=awarded_amount, event_name = data.get('name_of_event')),
+                text=(f"😊 Ваша заявка на получение ТИУКионов подтверждена.\n<b>Мероприятие:</b> «{data.get('name_of_event')}»\n<b>Направление внеучебной деятельности:</b> «{data.get('event_direction')}»\n"
+                 f"Вам начислено {awarded_amount} «ТИУкоинов»."),
                 reply_markup=menu_keyboard
             )
             await coef_message.delete()
@@ -774,4 +775,4 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         await callback.answer(f"✅ Студент {user_id} уведомлён!", show_alert=True)
 
     except Exception:
-        await callback.answer(f"❌ Студент не {user_id} уведомлён!", show_alert=True)
+        await callback.answer(f"❌ Студент {user_id} не уведомлён!", show_alert=True)

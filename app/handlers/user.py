@@ -216,7 +216,7 @@ async def process_course_incorrect(message:Message):
 
 @user_router.message(StateFilter(RegistrationFormStates.start_year), lambda message: message.text.isdigit() 
                      and len(message.text) == 4
-                     and 2020 <= int(message.text) <= 2200) 
+                     and 2010 <= int(message.text) <= 2200) 
 async def start_year_sent(message: Message, state: FSMContext):
     """
     Обрабатывает введенный год поступления и запрашивает год окончания
@@ -384,12 +384,12 @@ async def _handle_error(callback: CallbackQuery, error: Exception):
     """Обработка ошибок"""
     try:
         await callback.message.edit_text(
-            text="❌ Произошла ошибка при обработке запроса. Попробуйте позже."
+            text="❌ Произошла ошибка при обработке запроса. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support"
         )
     except Exception:
         try:
             await callback.message.answer(
-                text="❌ Произошла ошибка при обработке запроса. Попробуйте позже."
+                text="❌ Произошла ошибка при обработке запроса. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support"
             )
         except Exception:
             pass
@@ -502,7 +502,7 @@ async def edit_groupe_incorrect(message:Message):
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_start_year), lambda message: message.text.isdigit() 
                      and len(message.text) == 4
-                     and 2020 <= int(message.text) <= 2200)
+                     and 2010 <= int(message.text) <= 2200)
 async def edit_start_year(message:Message, state: FSMContext):
     await state.update_data(start_year=message.text)
     await show_updated_form(message, state)
@@ -783,7 +783,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
         
         if not database_result.get("success"):
             print(f"❌ ОШИБКА В БД: {database_result.get('error', 'Неизвестная ошибка')}")
-            await callback.message.answer("❌ Ошибка сохранения в базу данных. Попробуйте позже.")
+            await callback.message.answer("❌ Ошибка сохранения в базу данных. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
             await callback.answer()
             await state.clear()
             return 
@@ -800,7 +800,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             print("✅ СООБЩЕНИЕ ОТПРАВЛЕНО МОДЕРАТОРУ")
         else:
             print("⚠️ СООБЩЕНИЕ НЕ ОТПРАВЛЕНО МОДЕРАТОРУ")
-            await callback.message.answer("❌ Ваша заявка не отправлена модератору. Попробуйте позже.")
+            await callback.message.answer("❌ Ваша заявка не отправлена модератору. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
         if not sheets_result.get("success"):
             print(f"❌ ОШИБКА В GOOGLE SHEETS: {sheets_result.get('error', 'Неизвестная ошибка')}")
         else:
@@ -811,7 +811,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
         import traceback
         traceback.print_exc()
         
-        await callback.message.answer("❌ Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже.")
+        await callback.message.answer("❌ Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
     
     await callback.answer()
     await state.clear()
@@ -1282,7 +1282,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         )
         if not success:
             # Если не удалось списать тиукоины
-            await callback.message.answer(f"❌ Ошибка списания ТИУкоинов: {message}")
+            await callback.message.answer(f"❌ Ошибка списания ТИУкоинов: {message}. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
             return
         
         purchase_result = googlesheet_service.purchase_item(item_id)
@@ -1302,13 +1302,12 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     
         reward_request = googlesheet_service.add_reward_request(request_data)
         if not reward_request.get("success"):
-            confirm_text = f"❌ Ошибка создания заявки: {reward_request.get('error')}"
+            confirm_text = f"❌ Ошибка создания заявки: {reward_request.get('error')}. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support"
             await callback.message.edit_text(confirm_text, parse_mode="HTML")
             await state.clear()
             
         sheets_status = "✅" if reward_request.get("success") else "❌"
         sheets_row = reward_request.get('row', 'N/A') if reward_request.get("success") else "Ошибка"
-        db_status = "✅" if success else "❌" #Он тут нигде не используется удалить????????
         
         request_id = reward_request['request_id']
         confirm_text = (
@@ -1318,7 +1317,9 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n"
             f"📅 <b>Дата оформления:</b> {purchase_date}\n"
             f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Мельникайте, 72, корпус 1, кабинет 103\n"
-            f"📞<b>Обязательная запись по телефону:</b> 8 (3452) 28-39-76 ")
+            f"🕓 <b>Режим работы:</b> Пн–Чт с 9:00 до 18:00, Пт с 9:00 до 16:45\n"
+            f"📞<b>Обязательная запись по телефону:</b> 8 (3452) 28-39-76 или электронной почте torlopovaaa@tyuiu.ru\n\n"
+            f"Обратите внимание\nКак только вы получите поощрение - вернуть или обменять его будет невозможно. Если вы хотите отменить выдачу поощрения свяжитесь с нами. ТИУкоины при отмене будут возвращены")
 
         moderator_message = (
             "🔔 <b>Новая заявка на получение поощрения</b>\n\n"
@@ -1423,7 +1424,7 @@ async def about_competition_start(callback: CallbackQuery,state: FSMContext):
             filename = "Положение_о_конкурсе_ТИУмничка.pdf"
         )
         try:
-            await callback.message.edit_text(text = "Пожалуйста, дождитесь загрузки положения о конкурсе", reply_markup=None)
+            await callback.message.edit_text(text = LEXICON_TEXT["loading_document"], reply_markup=None)
             await callback.message.answer_document(document=document, reply_markup=menu_keyboard)
             await callback.answer()
             await state.clear()
@@ -1431,7 +1432,7 @@ async def about_competition_start(callback: CallbackQuery,state: FSMContext):
             pass
     elif callback.data == "see_cards":
         try:
-            await callback.message.edit_text(text = "Пожалуйста, дождитесь загрузки карточек", reply_markup=None)
+            await callback.message.edit_text(text = LEXICON_TEXT["loading_cards"], reply_markup=None)
             await callback.message.answer("Тут будут карточки")
             await callback.answer()
             await state.clear()
