@@ -2,8 +2,14 @@ LEXICON_USER_KEYBOARD = {
     "submit_application": "📝 Подать заявку",
     "my_tyuiu_coins": "💎 Мои ТИУкоины",
     "catalog_of_rewards": "📖 Каталог поощрений",
-    "agreement_of_contest": "📃 О конкурсе",
+    "agreement_of_contest": "ℹ️ О конкурсе",
     "support": "❓ Поддержка",
+    
+    "balance_coins": "💎 Баланс ТИУкоинов",
+    "application_history": "📝 История заявок",
+
+    "contest_cards": "🖼️ Карточки",
+    "contest_full_text": "📄 Полный текст документа",
 
     "read_the_agreement": "📃 Ознакомиться с текстом согласия",
     "give_agreement": "✅ Даю согласие",
@@ -35,7 +41,7 @@ LEXICON_USER_KEYBOARD = {
     "topic_tourism_travel": "🏕 Туризм и путешествия",
     "topic_digital_sport": "🎮 Фиджитал спорт",
     "topic_student_units": "🎓 Студенческие отряды",
-    "topic_united_student_council": "❤️ Совет обучающихся",
+    "topic_united_student_council": "👥 ОСО/Совет общежитий/Профсоюз",
     "topic_headman": "🗣 Старостат",
 
     "role_spectator":"👂 Зритель/слушатель",
@@ -62,13 +68,6 @@ LEXICON_USER_KEYBOARD = {
     "edit_role": "✏️ Изменить роль",
     "edit_confirmation_material": "✏️ Изменить материал, подтверждающий участие",
 
-    "item_pencil": "✏️ Карандаш",
-    "item_sticker_pack": "📜 Стикерпак",
-    "item_notebook": "📓 Блокнот",
-    "item_shopper": "🛍️ Шоппер",
-    "item_sweatshirt" : "🧥 Свитшот",
-    "item_olympia_course": "🏆 Курс «Олимпия»",
-
     "save_registration_form":"✅ Сохранить анкету",
     "change_registration_form":"✏️ Изменить данные",
 
@@ -81,6 +80,13 @@ LEXICON_USER_KEYBOARD = {
     "end_year":"Изменить год окончания обучения",
     "phone_number":"Изменить номер телефона",
     "email":"Изменить почту",
+
+    "select_item": "✅ Выбрать этот товар",
+    "back_to_catalog": "⬅️ Назад к каталогу",
+    "close_item": "❌ Закрыть",
+
+    "confirm_purchase": "✅ Да, подтверждаю",
+    "cancel_purchase": "❌ Нет, отменить",
 
     "support_write_moderator_of_the_direct":"Обратиться к модератору направления",
     "support_feedback":"Обратная связь",
