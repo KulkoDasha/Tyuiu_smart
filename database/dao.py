@@ -73,15 +73,21 @@ async def db_set_user(session,
 async def db_delete_all_users(session) -> Tuple[bool, str]:
     """
     Удаляет ВСЕХ пользователей из базы данных
+    Сначала удаляет все связанные заявки, потом пользователей
     """
     try:
-        result = await session.execute(delete(Users))
+        # 1. Сначала удаляем ВСЕ заявки
+        result_apps = await session.execute(delete(Event_applications))
+        deleted_apps_count = result_apps.rowcount
         
-        deleted_count = result.rowcount 
+        # 2. Потом удаляем ВСЕХ пользователей
+        result_users = await session.execute(delete(Users))
+        deleted_users_count = result_users.rowcount
+        
         await session.commit()
         
-        logger.warning(f"💥 УДАЛЕНО ВСЕХ ПОЛЬЗОВАТЕЛЕЙ! {deleted_count} записей")
-        return True, f"✅ Успешно удалено {deleted_count} пользователей"
+        logger.warning(f"💥 УДАЛЕНО ВСЕ! Заявки: {deleted_apps_count}, Пользователи: {deleted_users_count}")
+        return True, f"✅ Успешно удалено {deleted_users_count} пользователей и {deleted_apps_count} заявок"
     
     except SQLAlchemyError as e:
         await session.rollback()
@@ -89,7 +95,7 @@ async def db_delete_all_users(session) -> Tuple[bool, str]:
         return False, f"Ошибка БД: {str(e)}"
     
     except Exception as e:
-        logger.error(f"❌ Критическая ошибка при удалении пользователей: {e}")
+        logger.error(f"❌ Критическая ошибка при удалении: {e}")
         return False, f"Ошибка: {str(e)}"
 
 

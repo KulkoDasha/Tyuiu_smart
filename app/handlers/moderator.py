@@ -262,7 +262,7 @@ async def process_the_request_answer(message: Message, state: FSMContext, bot: B
     try:
         await bot.send_message(
             chat_id=user_id,
-            text=f"📨 <b>Ответ от службы поддержки\nВаш вопрос:</b>{original_message}\n<b>Ответ:</b> {answer}\n\n💬 Если у вас остались вопросы, напишите нам снова!"
+            text=f"📨 <b>Ответ от службы поддержки\n\nВаш вопрос:</b>{original_message}\n<b>Ответ:</b> {answer}\n\n💬 Если у вас остались вопросы, напишите нам снова!"
         )
         await message.answer(f"✅ Ответ пользователю {user_id} отправлен!")
         await state.clear()
@@ -405,9 +405,11 @@ async def send_message(callback:CallbackQuery,user_id:int,
             f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup=None, parse_mode="HTML"
         )
+    print(f"Sending to user_id={user_id}, event_name={app_data.get('name_of_event')}")
     await bot.send_message(
                 chat_id=user_id,
-                text=LEXICON_TEXT["application_event_completed"].format(awarded_amount=coins,event_name = app_data.get('name_of_event')),
+                text=(f"😊 Ваша заявка на получение ТИУкионов подтверждена.\n\n<b>Мероприятие:</b> «{app_data.get('name_of_event')}»\n<b>Направление внеучебной деятельности:</b> «{app_data.get('event_direction')}»\n"
+                 f"Вам начислено {coins} ТИУкоинов."),
                 reply_markup=menu_keyboard
             )
 
@@ -449,7 +451,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
             amount=awarded_amount
         ) 
          
-        db_status = await approve_db(dbs_application_id,moderator_username,coins)
+        db_status = await approve_db(dbs_application_id,moderator_username,awarded_amount)
         if db_status.startswith("❌"):
             await message.edit_text("Произошла ошибка при сохранении в базу данных. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
             await state.clear()
@@ -488,8 +490,8 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         try:
             await bot.send_message(
                 chat_id=user_id,
-                text=(f"😊 Ваша заявка на получение ТИУКионов подтверждена.\n<b>Мероприятие:</b> «{data.get('name_of_event')}»\n<b>Направление внеучебной деятельности:</b> «{data.get('event_direction')}»\n"
-                 f"Вам начислено {awarded_amount} «ТИУкоинов»."),
+                text=(f"😊 Ваша заявка на получение ТИУКионов подтверждена.\n\n<b>Мероприятие:</b> «{data.get('name_of_event')}»\n<b>Направление внеучебной деятельности:</b> «{data.get('event_direction')}»\n"
+                 f"Вам начислено {awarded_amount} ТИУкоинов."),
                 reply_markup=menu_keyboard
             )
             await coef_message.delete()
@@ -561,7 +563,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
             )
                 
             if success:
-                db_status = f"✅ Обновлен статус (ID: {dbs_application_id})"
+                db_status = f"✅ Обновлено (ID: {dbs_application_id})"
             else:
                 db_status = f"❌ {db_message}"
         except Exception as e:
@@ -600,12 +602,12 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         await bot.edit_message_text(
             chat_id=moder_chat_id,
             message_id=moder_message_id,
-            text=f"❌ Заявка <b>отклонена</b>\n\n"
-                 f"👤 <b>Пользователь</b> {app_data.get('full_name', '')}(ID: {user_id})\n"
-                 f"📊 Google Sheets: {sheets_status}({app_data.get('event_direction', 'Неизвестно')},{row_id})\n"
+            text=f"❌ Заявка отклонена\n\n"
+                 f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
+                 f"📝 <b>Причина:</b> {reason}\n"
+                 f"📊 <b>Google Sheets:</b> {sheets_status} ({app_data.get('event_direction', 'Неизвестно')},{row_id})\n"
                  f"💾 <b>База данных:</b> {db_status}\n"
                  f"👮 <b>Модератор:</b> @{moderator_username}\n"
-                 f"📝 <b>Причина:</b> {reason}\n"
                  f"🕐 <b>Время отклонения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup=None,
             parse_mode="HTML"
