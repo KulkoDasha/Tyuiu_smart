@@ -2,7 +2,7 @@ import logging
 
 from .database_service import connection
 from .models import Users, Event_applications 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, time, date, timedelta
@@ -70,51 +70,27 @@ async def db_set_user(session,
     
 
 @connection
-async def db_delete_graduated_users(session) -> Tuple[int, str]:
-    """ Удаляет пользователей, у которых год окончания обучения равен текущему году.
-     Возвращает: (количество_удаленных, сообщение) """
+async def db_delete_all_users(session) -> Tuple[bool, str]:
+    """
+    Удаляет ВСЕХ пользователей из базы данных
+    """
     try:
-        from datetime import datetime
-        current_year = datetime.now().year
+        result = await session.execute(delete(Users))
         
-        # Находим всех студентов, которых нужно удалить
-        graduated_users = await session.scalars(
-            select(Users)
-            .where(Users.end_year == current_year)
-        )
-        users_to_delete = graduated_users.all()
-        deleted_count = len(users_to_delete)
-        
-        if deleted_count == 0:
-            logger.info("Выпускников для удаления не найдено")
-            return 0, "Выпускников для удаления не найдено"
-        
-        # Удаляем связанных заявки (cascade delete сработает автоматически)
-        for user in users_to_delete:
-            logger.info(f"Удаляю выпускника: {user.full_name} (tg_id: {user.tg_id})")
-            await session.delete(user)
-
-        # Сбрасываем баланс всех оставшихся пользователей до 0.0
-        remaining_users = await session.scalars(
-            select(Users)
-            .where(Users.end_year > current_year)  # Те, кто еще учится
-        )
-        remaining_users_list = remaining_users.all()
-        
-        reset_count = 0
-        for user in remaining_users_list:
-            if user.tiukoins != 0.0:  # Обновляем только если баланс не 0
-                user.tiukoins = 0.0
-                reset_count += 1
-        
+        deleted_count = result.rowcount 
         await session.commit()
-        logger.info(f"Удалено {deleted_count} выпускников")
-        return deleted_count, f"Удалено {deleted_count} выпускников. сброшено балансов {reset_count}"
+        
+        logger.warning(f"💥 УДАЛЕНО ВСЕХ ПОЛЬЗОВАТЕЛЕЙ! {deleted_count} записей")
+        return True, f"✅ Успешно удалено {deleted_count} пользователей"
     
     except SQLAlchemyError as e:
-        logger.error(f"Ошибка при удалении выпускников: {e}")
         await session.rollback()
-        return 0, f"Ошибка базы данных: {str(e)}"
+        logger.error(f"❌ Ошибка БД при удалении всех пользователей: {e}")
+        return False, f"Ошибка БД: {str(e)}"
+    
+    except Exception as e:
+        logger.error(f"❌ Критическая ошибка при удалении пользователей: {e}")
+        return False, f"Ошибка: {str(e)}"
 
 
 @connection 
@@ -225,8 +201,7 @@ async def db_approve_application(
     Модератор принимает заявку и начисляет тиукоины
     """
     try:
-        #tiukoins_amount = float( tiukoins_amount_str)
-        # ✅ 1. Обновляем заявку через CORE (без ORM!)
+
         result = await session.execute(
             update(Event_applications)
             .where(
@@ -247,7 +222,6 @@ async def db_approve_application(
 
         tg_id = app_data.tg_id
 
-        # ✅ 2. Обновляем баланс
         await session.execute(
             update(Users)
             .where(Users.tg_id == tg_id)
@@ -416,7 +390,7 @@ async def db_return_tiukoins(session,
     
 
 @connection
-async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str]:
+async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, Optional[int]]:
     """
     Удаляет пользователя по tg_id.
     """
@@ -431,18 +405,85 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str]:
         
         if not user:
             logger.info(f"Пользователь с tg_id {tg_id} не найден")
-            return False, f"Пользователь с ID {tg_id} не найден"
+            return False, f"Пользователь с ID {tg_id} не найден", None
         
         logger.info(f"Удаляю пользователя: {user.full_name} (tg_id: {tg_id})")
         
         # 2. Удаляем (cascade delete удалит связанные заявки автоматически)
+        user_db_id = user.id
+
         await session.delete(user)
         await session.commit()
         
         logger.info(f"✅ Успешно удален пользователь tg_id={tg_id}")
-        return True, f"✅ Удален пользователь: {user.full_name}"
+        return True, f"✅ Удален пользователь: {user.full_name} ({user.tg_id})", user_db_id
         
     except Exception as e:
         logger.error(f"❌ Ошибка удаления пользователя {tg_id_str}: {e}")
         await session.rollback()
-        return False, f"❌ Ошибка: {str(e)}"
+        return False, f"❌ Ошибка: {str(e)}", None
+
+    
+@connection
+async def db_get_application_history(session, tg_id_str: str) -> Tuple[bool, list[list]]:
+    """
+    Последние заявки пользователя за последние 3 месяца (по тг айди)
+    Возвращает: направление, название мероприятия, дату, роль, ТИУкоины, статус 
+    """
+    try:
+        tg_id = int(tg_id_str)
+        three_months_ago = datetime.now() - timedelta(days=90)
+
+        stmt = select(Event_applications).where(
+            Event_applications.tg_id == tg_id,
+            Event_applications.date_of_event >= three_months_ago
+        ).order_by(Event_applications.date_of_event.desc())
+
+        result = await session.execute(stmt)
+        applications = result.scalars().all()
+
+        apps_list = []
+        for app in applications:
+            apps_list.append([
+                app.event_direction,
+                app.event_name,
+                app.date_of_event.strftime('%d-%m-%Y'),
+                app.event_role,
+                app.amount_tiukoins,
+                app.event_application_status
+            ])
+
+        logger.info(f"📋 Заявки пользователя {tg_id}: найдено {len(apps_list)} за 3 месяца")
+        return True, apps_list
+    
+    except SQLAlchemyError as e:
+        logger.error(f"❌ Ошибка БД при получении заявок пользователя {tg_id}: {e}")
+        return False, []
+
+    except Exception as e:
+        logger.error(f"❌ Неожиданная ошибка при получении заявок: {e}")
+        return False, []
+    
+
+@connection
+async def db_get_all_user_tg_ids(session) -> Tuple[bool, list[int]]:
+    """
+    Возвращает список всех TG ID пользователей из базы данных 
+    """
+    try:
+        stmt = select(Users.tg_id) 
+        
+        result = await session.execute(stmt)
+        tg_ids = result.scalars().all()
+        all_ids = [str(id) for id in tg_ids]
+        
+        logger.info(f"📋 Всего пользователей в БД: {len(all_ids)}")
+        return True, list(all_ids)  
+
+    except SQLAlchemyError as e:
+        logger.error(f"❌ Ошибка БД при получении всех TG ID: {e}")
+        return False, []
+    
+    except Exception as e:
+        logger.error(f"❌ Неожиданная ошибка: {e}")
+        return False, []

@@ -5,6 +5,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 import time
 
+from database import *
+
 from ..config import config
 from ..filters import AdminChatFilter
 from ..keyboards import AdminPanelInlineButtons
@@ -41,8 +43,7 @@ async def process_notify_all_users_message(message: Message, state: FSMContext, 
     message_for_users = message.text
     await message.delete()
     await message.answer(f"Рассылка уведомления всем пользователям начата.\n\n<b>Уведомление:</b> {message_for_users}")
-    #db_get_all_tg_ids() - название функции в БД, должна отдавать массив в строках. Ниже пример.
-    all_ids = ['855291516','1293014025','776500035','1073989916','1376199572'] # Пример для тестов. Будет функция в БД - убрать
+    db_status, all_ids = await db_get_all_user_tg_ids()
     success_count=0
 
     try:
@@ -129,7 +130,7 @@ async def process_notify_user_message_final(message: Message, state: FSMContext,
     await state.clear()
 
 @admin_router.message(Command("delete_user"))
-async def delete_user(message: Message, state: FSMContext):
+async def delete_user_command(message: Message, state: FSMContext):
     """
     Начинает удаление конкретного пользователя
     """
@@ -139,10 +140,10 @@ async def delete_user(message: Message, state: FSMContext):
         "💡 Пример: `1293014025`",
         parse_mode="Markdown"
     )
-    await state.set_state(ModeratorStates.waiting_delete_user_reason)
+    await state.set_state(ModeratorStates.waiting_delete_user_tg_id)
 
-@admin_router.message(ModeratorStates.waiting_delete_user_reason)
-async def delete_user(message: Message, state: FSMContext):
+@admin_router.message(ModeratorStates.waiting_delete_user_tg_id)
+async def get_user_id_for_delete(message: Message, state: FSMContext):
     """
     Просит причину удаления пользователя
     """
@@ -152,9 +153,9 @@ async def delete_user(message: Message, state: FSMContext):
         "❔ Введите причину удаления пользователя из системы:\n",
         parse_mode="Markdown"
     )
-    await state.set_state(ModeratorStates.waiting_delete_user_tg_id)
+    await state.set_state(ModeratorStates.waiting_delete_user_reason)
 
-@admin_router.message(ModeratorStates.waiting_delete_user_tg_id)
+@admin_router.message(ModeratorStates.waiting_delete_user_reason)
 async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
     """
     Удаляет конкретного пользователя
@@ -162,16 +163,17 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
     reason_for_delete = message.text
     data = await state.get_data()
     user_id = data.get("user_id")
+    user_full_name = await db_get_user_full_name(user_id)
     await message.answer("🔄 Проверяю и удаляю...")
 
     # Инициализация статусов
-    db_success = db_result = None
+    db_success = db_result = db_user_id = None
     google_sheets_status = google_sheets_row = "⏳"
     
     try:
         # БД ВСЕГДА работает (приоритетная)
         try:
-            db_success, db_result = await db_delete_user_by_tg_id(user_id)
+            db_success, db_result, db_user_id= await db_delete_user_by_tg_id(user_id)
             db_status = "✅" if db_success else "❌"
         except Exception as db_error:
             db_success = False
@@ -179,8 +181,10 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
             db_status = "❌"
         
         # Google Sheets (опционально)
+        print(f"🔍 Ищу пользователя {user_id} в Google Sheets...")
         try:
             google_sheets_success = googlesheet_service.delete_user_by_tg_id(int(user_id))
+            print((f"Google Sheets ответ: {google_sheets_success}"))
             if google_sheets_success.get("success"):
                 google_sheets_status = "✅"
                 google_sheets_row = google_sheets_success.get('deleted_row', 'N/A')
@@ -194,21 +198,22 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
         # Финальный отчет
         if db_success:
             await message.answer(
-                f"✅ <b>Пользователь {user_id} удалён из системы</b>\n\n"
-                f"❔ <b>Причина: {reason_for_delete}</b>"
-                f"💾 <b>База данных:</b> {db_status}\n"
-                f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
-                f"  └─ {google_sheets_row}\n\n",
-                f"Если пользователь не удалён из GoogleSheets - сделайте это вручную"
+                f"✅ <b>Пользователь {user_full_name} ({user_id}) удалён из системы</b>\n\n"
+                f"❔ <b>Причина: {reason_for_delete}</b>\n"
+                f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id}) \n"
+                f"📊 <b>Google Sheets:</b>  (строка {google_sheets_row})\n\n"
+                f"Если пользователь не удалён из GoogleSheets - сделайте это вручную",
+                parse_mode="HTML"
             )
             # Уведомление ПОЛЬЗОВАТЕЛЮ
             try:
                 await bot.send_message(
                     chat_id=user_id,
                     text=f"❌ Ваш аккаунт был удалён из системы\n\n"
-                         f"❔ <b>Причина: {reason_for_delete}</b>"
+                         f"❔ <b>Причина: {reason_for_delete}</b>\n"
                          f"При наличии вопросов обратитесь в поддержку /help",
-                    reply_markup=ReplyKeyboardRemove()
+                    reply_markup=ReplyKeyboardRemove(),
+                    parse_mode="HTML"
                 )
             except Exception:
                 await message.answer("⚠️ Уведомление пользователю не доставлено")
@@ -217,9 +222,9 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
                 f"❌ <b>Ошибка БД</b>\n\n"
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"  └─ {db_result}\n"
-                f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
-                f"  └─ {google_sheets_row}\n\n"
-                f"⚠️ Пользователь НЕ удалён"
+                f"📊 <b>Google Sheets:</b> {google_sheets_status} (строка {google_sheets_row})\n\n"
+                f"⚠️ Пользователь НЕ удалён",
+                parse_mode="HTML"
             )
             
     except Exception as e:
@@ -227,7 +232,8 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
             f"💥 <b>Критическая ошибка:</b>\n"
             f"<code>{str(e)}</code>\n\n"
             f"БД: {db_status if db_status else 'Неизвестно'}\n"
-            f"Google Sheets: {google_sheets_status}"
+            f"Google Sheets: {google_sheets_status}",
+            parse_mode="HTML"
         )
     
     await state.clear()
@@ -313,3 +319,25 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                              f"Очистка отменена! Больше так не балуйся:)")
         
         await state.clear()
+
+
+
+@admin_router.message(Command("test_google_sheets"))
+async def test_google_sheets(message: Message):
+    """Тестовая функция для проверки Google Sheets"""
+    test_id = 1293014025  # ID который вы пытались удалить
+    
+    try:
+        await message.answer(f"🔄 Тестирую Google Sheets для ID: {test_id}")
+        
+        result = googlesheet_service.delete_user_by_tg_id(test_id)
+        
+        await message.answer(
+            f"📊 Результат теста:\n"
+            f"ID: {test_id}\n"
+            f"Результат: {result}\n"
+            f"Тип: {type(result)}\n"
+            f"Успешно: {result.get('success') if isinstance(result, dict) else 'Не dict'}"
+        )
+    except Exception as e:
+        await message.answer(f"❌ Ошибка теста: {e}")
