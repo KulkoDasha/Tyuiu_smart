@@ -64,7 +64,6 @@ async def send_the_agreement(callback: CallbackQuery):
     """
     Высылает согласие на обработку персональных данных
     """
-    await callback.answer()
     document = FSInputFile(
             path = agreement_path,
             filename = "Согласие на обработку персональных данных.pdf"
@@ -309,6 +308,16 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
 async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bot):
     """Обработка сохранения анкеты"""
     data = await state.get_data()
+    await callback.message.edit_text("✅ Анкета успешно заполнена!\nПодтвердите данные или выберите что изменить\n\n"
+                         f"<b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
+                         f"<b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
+                         f"<b>Направление:</b> {data.get('direction', 'Не указано')}\n"
+                         f"<b>Курс:</b> {data.get('course', 'Не указано')}\n"
+                         f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
+                         f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
+                         f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
+                         f"<b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}\n"
+                         f"<b>Email:</b>{data.get('email', 'Не указано')}\n")
     moderator_message = _prepare_moderator_message(data, callback)
     
     #Отправка модератору
@@ -493,7 +502,7 @@ async def edit_course_incorrect(message:Message):
     
 @user_router.message(StateFilter(EditRegistrationForm.edit_group),lambda message: is_valid_group(message.text) == True)
 async def edit_groupe(message:Message, state: FSMContext):
-    await state.update_data(groupe=message.text)
+    await state.update_data(group=message.text)
     await show_updated_form(message, state)
 
 @user_router.message(StateFilter(EditRegistrationForm.edit_group))
@@ -1117,20 +1126,37 @@ async def my_tiukoins_start(callback:CallbackQuery,state:FSMContext):
     """
     Высылает баланс или историю заявок
     """
-    #await db_get_application_history() - функция в БД отдавет массив с масивами
-    test = [["Направление внеуч деят","Название 1","12.12.2025","староста",60.0,"На рассмотрении"],["Старостат","Название 2","12.12.2025","Победитель",10.0,"Отклонена"],["Спорт","Название 3","12.12.2025","Спикер",20.0,"Принята"]]
     
     if callback.data == "my_tyuiu_coins":
         async with async_session() as session:
-            balance = await db_get_user_balance(session, str(callback.message.from_user.id))
+            balance = await db_get_user_balance(session, str(callback.from_user.id))
         await callback.message.edit_text(f"💎 <b>Ваш баланс:</b> {balance} ТИУкоинов")
         await callback.answer()
         await state.clear()
         
     elif callback.data == "application_history":
         await callback.message.delete()
+        db_success, db_applications = await db_get_application_history(str(callback.from_user.id))
+        if not db_success:
+            await callback.message.answer(
+                "❌ Не удалось загрузить историю заявок. Попробуйте позже.",
+                reply_markup=menu_keyboard
+            )
+            await callback.answer()
+            await state.clear()
+            return
+            
+        if not db_applications:
+            await callback.message.answer(
+                "📭 У вас пока нет заявок за последние 3 месяца.",
+                parse_mode="HTML",
+                reply_markup=menu_keyboard
+            )
+            await callback.answer()
+            await state.clear()
+            return
         application_text = "📝 <b>История заявок:</b>\n"
-        for i, app in enumerate(test, 1):
+        for i, app in enumerate(db_applications, 1):
             status_emoji = " "
             if "Принята" in app[5]:
                 status_emoji = "✅"
@@ -1501,8 +1527,7 @@ async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_message = (
         "❗️ <b>Новое сообщение от пользователя:</b> \n\n"
-        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} (ID: {message.from_user.id})\n"
-        f"👤 <b>ФИО:</b> {user_full_name}\n"
+        f"👤 <b>Пользователь:</b> {'❌ Пользователь не зарегистрирован' if user_full_name == '' else user_full_name} (ID: {message.from_user.id})\n"   
         f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"<b>Сообщение:</b> {message.text}"
     )
@@ -1559,8 +1584,7 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_message = (
         "❗️ <b>Новое сообщение от пользователя:</b> \n\n"
-        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} (ID: {message.from_user.id})\n"
-        f"👤 <b>ФИО:</b> {user_full_name}\n"
+        f"👤 <b>Пользователь:</b> {'❌ Пользователь не зарегистрирован' if user_full_name == '' else user_full_name} (ID: {message.from_user.id})\n"   
         f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"<b>Сообщение:</b> {message.text}"
     )

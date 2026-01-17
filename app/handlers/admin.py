@@ -243,7 +243,7 @@ async def delete_all_users(message: Message, state: FSMContext):
     """
     Начинает полную очистку системы от данных пользователей
     """
-
+    await message.delete()
     await message.answer("🗑️ Вы уверены что хотите <b>ПОЛНОСТЬЮ</b> очистить систему?\n\n"
                         "⚠️ <b>Это удалит ВСЕХ пользователей и заявки!</b>",
                         parse_mode="HTML")
@@ -254,8 +254,8 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
     """
     Полностью очищает систему от данных пользователей
     """
-
     if message.text == "Ye$, I w@nt to de1ete":
+        await message.delete()
         await message.answer("🔄 Выполняю полную очистку...")
     
         # Инициализация статусов
@@ -291,8 +291,9 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     f"🎉 <b>Система очищена!</b>\n\n"
                     f"💾 <b>База данных:</b> {db_status}\n"
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
-                    f"  └─ Удалено: {google_sheets_total_deleted}\n\n",
-                    f"Если данные не удалёны из GoogleSheets - сделайте это вручную"
+                    f"  └─ Удалено: {google_sheets_total_deleted}\n\n"
+                    f"Если данные не удалёны из GoogleSheets - сделайте это вручную",
+                    parse_mode="HTML"
                 )
             else:
                 await message.answer(
@@ -301,7 +302,8 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     f"  └─ {db_result}\n"
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                     f"  └─ {google_sheets_total_deleted}\n\n"
-                    f"⚠️ Очистка не выполнена"
+                    f"⚠️ Очистка не выполнена",
+                    parse_mode="HTML"
                 )
                 
         except Exception as e:
@@ -309,35 +311,15 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                 f"💥 <b>Критическая ошибка:</b>\n"
                 f"<code>{str(e)}</code>\n\n"
                 f"БД: {db_status if db_status else 'Неизвестно'}\n"
-                f"Google Sheets: {google_sheets_status}"
+                f"Google Sheets: {google_sheets_status}",
+                parse_mode="HTML"
             )
         
         await state.clear()
 
     else:
         await message.answer(f"❌Команда для очистки системы указана неверно!\n\n",
-                             f"Очистка отменена! Больше так не балуйся:)")
+                             f"Очистка отменена! Больше так не балуйся:)", parse_mode="HTML")
         
         await state.clear()
 
-
-
-@admin_router.message(Command("test_google_sheets"))
-async def test_google_sheets(message: Message):
-    """Тестовая функция для проверки Google Sheets"""
-    test_id = 1293014025  # ID который вы пытались удалить
-    
-    try:
-        await message.answer(f"🔄 Тестирую Google Sheets для ID: {test_id}")
-        
-        result = googlesheet_service.delete_user_by_tg_id(test_id)
-        
-        await message.answer(
-            f"📊 Результат теста:\n"
-            f"ID: {test_id}\n"
-            f"Результат: {result}\n"
-            f"Тип: {type(result)}\n"
-            f"Успешно: {result.get('success') if isinstance(result, dict) else 'Не dict'}"
-        )
-    except Exception as e:
-        await message.answer(f"❌ Ошибка теста: {e}")
