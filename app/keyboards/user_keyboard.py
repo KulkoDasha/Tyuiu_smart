@@ -256,10 +256,10 @@ class SelectingRewardInlineButtons:
     def get_inline_keyboard(item_id: int):
         keyboard = InlineKeyboardMarkup(
             inline_keyboard = [
-                                [InlineKeyboardButton(text="✅ Выбрать этот товар", callback_data=f"select_item_{item_id}")],
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["select_item"], callback_data=f"select_item_{item_id}")],
                                 [
-                                    InlineKeyboardButton(text="⬅️ Назад к каталогу", callback_data="show_catalog"),
-                                    InlineKeyboardButton(text="❌ Закрыть", callback_data="close_all")
+                                    InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["back_to_catalog"], callback_data="show_catalog"),
+                                    InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["close_item"], callback_data="close_all")
                                 ]
                             ])
         
@@ -275,10 +275,43 @@ class ConfirmationRewardInlineButtons:
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                             [
-                                InlineKeyboardButton(text="✅ Да, подтверждаю", callback_data=f"confirm_purchase_{item_id}"),
-                                InlineKeyboardButton(text="❌ Нет, отменить", callback_data=f"cancel_purchase_{item_id}")
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["confirm_purchase"], callback_data=f"confirm_purchase_{item_id}"),
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["cancel_purchase"], callback_data=f"cancel_purchase_{item_id}")
                             ]
                         ])
         
         return keyboard
 
+class AboutTheCompetition:
+    """
+    Инлайн-кнопки О конкурсе
+    """
+    
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                            [
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["agreement_of_contest"], callback_data=f"about_competition"),
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["contest_cards"], callback_data=f"see_cards")
+                            ]
+                        ])
+        
+        return keyboard
+
+class MyTiukoins:
+    """
+    Инлайн-кнопки Мои ТИУкоины
+    """
+    
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                            [
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["balance_coins"], callback_data=f"my_tyuiu_coins"),
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["application_history"], callback_data=f"application_history")
+                            ]
+                        ])
+        
+        return keyboard

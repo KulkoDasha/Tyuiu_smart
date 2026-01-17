@@ -7,7 +7,8 @@ from .user_states import (RegistrationFormStates,
                           EventApplicationStates,
                           ChangeEventApplicationStates,
                           SupportStates,
-                          CatalogOfRewardsStates)
+                          CatalogOfRewardsStates,
+                          AboutCompetition)
 
 __all__ = ["NotifificationAllUsers",
            "NotificationUser",
@@ -17,4 +18,5 @@ __all__ = ["NotifificationAllUsers",
            "EventApplicationStates",
            "ChangeEventApplicationStates",
            "SupportStates",
-           "CatalogOfRewardsStates"]
+           "CatalogOfRewardsStates",
+           "AboutCompetition"]

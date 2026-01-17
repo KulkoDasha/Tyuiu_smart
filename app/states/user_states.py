@@ -81,3 +81,11 @@ class CatalogOfRewardsStates(StatesGroup):
     show_item_details_state = State()
     show_purchase_confirmation_state = State()
     
+@dataclass
+class AboutCompetition(StatesGroup):
+    """
+    Состояния при нажатии на кнопку О конкурсе и Мои ТИУкоины
+    """
+    about_competition_start = State()
+    my_tiukoins_start = State()
+    
