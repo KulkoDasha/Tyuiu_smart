@@ -204,7 +204,7 @@ async def db_approve_application(
     tiukoins_amount: float
 ) -> Tuple[bool, str, float]:
     """
-    Модератор принимает заявку и начисляет тиукоины
+    Модератор принимает заявку и начисляет ТИУкоины
     """
     try:
 
@@ -235,7 +235,7 @@ async def db_approve_application(
         )
 
         await session.commit()
-        return True, "Заявка принята и тиукоины начислены", tiukoins_amount
+        return True, "Заявка принята и ТИУкоины начислены", tiukoins_amount
 
     except Exception as e:
         await session.rollback()
@@ -288,7 +288,7 @@ async def db_reject_application(
 @connection
 async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_of_item: str) -> Tuple[bool, str]:
     """
-    Списание тиукоинов у пользователя при заказе поощрения
+    Списание ТИУкоинов у пользователя при заказе поощрения
     """
     try:
             
@@ -307,7 +307,7 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
         current_balance = user.tiukoins
         
         if current_balance < spend_amount:
-            return False, f"Недостаточно тиукоинов. Ваш баланс: {current_balance:.1f}, требуется: {spend_amount:.1f}"
+            return False, f"Недостаточно ТИУкоинов.\nВаш баланс: {current_balance:.1f}. Требуется: {spend_amount:.1f}"
         
         # 4. Рассчитываем новый баланс в переменной
         new_balance = current_balance - spend_amount
@@ -319,19 +319,19 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
         await session.commit()
         
         logger.info(
-            f"✅ Списано {spend_amount} тиукоинов у пользователя {tg_id}. "
+            f"✅ Списано {spend_amount} ТИУкоинов у пользователя {tg_id}. "
             f"Поощрение: {name_of_item}. "
             f"Было: {current_balance:.1f}, стало: {new_balance:.1f}"
         )
         
-        return True, f"✅ Успешно! Списано {spend_amount} тиукоинов. Новый баланс: {new_balance:.1f}"
+        return True, f"✅ Успешно! Списано {spend_amount} ТИУкоинов. Новый баланс: {new_balance:.1f}"
         
     except SQLAlchemyError as e:
         await session.rollback()
-        logger.error(f"Ошибка при списании тиукоинов у пользователя {tg_id}: {e}")
+        logger.error(f"Ошибка при списании ТИУкоинов у пользователя {tg_id}: {e}")
         return False, f"Ошибка базы данных: {str(e)}"
     except Exception as e:
-        logger.error(f"Неожиданная ошибка при списании тиукоинов: {e}")
+        logger.error(f"Неожиданная ошибка при списании ТИУкоинов: {e}")
         return False, f"Ошибка: {str(e)}"
     
 
@@ -339,7 +339,7 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
 
 async def db_get_user_balance(session, tg_id_str: str) -> float:
     """
-    Получает текущий баланс тиукоинов пользователя
+    Получает текущий баланс ТИУкоинов пользователя
     """
     try:
         # Преобразуем строку в число
@@ -360,7 +360,7 @@ async def db_return_tiukoins(session,
                           tg_id_str: str,
                           item_price_str: str) -> Tuple[bool, str]:
     """
-    Возврат тиукоинов пользователю при отклонении
+    Возврат ТИУкоинов пользователю при отклонении
     """
     try: 
         tg_id = int(tg_id_str)
@@ -382,16 +382,16 @@ async def db_return_tiukoins(session,
         user.tiukoins = new_balance
         await session.commit()
 
-        logger.info(f"✅ Возвращено {item_price} тиукоинов пользователю {tg_id}. ")
-        return True, f"✅ Успешно! Возвращено {item_price} тиукоинов. Новый баланс: {new_balance:.1f}"
+        logger.info(f"✅ Возвращено {item_price} ТИУкоинов пользователю {tg_id}. ")
+        return True, f"✅ Успешно! Возвращено {item_price} ТИУкоинов. Новый баланс: {new_balance:.1f}"
     
     except SQLAlchemyError as e:
         await session.rollback()
-        logger.error(f"❌ Ошибка БД при возврате тиукоинов пользователю {tg_id}: {e}")
+        logger.error(f"❌ Ошибка БД при возврате ТИУкоинов пользователю {tg_id}: {e}")
         return False, f"Ошибка базы данных: {str(e)}"
     
     except Exception as e:
-        logger.error(f"❌ Неожиданная ошибка при возврате тиукоинов: {e}")
+        logger.error(f"❌ Неожиданная ошибка при возврате ТИУкоинов: {e}")
         return False, f"Ошибка: {str(e)}"
     
 

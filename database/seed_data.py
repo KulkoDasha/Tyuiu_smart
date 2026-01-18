@@ -1,6 +1,6 @@
 from sqlalchemy import insert
 import database
-import models
+from . import models
 engine = database.engine
 Roles = models.Roles
 from sqlalchemy import func
