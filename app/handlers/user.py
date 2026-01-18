@@ -64,11 +64,13 @@ async def send_the_agreement(callback: CallbackQuery):
     """
     Высылает согласие на обработку персональных данных
     """
+    doc = await callback.message.answer("⏳ Загружаем согласие на обработку персональных данных...")
     document = FSInputFile(
             path = agreement_path,
             filename = "Согласие на обработку персональных данных.pdf"
         )
     await callback.message.answer_document(document=document)
+    await doc.delete()
     await callback.answer()
 
 @user_router.callback_query(F.data == "give_agreement")
@@ -76,7 +78,6 @@ async def give_agreement(callback:CallbackQuery, state: FSMContext):
     """
     Обрабатывает нажатие на кнопку принять согласие и начинает заполнение анкеты
     """
-    
     # Логгер
     bot_logger.log_user_msg(
         tg_id=str(callback.from_user.id),
@@ -308,16 +309,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
 async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bot):
     """Обработка сохранения анкеты"""
     data = await state.get_data()
-    await callback.message.edit_text("✅ Анкета успешно заполнена!\nПодтвердите данные или выберите что изменить\n\n"
-                         f"<b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
-                         f"<b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
-                         f"<b>Направление:</b> {data.get('direction', 'Не указано')}\n"
-                         f"<b>Курс:</b> {data.get('course', 'Не указано')}\n"
-                         f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
-                         f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
-                         f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
-                         f"<b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}\n"
-                         f"<b>Email:</b>{data.get('email', 'Не указано')}\n")
+    await callback.message.edit_reply_markup(reply_markup=None)
     moderator_message = _prepare_moderator_message(data, callback)
     
     #Отправка модератору
@@ -749,6 +741,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     """
     Обрабатывает нажатие на кнопки отправить заявку/изменить заявку
     """
+    
     try:
         if callback.data == "confirm_application":
             await process_application_confirmation(callback, state, bot)
@@ -760,13 +753,14 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     except Exception as e:
         logger.error(f"Ошибка в registration_end: {e}")
         await callback.answer("❌ Произошла ошибка", show_alert=True)
-        await callback.message.delete()
+        await callback.message.edit_text("❌ Произошла ошибка. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
         await state.clear()
 
 async def process_application_confirmation(callback: CallbackQuery, state: FSMContext, bot: Bot):
     """
     Обрабатывает отправление заявки
     """
+    
     data = await state.get_data()
     user_id = callback.from_user.id
     thread_id = data.get("thread_id")
@@ -779,13 +773,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
     await state.update_data(tiukoins=tiukoins)
     data["tiukoins"] = tiukoins
     
-    await callback.message.edit_text(text= f"✅ <b>Заявка успешно заполнена!</b>\n\n"
-                                     f"🎯 <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
-                                     f"📌 <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
-                                     f"📅 <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
-                                     f"📍 <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
-                                     f"👤 <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
-                                     f"\n📎 <b>Подтверждающие материалы:</b> ({len(materials_list)} шт.)\n")
+    await callback.message.edit_reply_markup(reply_markup=None)
     
     try:
         database_result = await save_to_database(state, callback)
@@ -803,7 +791,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
         
         send_moderator = await send_to_moderator(
                 callback, user_id, sheets_result, ekaterinburg_time,
-                user_full_name, data, clean_role, database_result, bot, thread_id, event_direction
+                user_full_name, data, clean_role, database_result, bot, thread_id, event_direction,database_result
             )
         if send_moderator:
             print("✅ СООБЩЕНИЕ ОТПРАВЛЕНО МОДЕРАТОРУ")
@@ -897,7 +885,7 @@ def send_to_google_sheets(data: dict, user_id:int,user_full_name:str,ekaterinbur
 async def send_to_moderator(callback:CallbackQuery,user_id:int,
                             sheets_result,ekaterinburg_time,
                             user_full_name,data:dict,
-                            clean_role,result,bot,thread_id:int,event_direction):
+                            clean_role,result,bot,thread_id:int,event_direction,database_result):
     """
     Отправляет сообщение с данными в чат модераторов
     Возвращает True/False
@@ -906,7 +894,8 @@ async def send_to_moderator(callback:CallbackQuery,user_id:int,
             "📋 Новая заявка на проверку\n\n"
             f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
             f"(<b>ID:</b> {user_id})\n"
-            f"📊 <b>Google Sheets:</b> {'✅' if sheets_result.get('success') else '❌'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
+            f"📊 <b>Google Sheets:</b> {'✅ ' if sheets_result.get('success') else '❌'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
+            f"💾 <b>База данных:</b> {database_result['message']}\n"
             f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 <b>Данные заявки:</b>\n"
             f"• <b>ФИО</b>: {user_full_name}\n"
@@ -916,7 +905,7 @@ async def send_to_moderator(callback:CallbackQuery,user_id:int,
             f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
             f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n\n"
-            f"P.S. Если заявка не отображается в Google Sheets то заполните её вручную, указав ID по порядку и все данные. Обратитесь к разработчику с данной проблемой."
+            f"P.S. Если заявка не отображается в Google Sheets то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
         )
        
     moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(
@@ -1155,7 +1144,7 @@ async def my_tiukoins_start(callback:CallbackQuery,state:FSMContext):
             await callback.answer()
             await state.clear()
             return
-        application_text = "📝 <b>История заявок:</b>\n"
+        application_text = "📝 <b>История заявок</b> (за последние 3 месяца):\n"
         for i, app in enumerate(db_applications, 1):
             status_emoji = " "
             if "Принята" in app[5]:
@@ -1192,7 +1181,9 @@ async def catalog_start(message: Message, state: FSMContext):
     """
     Обрабатывает нажатие на кнопку 'Каталог Поощрений'
     """
+    catalog = await message.answer("⏳ Загружаем каталог поощрений...")
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
+    await catalog.delete()
     await message.answer(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:",reply_markup = keyboard_markup)
     await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
 
@@ -1224,7 +1215,7 @@ async def show_item_details_handler(callback: CallbackQuery, state: FSMContext):
         
         await callback.message.edit_text(
             f"🎁 <b>{item['name']}</b>\n\n"
-            f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n"
+            f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
             f"📝 <b>Примечание:</b> {item['notes']}\n\n"
             f"<i>Хотите выбрать это поощрение?</i>",
             reply_markup=keyboard,
@@ -1268,7 +1259,7 @@ async def select_item(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(
             f"✅ <b>Подтверждение покупки</b>\n\n"
             f"🎁 <b>Поощрение:</b> {item['name']}\n"
-            f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n\n"
+            f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n\n"
             f"<i>Подтверждаете списание {item['price']} ТИУкоинов?</i>",
             reply_markup=keyboard,
             parse_mode="HTML"
@@ -1286,7 +1277,9 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         await callback.answer("⏳ Обрабатываем...", show_alert=False)
     except Exception:
         pass
-     
+    
+    await callback.message.edit_reply_markup(reply_markup=None)
+    
     user_id = callback.from_user.id
     item_id = callback.data.replace("confirm_purchase_", "")
     purchase_date = datetime.now().strftime("%d.%m.%Y")
@@ -1308,54 +1301,48 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         )
         if not success:
             # Если не удалось списать тиукоины
-            await callback.message.answer(f"❌ Ошибка списания ТИУкоинов: {message}. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
+            await callback.message.answer(f"❌ <b>Ошибка списания ТИУкоинов</b>\n\n{message}.")
+            await state.clear()
             return
         
-        purchase_result = googlesheet_service.purchase_item(item_id)
-        if not purchase_result.get("success"):
-            confirm_text = f"❌ {purchase_result.get('error', 'Ошибка покупки')}"
-            await callback.message.edit_text(confirm_text, parse_mode="HTML")
-            await state.clear()
+        sheets_result = googlesheet_service.purchase_item(
+            tg_id=user_id,
+            item_id=item_id, 
+            full_name=user_full_name,
+            order_date=purchase_date
+        )
+        print(sheets_result)
+        print('-'*100)
+        request_id = sheets_result.get("request_id")
+        print(request_id)
         
-        request_data = {
-            "tg_id": callback.from_user.id,
-            "full_name": user_full_name,
-            "item_id": item_id,
-            "item_name": item['name'],
-            "price": item['price'],
-            "order_date": purchase_date
-        }
-    
-        reward_request = googlesheet_service.add_reward_request(request_data)
-        if not reward_request.get("success"):
-            confirm_text = f"❌ Ошибка создания заявки: {reward_request.get('error')}. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support"
-            await callback.message.edit_text(confirm_text, parse_mode="HTML")
-            await state.clear()
-            
-        sheets_status = "✅" if reward_request.get("success") else "❌"
-        sheets_row = reward_request.get('row', 'N/A') if reward_request.get("success") else "Ошибка"
+        if sheets_result.get("success"):
+            print(f"✅ Заявка #{request_id} создана!")
+        else:
+            print(f"❌ Ошибка: {sheets_result.get('error')}")
         
-        request_id = reward_request['request_id']
+        sheets_status = "✅" if sheets_result.get("success") else "❌"
+        sheets_row = sheets_result.get('row', 'N/A') if sheets_result.get("success") else "Ошибка"
+        
         confirm_text = (
             f"✅ <b>Заявка на получение поощрения оформлена!</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
             f"🎁 <b>Поощрение:</b> {item['name']}\n"
-            f"💎 <b>Стоимость:</b> {item['price']} ТИУКоинов\n"
+            f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
             f"📅 <b>Дата оформления:</b> {purchase_date}\n"
             f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Мельникайте, 72, корпус 1, кабинет 103\n"
             f"🕓 <b>Режим работы:</b> Пн–Чт с 9:00 до 18:00, Пт с 9:00 до 16:45\n"
             f"📞<b>Обязательная запись по телефону:</b> 8 (3452) 28-39-76 или электронной почте torlopovaaa@tyuiu.ru\n\n"
-            f"Обратите внимание\nКак только вы получите поощрение - вернуть или обменять его будет невозможно. Если вы хотите отменить выдачу поощрения свяжитесь с нами. ТИУкоины при отмене будут возвращены")
+            f"<b>❗️ Обратите внимание</b>\nКак только вы получите поощрение - вернуть или обменять его будет невозможно. Если вы хотите отменить выдачу поощрения свяжитесь с нами. ТИУкоины при отмене будут возвращены")
 
         moderator_message = (
             "🔔 <b>Новая заявка на получение поощрения</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"<b>ФИО студента:</b> {user_full_name}\n"
-            f"👤 <b>ID Студента:</b> {user_id} (@{callback.from_user.username or 'без username'})\n"
+            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id}, @{callback.from_user.username or 'без username'})\n"
             f"🎁 <b>Поощрение:</b> {item['name']}\n"
             f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
-            f"📦 <b>Осталось:</b> {purchase_result['new_quantity']} шт.\n"
-            f"📊 <b>Google Sheets:</b> {sheets_status} Строка <b>{sheets_row}</b>\n"
+            f"📦 <b>Осталось:</b> {sheets_result.get('new_quantity')} шт.\n"
+            f"📊 <b>Google Sheets:</b> {sheets_status} (Строка: {sheets_row})\n"
             f"📅 <b>Дата оформления:</b> {purchase_date}\n"
             f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Мельникайте, 72, корпус 1, кабинет 103\n"
             f"📋 <b>Статус:</b> {status}\n"
@@ -1389,7 +1376,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
             )
     except Exception as e:
         await callback.message.answer(f"Неожиданная ошибка: {e}")
-        print(f"Ошибка при покупке товара: {e}", exc_info=True) 
+        print(f"Ошибка при покупке товара: {e}") 
            
 @user_router.callback_query(F.data == "refresh_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
 async def refresh_catalog(callback: CallbackQuery, state: FSMContext):
@@ -1426,7 +1413,7 @@ async def cancel_purchase(callback:CallbackQuery,state: FSMContext):
     Отмена покупки
     """
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
-    await callback.message.edit_text(LEXICON_TEXT["select_item"],reply_markup = keyboard_markup)
+    await callback.message.edit_text(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:",reply_markup = keyboard_markup)
     await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
     await callback.answer("❌ Покупка отменена", show_alert=True)
 
@@ -1450,16 +1437,18 @@ async def about_competition_start(callback: CallbackQuery,state: FSMContext):
             filename = "Положение_о_конкурсе_ТИУмничка.pdf"
         )
         try:
-            await callback.message.edit_text(text = LEXICON_TEXT["loading_document"], reply_markup=None)
+            mes = await callback.message.edit_text(text = LEXICON_TEXT["loading_document"], reply_markup=None)
             await callback.message.answer_document(document=document, reply_markup=menu_keyboard)
+            await mes.delete()
             await callback.answer()
             await state.clear()
         except Exception:
             pass
     elif callback.data == "see_cards":
         try:
-            await callback.message.edit_text(text = LEXICON_TEXT["loading_cards"], reply_markup=None)
+            mes = await callback.message.edit_text(text = LEXICON_TEXT["loading_cards"], reply_markup=None)
             await callback.message.answer("Тут будут карточки")
+            await mes.delete()
             await callback.answer()
             await state.clear()
         except Exception:

@@ -210,30 +210,30 @@ class GoogleSheetsService:
         self._catalog_cache = None
         print("🗑️ Кэш каталога сброшен!")
     
-    def purchase_item(self, item_id: str) -> Dict[str, Any]:
-        """Уменьшает количество товара на 1"""
-        payload = {
-            "secret": self.secret,
-            "type": "purchase_item",
-            "data": {"item_id": item_id}
-        }
-        return self.make_request(payload)
-    
-    def cancel_reward_purchase(self, item_id: str) -> Dict[str, Any]:
-        """Восстанавливает количество товара при отмене выдачи (+1)"""
+    def cancel_reward_purchase(self, tg_id: int, item_id: str, amount: float | int) -> Dict[str, Any]:
+        """🔄 ОТМЕНА ПОКУПКИ: товар+1 + ТИУКоины+amount"""
         payload = {
             "secret": self.secret,
             "type": "cancel_reward_purchase",
-            "data": {"item_id": item_id}
+            "data": {
+                "tg_id": tg_id,
+                "item_id": item_id,
+                "amount": float(amount)
+            }
         }
         return self.make_request(payload)
-
-    def add_reward_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Добавляет заявку на выдачу поощрения"""
+    
+    def purchase_item(self, tg_id: int, item_id: str, full_name: str, order_date: str = None) -> Dict[str, Any]:
+        """🛒 ПОЛНАЯ ПОКУПКА: товар-1 + ТИУкоины-price + заявка"""
         payload = {
             "secret": self.secret,
-            "type": "add_reward_request",
-            "data": request_data
+            "type": "purchase_item",
+            "data": {
+                "tg_id": tg_id,
+                "item_id": item_id,
+                "full_name": full_name,
+                "order_date": order_date 
+            }
         }
         return self.make_request(payload)
 
@@ -264,7 +264,7 @@ class GoogleSheetsService:
         return self.make_request(payload)
     
     def add_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
-        """Начисление ТИУКоинов"""
+        """Начисление ТИУкоинов"""
         payload = {
             "secret": self.secret,
             "type": "add_tiukoins",
@@ -272,26 +272,9 @@ class GoogleSheetsService:
         }
         return self.make_request(payload)
 
-    def deduct_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
-        """Списание ТИУКоинов при покупке"""
-        payload = {
-            "secret": self.secret,
-            "type": "deduct_tiukoins",
-            "data": {"tg_id": tg_id, "amount": amount}
-        }
-        return self.make_request(payload)
 
     def refund_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
-        """Возврат ТИУКоинов при отмене"""
-        payload = {
-            "secret": self.secret,
-            "type": "refund_tiukoins",
-            "data": {"tg_id": tg_id, "amount": amount}
-        }
-        return self.make_request(payload)
-    
-    def refund_tiukoins(self, tg_id: int, amount: int) -> Dict[str, Any]:
-        """Возврат ТИУКоинов при отмене"""
+        """Возврат ТИУкоинов при отмене"""
         payload = {
             "secret": self.secret,
             "type": "refund_tiukoins",
