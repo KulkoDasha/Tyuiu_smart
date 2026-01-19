@@ -366,6 +366,8 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
     "tg_id": user_id,
     "tiukoins": str(coins)
     })
+    print('='*30)
+    print(googlesheets_result)
 
     # Статус для модератора
     sheets_status = "✅ Обновлено" if googlesheets_result.get("success") else f"❌ {googlesheets_result.get('error', 'Ошибка')}"
@@ -609,7 +611,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
             text=f"❌ <b>Заявка отклонена</b>\n\n"
                  f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
                  f"📝 <b>Причина:</b> {reason}\n"
-                 f"📊 <b>Google Sheets:</b> {sheets_status} ({app_data.get('event_direction', 'Неизвестно')}, строка:{row_id})\n"
+                 f"📊 <b>Google Sheets:</b> {sheets_status} ({app_data.get('event_direction', 'Неизвестно')}, строка {row_id})\n"
                  f"💾 <b>База данных:</b> {db_status}\n"
                  f"👮 <b>Модератор:</b> @{moderator_username}\n"
                  f"🕐 <b>Время отклонения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",

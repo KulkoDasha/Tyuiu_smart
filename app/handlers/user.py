@@ -929,7 +929,6 @@ async def send_to_moderator(callback:CallbackQuery,user_id:int,
         await callback.message.edit_text(text = LEXICON_TEXT["application_event_end"])
             
         materials_list = data.get('supporting_materials', [])
-        materials_list = data.get('supporting_materials', [])
         if materials_list:
             await bot.send_message(
                     chat_id=config.moderator_chat_id,

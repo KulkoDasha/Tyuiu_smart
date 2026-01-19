@@ -318,7 +318,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
             try:
                 await bot.send_message(
                     chat_id=chat_id,
-                    text = "🔄 Система «ТИУмничка» была полностью очищена.\n\nБлагодарим вас за использование нашего сервиса!",
+                    text = "🔄 <b>Система «ТИУмничка» была полностью очищена.</>b\n\n😊 Благодарим вас за использование нашего сервиса!",
                     reply_markup=ReplyKeyboardRemove())
                 
             except Exception as e:
@@ -327,8 +327,8 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
         await state.clear()
 
     else:
-        await message.answer(f"❌Команда для очистки системы указана неверно!\n\n",
-                             f"Очистка отменена! Больше так не балуйся:)", parse_mode="HTML")
+        await message.answer(f"❌ Команда для очистки системы указана неверно!\n\n"
+                             f"Очистка отменена! Больше так не балуйся 😏", parse_mode="HTML")
         
         await state.clear()
 
