@@ -1,6 +1,6 @@
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import Message, CallbackQuery,FSInputFile
+from aiogram.types import Message, CallbackQuery,FSInputFile,ReplyKeyboardRemove
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
@@ -364,7 +364,7 @@ def _prepare_moderator_message(data: dict, callback: CallbackQuery) -> str:
     user_id = callback.from_user.id
     
     message_lines = [
-        "📋 Новая анкета на проверку\n",
+        "📋<b> Новая анкета на проверку</b>\n",
         f"👤 <b>Пользователь:</b> {username} (<b>ID:</b> {user_id})",
         f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n",
         "📝 Данные анкеты:",
@@ -786,8 +786,9 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             return 
         print("✅ БД РАБОТАЕТ")
 
-        sheets_result = send_to_google_sheets(data, user_id, user_full_name, ekaterinburg_time, thread_id)
-        event_direction = sheets_result['sheet']
+        sheets_result = await send_to_google_sheets(data, user_id, user_full_name, ekaterinburg_time, thread_id)
+        print(sheets_result)
+        event_direction = sheets_result.get('sheet')
         
         send_moderator = await send_to_moderator(
                 callback, user_id, sheets_result, ekaterinburg_time,
@@ -880,6 +881,8 @@ async def send_to_google_sheets(data: dict, user_id:int,user_full_name:str,ekate
     event_direction = app_data["event_direction"]
     
     sheets_result = await googlesheet_service.add_event_application_async(app_data, event_direction)
+    print('-'*30)
+    print(sheets_result)
     return sheets_result
     
 async def send_to_moderator(callback:CallbackQuery,user_id:int,
@@ -891,7 +894,7 @@ async def send_to_moderator(callback:CallbackQuery,user_id:int,
     Возвращает True/False
     """
     moderator_message = (
-            "📋 Новая заявка на проверку\n\n"
+            "📋 <b>Новая заявка на проверку</b>\n\n"
             f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
             f"(<b>ID:</b> {user_id})\n"
             f"📊 <b>Google Sheets:</b> {'✅ ' if sheets_result.get('success') else '❌'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
@@ -1475,14 +1478,16 @@ async def support_process(callback:CallbackQuery,state:FSMContext):
         await state.set_state(SupportStates.support_choice_direction)
         await callback.answer()
     elif callback.data == "feedback":
-        await callback.message.edit_text(
-            text = LEXICON_TEXT["feedback_text"]
+        await callback.message.delete()
+        await callback.message.answer(
+            text = LEXICON_TEXT["feedback_text"],reply_markup=ReplyKeyboardRemove()
         )
         await state.set_state(SupportStates.support_feedback)
         await callback.answer()
     else:
-        await callback.message.edit_text(
-            text = LEXICON_TEXT["support_text"]
+        await callback.message.delete()
+        await callback.message.answer(
+            text = LEXICON_TEXT["support_text"],reply_markup=ReplyKeyboardRemove()
         )
         await state.set_state(SupportStates.support_error)
         await callback.answer()
@@ -1498,7 +1503,7 @@ async def support_choice_direction(callback:CallbackQuery, state:FSMContext):
     )
     await callback.message.edit_text(f"✅ Вы выбрали: {event_direction}")
     await callback.answer()
-    await callback.message.answer(text=LEXICON_TEXT["support_text"])
+    await callback.message.answer(text=LEXICON_TEXT["support_text"],reply_markup=ReplyKeyboardRemove())
     await state.set_state(SupportStates.support_write_moderator)
 
 @user_router.message(StateFilter(SupportStates.support_write_moderator))
@@ -1533,7 +1538,7 @@ async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
     )
 
     await bot.send_message(**send_params)
-    await message.answer(text = LEXICON_TEXT["support_end"])
+    await message.answer(text = LEXICON_TEXT["support_end"],reply_markup=menu_keyboard)
     await state.clear()
     
 @user_router.message(StateFilter(SupportStates.support_feedback))
@@ -1557,7 +1562,7 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
                 "message_thread_id": USER_FEEDBACK
             }
     await bot.send_message(**send_params)
-    await message.answer(text = LEXICON_TEXT["support_end"])
+    await message.answer(text = LEXICON_TEXT["support_end"],reply_markup=menu_keyboard)
     await state.clear()
 
 @user_router.message(StateFilter(SupportStates.support_error))
@@ -1590,7 +1595,7 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
     )
 
     await bot.send_message(**send_params)
-    await message.answer(text = LEXICON_TEXT["support_end"])
+    await message.answer(text = LEXICON_TEXT["support_end"],reply_markup=menu_keyboard)
     await state.clear()
 
 @user_router.message(Command(commands="getmytgid"),StateFilter(default_state))

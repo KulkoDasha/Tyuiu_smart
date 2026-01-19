@@ -353,7 +353,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
     user_id = parts[0]
     coins = float(parts[1])
     user_full_name = await db_get_user_full_name(user_id)
-    await message.delete
+    
     await message.answer(f"🔄 Списываю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
 
     db_success = db_result = None
@@ -386,7 +386,8 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
         google_sheets_status = "⚠️"
         google_sheets_row = f"Ошибка GS: {str(gs_error)}"
         
-        # Финальный отчет
+    # Финальный отчет
+    try:
         if db_success:
             await message.answer(
                 f"✅ <b>ТИУкоины списаны!</b>\n\n"
@@ -412,7 +413,6 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
                 f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
                 parse_mode="HTML"
             )
-            
     except Exception as e:
         await message.answer(
             f"💥 <b>Критическая ошибка:</b>\n"
@@ -447,7 +447,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
     user_id = parts[0]
     coins = float(parts[1])
     user_full_name = await db_get_user_full_name(user_id)
-    await message.delete
+    await message.delete()
     await message.answer(f"🔄 Добавляю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
 
     db_success = db_result = None
@@ -479,6 +479,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
         google_sheets_status = "⚠️"
         google_sheets_row = f"Ошибка GS: {str(gs_error)}"
         
+    try:
         # Финальный отчет
         if db_success:
             await message.answer(
