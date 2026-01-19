@@ -27,9 +27,9 @@ __all__=["googlesheet_service",
          "is_valid_event_date",
          "is_valid_confirmation_material",
          "bot_logger",
-         "get_item_name"]
+         "get_item_name_async"]
 
 
-def get_item_name(item_id: str) -> str:
+async def get_item_name_async(item_id: str) -> str:
     """Быстрое название по ID"""
-    return googlesheet_service.get_item_name_by_id(item_id)
+    return await googlesheet_service.get_item_name_by_id_async(item_id)

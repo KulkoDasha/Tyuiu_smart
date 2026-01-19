@@ -856,7 +856,7 @@ async def save_to_database(state: FSMContext,callback:CallbackQuery):
         db_status = f"❌ {db_message}"
         return {"success": False, "application_id": 0, "error": db_status}
 
-def send_to_google_sheets(data: dict, user_id:int,user_full_name:str,ekaterinburg_time,thread_id:int): 
+async def send_to_google_sheets(data: dict, user_id:int,user_full_name:str,ekaterinburg_time,thread_id:int): 
     """
     Отправляет заявку в Google Sheets
     Возвращает словарь {'success', 'row', 'sheet', 'data'}
@@ -879,7 +879,7 @@ def send_to_google_sheets(data: dict, user_id:int,user_full_name:str,ekaterinbur
         }
     event_direction = app_data["event_direction"]
     
-    sheets_result = googlesheet_service.add_event_application(app_data, event_direction)
+    sheets_result = await googlesheet_service.add_event_application_async(app_data, event_direction)
     return sheets_result
     
 async def send_to_moderator(callback:CallbackQuery,user_id:int,
@@ -1207,7 +1207,7 @@ async def show_item_details_handler(callback: CallbackQuery, state: FSMContext):
     item_id = callback.data.replace("view_item_", "")
     
     # Получаем данные из Google Sheets
-    catalog = googlesheet_service.get_catalog_items()
+    catalog = await googlesheet_service.get_catalog_items_async()
     item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
     
     if item:
@@ -1250,7 +1250,7 @@ async def show_catalog(callback: CallbackQuery, state: FSMContext):
 async def select_item(callback: CallbackQuery, state: FSMContext):
     """Подтверждение покупки"""
     item_id = callback.data.replace("select_item_", "")
-    catalog = googlesheet_service.get_catalog_items()
+    catalog = await googlesheet_service.get_catalog_items_async()
     item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
     
     if item:
@@ -1283,7 +1283,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     user_id = callback.from_user.id
     item_id = callback.data.replace("confirm_purchase_", "")
     purchase_date = datetime.now().strftime("%d.%m.%Y")
-    catalog = googlesheet_service.get_catalog_items()
+    catalog = await googlesheet_service.get_catalog_items_async()
     item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
     status = "Ожидает выдачи"
     
@@ -1305,16 +1305,13 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
             await state.clear()
             return
         
-        sheets_result = googlesheet_service.purchase_item(
+        sheets_result = await googlesheet_service.purchase_item_async(
             tg_id=user_id,
             item_id=item_id, 
             full_name=user_full_name,
             order_date=purchase_date
         )
-        print(sheets_result)
-        print('-'*100)
         request_id = sheets_result.get("request_id")
-        print(request_id)
         
         if sheets_result.get("success"):
             print(f"✅ Заявка #{request_id} создана!")

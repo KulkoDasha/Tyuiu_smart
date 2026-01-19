@@ -333,10 +333,52 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
     except Exception as e:
         logger.error(f"Неожиданная ошибка при списании ТИУкоинов: {e}")
         return False, f"Ошибка: {str(e)}"
+
+@connection
+async def db_add_tiukoins(session, tg_id_str: str, spend_amount: float) -> Tuple[bool, str]:
+    """
+    Добавление ТИУкоинов пользователю
+    """
+    try:
+            
+        tg_id = int(tg_id_str)
+        
+        # 2. Получаем пользователя
+        result = await session.execute(
+            select(Users).where(Users.tg_id == tg_id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return False, f"Пользователь с TG ID {tg_id} не найден"
+        
+        # 3. Получаем баланс
+        current_balance = user.tiukoins
+        
+        # 4. Рассчитываем новый баланс в переменной
+        new_balance = current_balance + spend_amount
+        
+        # 5. Обновляем поле
+        user.tiukoins = new_balance
+        
+        # 6. Сохраняем
+        await session.commit()
+        
+        logger.info(
+            f"✅ Добавлено {spend_amount} ТИУкоинов пользователю {tg_id}. "
+            f"Было: {current_balance:.1f}, стало: {new_balance:.1f}"
+        )
+        
+        return True, f"✅ Успешно! добавлено {spend_amount} ТИУкоинов. Новый баланс: {new_balance:.1f}"
+        
+    except SQLAlchemyError as e:
+        await session.rollback()
+        logger.error(f"Ошибка при добавлении ТИУкоинов у пользователя {tg_id}: {e}")
+        return False, f"Ошибка базы данных: {str(e)}"
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при добавлении ТИУкоинов: {e}")
+        return False, f"Ошибка: {str(e)}"
     
-
-
-
 async def db_get_user_balance(session, tg_id_str: str) -> float:
     """
     Получает текущий баланс ТИУкоинов пользователя

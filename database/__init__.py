@@ -14,7 +14,8 @@ from .dao import (
     db_return_tiukoins,
     db_delete_user_by_tg_id,
     db_get_application_history,
-    db_get_all_user_tg_ids
+    db_get_all_user_tg_ids,
+    db_add_tiukoins
 )
 
 
@@ -46,5 +47,6 @@ __all__ = [
     'db_return_tiukoins',
     'db_delete_user_by_tg_id',
     'db_get_application_history',
-    'db_get_all_user_tg_ids'
+    'db_get_all_user_tg_ids',
+    'db_add_tiukoins'
 ]

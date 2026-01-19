@@ -181,10 +181,8 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
             db_status = "❌"
         
         # Google Sheets (опционально)
-        print(f"🔍 Ищу пользователя {user_id} в Google Sheets...")
         try:
-            google_sheets_success = googlesheet_service.delete_user_by_tg_id(int(user_id))
-            print((f"Google Sheets ответ: {google_sheets_success}"))
+            google_sheets_success = await googlesheet_service.delete_user_by_tg_id_async(int(user_id))
             if google_sheets_success.get("success"):
                 google_sheets_status = "✅"
                 google_sheets_row = google_sheets_success.get('deleted_row', 'N/A')
@@ -198,11 +196,11 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
         # Финальный отчет
         if db_success:
             await message.answer(
-                f"✅ <b>Пользователь {user_full_name} ({user_id}) удалён из системы</b>\n\n"
+                f"✅ <b>Пользователь {user_full_name} (ID: {user_id}) удалён из системы</b>\n\n"
                 f"❔ <b>Причина: {reason_for_delete}</b>\n"
                 f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id}) \n"
                 f"📊 <b>Google Sheets:</b>  (строка {google_sheets_row})\n\n"
-                f"Если пользователь не удалён из GoogleSheets - сделайте это вручную",
+                f"❗️ Если пользователь не удалён из GoogleSheets - сделайте это вручную",
                 parse_mode="HTML"
             )
             # Уведомление ПОЛЬЗОВАТЕЛЮ
@@ -261,11 +259,12 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
         # Инициализация статусов
         db_success = db_result = None
         google_sheets_status = google_sheets_total_deleted = "⏳"
+        db_status_ids, all_ids = await db_get_all_user_tg_ids()
         
         try:
             # БД ВСЕГДА работает (приоритетная)
             try:
-                db_success, db_result = await db_delete_all_users() # Переименовал функцию
+                db_success, db_result = await db_delete_all_users()
                 db_status = "✅" if db_success else "❌"
             except Exception as db_error:
                 db_success = False
@@ -274,7 +273,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
             
             # Google Sheets (опционально)
             try:
-                google_sheets_success = googlesheet_service.clear_all_user_data()
+                google_sheets_success = await googlesheet_service.clear_all_user_data_async()
                 if google_sheets_success.get("success"):
                     google_sheets_status = "✅"
                     google_sheets_total_deleted = google_sheets_success.get('total_deleted', 'N/A')
@@ -292,7 +291,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     f"💾 <b>База данных:</b> {db_status}\n"
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                     f"  └─ Удалено: {google_sheets_total_deleted}\n\n"
-                    f"Если данные не удалёны из GoogleSheets - сделайте это вручную",
+                    f"❗️ Если данные не удалёны из GoogleSheets - сделайте это вручную",
                     parse_mode="HTML"
                 )
             else:
@@ -315,6 +314,16 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                 parse_mode="HTML"
             )
         
+        for chat_id in all_ids:
+            try:
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text = "🔄 Система «ТИУмничка» была полностью очищена.\n\nБлагодарим вас за использование нашего сервиса!",
+                    reply_markup=ReplyKeyboardRemove())
+                
+            except Exception as e:
+                await message.answer(f"Ошибка отправки {chat_id}: Чат не найден")
+        
         await state.clear()
 
     else:
@@ -323,3 +332,188 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
         
         await state.clear()
 
+@admin_router.message(Command("deduct_coins"))
+async def deduct_tiukoins_from_user(message: Message, state: FSMContext):
+    """
+    Начало: Списывает определённое количество ТИУкоинов по ТГ_айди пользователя
+    """
+
+    await message.delete()
+    await message.answer(text="Напишите ID пользователя и количество ТИУкоинов, которые хотите списать через пробел\n\n <i>Пример:1059294358 150</i>")
+    
+    await state.set_state (ModeratorStates.deduct_tiukoins)
+
+@admin_router.message(ModeratorStates.deduct_tiukoins)
+async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext, bot: Bot):
+    """
+    Конец: Списывает определённое количество ТИУкоинов по ТГ_айди пользователя
+    """
+
+    parts = message.text.split(" ")
+    user_id = parts[0]
+    coins = float(parts[1])
+    user_full_name = await db_get_user_full_name(user_id)
+    await message.delete
+    await message.answer(f"🔄 Списываю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
+
+    db_success = db_result = None
+    google_sheets_status = google_sheets_row ="⏳"
+    try:
+        db_success, db_result = await db_deduct_tiukoins(
+            tg_id_str=str(user_id),
+            spend_amount=coins,
+            name_of_item="Списание ТИУкоинов"
+        )
+        db_status = "✅" if db_success else "❌"
+
+    except Exception as db_error:
+        db_success = False
+        db_result = f"Ошибка: {str(db_error)}"
+        db_status = "❌"
+    
+    try:
+        google_sheets_success = await googlesheet_service.deduct_tiukoins_async(
+            tg_id=user_id,
+            amount=coins, 
+        )
+        if google_sheets_success.get("success"):
+            google_sheets_status = "✅"
+            google_sheets_row = google_sheets_success.get('user_row', 'N/A')
+        else:
+            google_sheets_status = "⚠️"
+            google_sheets_row = google_sheets_success.get('error', 'Не удалось')
+    except Exception as gs_error:
+        google_sheets_status = "⚠️"
+        google_sheets_row = f"Ошибка GS: {str(gs_error)}"
+        
+        # Финальный отчет
+        if db_success:
+            await message.answer(
+                f"✅ <b>ТИУкоины списаны!</b>\n\n"
+                f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+                f"💎 <b>Списано:</b> {coins}\n"
+                f"💾 <b>База данных:</b> {db_status}\n"
+                f"📊 <b>Google Sheets:</b> {google_sheets_status} ({google_sheets_row} строка)\n\n"
+                f"❗️ Если ТИУкоины не списались из GoogleSheets - сделайте это вручную. Сообщите об ошибке разработчику.",
+                parse_mode="HTML"
+            )
+
+            await bot.send_message(
+                chat_id=user_id,
+                text=f"💎У вас было списано {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
+
+        else:
+            await message.answer(
+                f"❌ <b>Ошибка БД</b>\n\n"
+                f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+                f"💾 <b>База данных:</b> {db_status}\n"
+                f"  └─ {db_result}\n"
+                f"📊 <b>Google Sheets:</b> {google_sheets_status} ({google_sheets_row} строка)\n\n"
+                f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+                parse_mode="HTML"
+            )
+            
+    except Exception as e:
+        await message.answer(
+            f"💥 <b>Критическая ошибка:</b>\n"
+            f"<code>{str(e)}</code>\n\n"
+            f"БД: {db_status if db_status else 'Неизвестно'}\n"
+            f"Google Sheets: {google_sheets_status}"
+            f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+            parse_mode="HTML"
+        )
+    
+    await state.clear()
+
+
+@admin_router.message(Command("add_coins"))
+async def add_tiukoins_to_user(message: Message, state: FSMContext):
+    """
+    Начало: Добавляет определённое количество ТИУкоинов по ТГ_айди пользователя
+    """
+
+    await message.delete()
+    await message.answer(text="Напишите ID пользователя и количество ТИУкоинов, которые хотите добавить через пробел.\n\n <i>Пример:1059294358 150</i>")
+    
+    await state.set_state (ModeratorStates.add_tiukoins)
+
+@admin_router.message(ModeratorStates.add_tiukoins)
+async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot: Bot):
+    """
+    Конец: Добавляет определённое количество ТИУкоинов по ТГ_айди пользователя
+    """
+
+    parts = message.text.split(" ")
+    user_id = parts[0]
+    coins = float(parts[1])
+    user_full_name = await db_get_user_full_name(user_id)
+    await message.delete
+    await message.answer(f"🔄 Добавляю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
+
+    db_success = db_result = None
+    google_sheets_status = google_sheets_row ="⏳"
+    try:
+        db_success, db_result = await db_add_tiukoins(
+            tg_id_str=str(user_id),
+            spend_amount=coins,
+        )
+        db_status = "✅" if db_success else "❌"
+
+    except Exception as db_error:
+        db_success = False
+        db_result = f"Ошибка: {str(db_error)}"
+        db_status = "❌"
+    
+    try:
+        google_sheets_success = await googlesheet_service.add_tiukoins_async(
+            tg_id=user_id,
+            amount=coins, 
+        )
+        if google_sheets_success.get("success"):
+            google_sheets_status = "✅"
+            google_sheets_row = google_sheets_success.get('user_row', 'N/A')
+        else:
+            google_sheets_status = "⚠️"
+            google_sheets_row = google_sheets_success.get('error', 'Не удалось')
+    except Exception as gs_error:
+        google_sheets_status = "⚠️"
+        google_sheets_row = f"Ошибка GS: {str(gs_error)}"
+        
+        # Финальный отчет
+        if db_success:
+            await message.answer(
+                f"✅ <b>ТИУкоины добавлены!</b>\n\n"
+                f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+                f"💎 <b>Добавлено:</b> {coins}\n"
+                f"💾 <b>База данных:</b> {db_status}\n"
+                f"📊 <b>Google Sheets:</b> {google_sheets_status} ({google_sheets_row} строка)\n\n"
+                f"❗️ Если ТИУкоины не добавлены в GoogleSheets - сделайте это вручную. Сообщите об ошибке разработчику.",
+                parse_mode="HTML"
+            )
+
+            await bot.send_message(
+                chat_id=user_id,
+                text=f"💎Вам было добавлено {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
+
+        else:
+            await message.answer(
+                f"❌ <b>Ошибка  БД</b>\n\n"
+                f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+                f"💾 <b>База данных:</b> {db_status}\n"
+                f"  └─ {db_result}\n"
+                f"📊 <b>Google Sheets:</b> {google_sheets_status} ({google_sheets_row} строка)\n\n"
+                f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+                parse_mode="HTML"
+            )
+            
+    except Exception as e:
+        await message.answer(
+            f"💥 <b>Критическая ошибка:</b>\n"
+            f"<code>{str(e)}</code>\n\n"
+            f"БД: {db_status if db_status else 'Неизвестно'}\n"
+            f"Google Sheets: {google_sheets_status}"
+            f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+            parse_mode="HTML"
+        )
+    
+    await state.clear()

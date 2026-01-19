@@ -72,7 +72,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
         return
     
     # Отправляем в Google Sheets
-    sheets_result = googlesheet_service.add_participant(form_data)
+    sheets_result = await googlesheet_service.add_participant_async(form_data)
     
     # Статус для модератора
     sheets_status = f"✅ Добавлен ({sheets_result.get("row")} строка)" if sheets_result["success"] else f"❌ {sheets_result.get('error', 'Ошибка')}"
@@ -350,7 +350,6 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
                                       db_application_id: int,ekaterinburg_time):
     """Обработка заявки для всех ролей кроме последней"""
     coins = ROLE_LEXICON[event_role]
-    print(coins)
     db_status = await approve_db(db_application_id,moderator_username,coins)
     if db_status.startswith("❌"):
         await callback.message.edit_text("Произошла ошибка при сохранении в базу данных. Пожалуйста, попробуйте позже")
@@ -358,24 +357,18 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
         return
     
     # Обновляем статус в Google Sheets
-    result = googlesheet_service.update_application_status(
-        app_data.get("event_direction", ""), 
-        row_id, 
-        "Принята", 
-        f"@{moderator_username}")
-    
-    result1 = googlesheet_service.update_tiukoins(
-            sheet_name=app_data.get("event_direction", ""),
-            row_id=row_id,
-            tiukoins=str(coins)
-        )
-    result_add_tiucoins = googlesheet_service.add_tiukoins(
-            tg_id=user_id,
-            amount=coins
-        ) 
+
+    googlesheets_result = await googlesheet_service.approve_application_async({
+    "sheet_name": app_data.get("event_direction", ""),
+    "row_id": row_id,
+    "status": "Принята",
+    "moderator":f"@{moderator_username}",
+    "tg_id": user_id,
+    "tiukoins": str(coins)
+    })
 
     # Статус для модератора
-    sheets_status = "✅ Обновлено" if result.get("success") else f"❌ {result.get('error', 'Ошибка')}"
+    sheets_status = "✅ Обновлено" if googlesheets_result.get("success") else f"❌ {googlesheets_result.get('error', 'Ошибка')}"
     try:
         await send_message(callback,user_id,app_data,coins,sheets_status,
                            db_status,moderator_username,ekaterinburg_time,bot,row_id)
@@ -421,7 +414,6 @@ async def send_message(callback:CallbackQuery,user_id:int,
             f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup=None, parse_mode="HTML"
         )
-    print(f"Sending to user_id={user_id}, event_name={app_data.get('name_of_event')}")
     await bot.send_message(
                 chat_id=user_id,
                 text=(f"😊 Ваша заявка на получение ТИУкионов подтверждена.\n\n<b>Мероприятие:</b> «{app_data.get('name_of_event')}»\n<b>Направление внеучебной деятельности:</b> «{app_data.get('event_direction')}»\n"
@@ -436,7 +428,6 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
     """
     data = await state.get_data()
     user_id = data.get("user_id")
-    application_id = data.get("application_id") #не используется
     dbs_application_id = data.get("dbs_application_id")
     moderator_username = data.get("moderator_username")
     row_id = data.get("row_id")
@@ -452,31 +443,23 @@ async def waiting_repeatability_factor(message: Message, bot: Bot,state:FSMConte
         coins = 8  
         awarded_amount = coins * coefficient_int
         coef_message = await message.answer(f"✅ Коэффициент {coefficient_int} сохранен для пользователя {user_id}")
-        print('-'*40)
-        print(data)
-        result_update_status = googlesheet_service.update_application_status(
-            data.get("event_direction", ""), 
-            row_id, 
-            "Принята", 
-            f"@{moderator_username}"
-        )
-        result = googlesheet_service.update_tiukoins(
-            sheet_name=data.get("event_direction", ""),
-            row_id=row_id,
-            tiukoins=str(awarded_amount)
-        )
-        result_add_tiucoins = googlesheet_service.add_tiukoins(
-            tg_id=user_id,
-            amount=awarded_amount
-        ) 
-         
+
+        googlesheets_result = await googlesheet_service.approve_application_async({
+            "sheet_name": data.get("event_direction", ""),
+            "row_id": row_id,
+            "status": "Принята",
+            "moderator":f"@{moderator_username}",
+            "tg_id": user_id,
+            "tiukoins": str(awarded_amount)
+            })
+
         db_status = await approve_db(dbs_application_id,moderator_username,awarded_amount)
         if db_status.startswith("❌"):
             await message.edit_text("Произошла ошибка при сохранении в базу данных. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
             await state.clear()
             return
 
-        sheets_status = "✅ Обновлено" if result.get("success") and result_update_status.get("success")and result_add_tiucoins.get("success")  else f"❌ {result.get('error', 'Ошибка')}"
+        sheets_status = "✅ Обновлено" if googlesheets_result.get("success") else f"❌ {googlesheets_result.get('error', 'Ошибка')}"
 
         try:
             callback_message_id = data.get("callback_message_id")
@@ -538,7 +521,6 @@ async def decline_application(callback: CallbackQuery, state: FSMContext):
     user_id = int(parts[3])
     event_role = parts[4]
     db_application_id = int(parts[5])
-    print (application_id, user_id, event_role, db_application_id)
 
     await callback.answer("❔ Укажите причину отклонения заявки пользователя", show_alert=False)
     await state.update_data(
@@ -593,7 +575,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
 
 
         # Обновляем статус в Google Sheets
-        sheets_result = googlesheet_service.update_application_status(
+        sheets_result = await googlesheet_service.update_application_status_async(
             app_data.get("event_direction", ""), 
             row_id, 
             "Отклонена", 
@@ -647,7 +629,6 @@ def parse_short_callback_data(callback_data: str) -> Dict[str, Any]:
     """
     Парсит данные из callback_data
     """
-    print(f"🔍 '{callback_data}'")
     
     if callback_data.startswith("i_r_"):
         action = "issue"
@@ -659,14 +640,11 @@ def parse_short_callback_data(callback_data: str) -> Dict[str, Any]:
         return {}
     
     parts = rest.split("_", 3) 
-    print(parts)
     if len(parts) == 4:
         short_req = parts[0]
         user_str = parts[1] 
         item_price = parts[2]
         item_id = parts[3]
-
-        print(short_req,user_str, item_id, item_price)
         
         request_id = int(short_req)
         user_id = int(user_str) 
@@ -706,7 +684,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
     action = data["action"]
     
     # Быстрое название поощрения по айди
-    item_name = get_item_name(item_id) if item_id else "Не указано"
+    item_name = (await get_item_name_async(item_id)) if item_id else "Не указано"
     
     utc_time = callback.message.date #не используется
     ekaterinburg_time = datetime.now()
@@ -716,7 +694,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
     # Логика действия
     if action == "issue":
         # Выдача: update_status
-        sheets_result = googlesheet_service.update_reward_status(request_id, "Выдано", moderator_username)
+        sheets_result = await googlesheet_service.update_reward_status_async(request_id, "Выдано", moderator_username)
         sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
 
         # Ответ модератору
@@ -733,10 +711,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         )
         
     else:  # reject
-        # Отмена: update_status + cancel_reward_purchase (+1)
-        sheets_result = googlesheet_service.update_reward_status(request_id, "Отменено", moderator_username)
-        sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
-        
+
         success, message = await db_return_tiukoins( user_id, item_price)
 
         if success:
@@ -745,8 +720,11 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
             tiukoins_status = f"⚠️ <b>Ошибка возврата:</b> {message}"
         
         catalog_status = ""
+        sheets_status = ""
         if item_id:
-            catalog_result = googlesheet_service.cancel_reward_purchase(tg_id=user_id,item_id = item_id, amount= item_price) 
+            sheets_result = await googlesheet_service.update_reward_status_async(request_id, "Отменено", moderator_username)
+            sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
+            catalog_result = await googlesheet_service.cancel_reward_purchase_async(tg_id=user_id,item_id = item_id, amount= item_price) 
             catalog_status = f"📦 <b>Осталось:</b> {catalog_result.get('new_quantity', 0)} шт."
 
             # Ответ модератору

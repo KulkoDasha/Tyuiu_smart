@@ -22,3 +22,5 @@ class ModeratorStates(StatesGroup):
     waiting_delete_user_tg_id = State()
     waiting_delete_user_reason = State()
     waiting_accept_to_delete_all_users = State()
+    deduct_tiukoins = State()
+    add_tiukoins = State()

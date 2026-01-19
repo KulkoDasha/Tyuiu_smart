@@ -7,7 +7,7 @@ class DynamicCatalogKeyboard:
     async def create_table_keyboard(bot: Bot = None) -> InlineKeyboardMarkup:
         """Создает динамическую таблицу из Google Sheets"""
         try:
-            catalog = googlesheet_service.get_catalog_items()
+            catalog = await googlesheet_service.get_catalog_items_async()
             
             if not catalog.get("success"):
                 return InlineKeyboardMarkup(inline_keyboard=[
