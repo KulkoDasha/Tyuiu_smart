@@ -1,5 +1,4 @@
 import re
-from .logger import bot_logger
 from typing import Dict, Optional
 
 def parse_registration_form_from_message(message_text: str, user_id: int,

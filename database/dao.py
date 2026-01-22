@@ -5,7 +5,7 @@ from .models import Users, Event_applications
 from sqlalchemy import select, update, delete
 from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime, time, date, timedelta
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 

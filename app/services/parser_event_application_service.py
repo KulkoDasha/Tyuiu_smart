@@ -1,5 +1,4 @@
 import re
-from .logger import bot_logger
 from typing import Dict
 
 def parse_event_application_from_message(message_text: str, user_id: int) -> Dict:

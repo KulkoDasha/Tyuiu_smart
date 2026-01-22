@@ -58,7 +58,7 @@ LEXICON_USER_KEYBOARD = {
     "add_more_material":"➕ Добавить еще материал",
     "finish_application":"✅ Завершить заполнение заявки",
 
-    "confirm_application": "✅ Подтвердить заявку",
+    "confirm_application": "✅ Отправить заявку",
     "edit_application": "✏️ Изменить данные",
 
     "edit_direction_of_activities": "✏️ Изменить направление внеучебной деятельности",
@@ -68,7 +68,7 @@ LEXICON_USER_KEYBOARD = {
     "edit_role": "✏️ Изменить роль",
     "edit_confirmation_material": "✏️ Изменить материал, подтверждающий участие",
 
-    "save_registration_form":"✅ Сохранить анкету",
+    "save_registration_form":"✅ Отправить анкету",
     "change_registration_form":"✏️ Изменить данные",
 
     "full_name":"✏️ Изменить ФИО",

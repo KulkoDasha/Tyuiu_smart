@@ -3,8 +3,7 @@ import datetime
 from sqlalchemy import BigInteger, Integer,  String, DateTime,  Float, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column, relationship
 from .database import Base
-from datetime import  datetime, date, time
-from typing import Optional
+from datetime import  datetime
 
 
 class Users(Base):

@@ -3,7 +3,6 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine, AsyncSession
 from dotenv import load_dotenv
-from os.path import dirname, abspath, join
 import os
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
