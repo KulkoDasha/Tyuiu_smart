@@ -4,9 +4,8 @@ from typing import Dict, Optional
 
 def parse_registration_form_from_message(message_text: str, user_id: int,
                             moderator_username:str, approval_date:str) -> Optional[Dict]:
-    """
-    Извлекает данные анкеты.
-    """
+    """Извлекает данные регистрационной анкеты"""
+    
     try:
         data = {"tg_id": user_id,
                 "approval_date": approval_date,
@@ -36,57 +35,34 @@ def parse_registration_form_from_message(message_text: str, user_id: int,
             value = _extract_field(message_text, field_name)
             if value:
                 data[key] = value
-        
-        # Логгер
-        bot_logger.log_moderator_msg(
-        tg_id="parser_registration_form_service",
-        username= f"{moderator_username}",
-        message= f"РЕГИСТРАЦИЯ: Данные заявки {user_id}: {data}"
-        )
 
         return data
         
     except Exception as e:
-
-        # Логгер
-        bot_logger.log_moderator_msg(
-        tg_id="parser_registration_form_service",
-        username= f"{moderator_username}",
-        message= f"РЕГИСТРАЦИЯ: Ошибка парсинга анкеты для {user_id}: {e}"
-        )
         
         # даже при ошибке возвращаем хотя бы tg_id + full_name (если есть)
         return {"tg_id": user_id, "moderator_username": moderator_username, 
                  "approval_date": approval_date} if message_text else None
 
 def _extract_field(text: str, field_name: str) -> str:
-    """Улучшенный парсер"""
-    try:
-        # 1️⃣ • Поле: значение
-        pattern = rf"•\s*{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)"
-        match = re.search(pattern, text, re.DOTALL | re.MULTILINE | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-        
-        # 2️⃣ Поле: значение
-        pattern = rf"{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)"
-        match = re.search(pattern, text, re.DOTALL | re.MULTILINE | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-        
-        # 3️⃣ Любые варианты
-        pattern = rf"{re.escape(field_name)}[:\s]+(.+?)(?=\n•|\n\n|\n|$)"
-        match = re.search(pattern, text, re.DOTALL | re.MULTILINE | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-            
-    except Exception as e:
+    """Улучшенный парсер (не используется)"""
 
-        # Логгер
-        bot_logger.log_moderator_msg(
-        tg_id="parser_registration_form_service",
-        username= "parser_registration_form_service",
-        message= f"РЕГИСТРАЦИЯ: Ошибка поиска '{field_name}': {e}"
-        )
+    # 1️⃣ • Поле: значение
+    pattern = rf"•\s*{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)"
+    match = re.search(pattern, text, re.DOTALL | re.MULTILINE | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    
+    # 2️⃣ Поле: значение
+    pattern = rf"{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)"
+    match = re.search(pattern, text, re.DOTALL | re.MULTILINE | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    
+    # 3️⃣ Любые варианты
+    pattern = rf"{re.escape(field_name)}[:\s]+(.+?)(?=\n•|\n\n|\n|$)"
+    match = re.search(pattern, text, re.DOTALL | re.MULTILINE | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
 
     return ""

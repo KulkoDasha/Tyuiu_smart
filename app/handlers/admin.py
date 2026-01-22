@@ -1,16 +1,12 @@
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
-from aiogram import Router, Bot, F
-from aiogram.filters import Command, StateFilter, Filter
+from aiogram.types import Message, ReplyKeyboardRemove
+from aiogram import Router, Bot
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
-import time
 
 from database import *
 
-from ..config import config
 from ..filters import AdminChatFilter
-from ..keyboards import AdminPanelInlineButtons
-from ..states import *
+from ..states import NotificationUser, NotifificationAllUsers, AdminStates
 from ..services import googlesheet_service
 
 admin_router = Router()
@@ -18,17 +14,13 @@ admin_router.message.filter(AdminChatFilter())
 
 @admin_router.message(Command("checkadmin"))
 async def check_in_admin_chat(message: Message):
-    """
-    Проверяет, написано сообщение в чате админ-панели или нет
-    """
+    """Проверяет, написано сообщение в чате админ-панели"""
 
     await message.answer("Да, это чат админ-панели")
 
 @admin_router.message(Command("all_notification"))
 async def notify_all_users_message(message: Message, state: FSMContext):
-    """
-    Запускает процесс рассылки уведомления всем пользователям
-    """
+    """Запускает процесс рассылки уведомления всем пользователям"""
 
     await message.delete()
     await message.answer("Напишите сообщение для рассылки всем пользователям.")
@@ -36,25 +28,25 @@ async def notify_all_users_message(message: Message, state: FSMContext):
 
 @admin_router.message(NotifificationAllUsers.waiting_for_message)
 async def process_notify_all_users_message(message: Message, state: FSMContext, bot:Bot):
-    """
-    Начинает рассылку уведомления всем пользователям
-    """
+    """Начинает рассылку уведомления всем пользователям"""
 
     message_for_users = message.text
     await message.delete()
     await message.answer(f"Рассылка уведомления всем пользователям начата.\n\n<b>Уведомление:</b> {message_for_users}")
     db_status, all_ids = await db_get_all_user_tg_ids()
-    success_count=0
+    success_count = 0
 
     try:
 
         for chat_id in all_ids:
+
             try:
                 await bot.send_message(
                     chat_id=chat_id,
                     text = f"✉️ Новое уведомление от бота\n\n<b>{message_for_users}</b>"
                     )
                 success_count += 1
+
             except Exception as e:
                 await message.answer(f"Ошибка отправки {chat_id}: Чат не найден")
 
@@ -62,13 +54,14 @@ async def process_notify_all_users_message(message: Message, state: FSMContext, 
             f"✅ Рассылка завершена! Отправлено {success_count}/{len(all_ids)} уведомлений.\n\nТекст: <b>{message_for_users}</b>",
             show_alert=True
             )
+        
     except Exception as e:
         await message.answer(f"❌ Ошибка рассылки: {e}\n\nТекст: <b>{message_for_users}</b>", show_alert=True)
 
     await state.clear()
 
 @admin_router.message(Command("user_notification"))
-async def notify_user_message(message: Message, state: FSMContext):
+async def notify_user(message: Message, state: FSMContext):
     """
     Запускает процесс рассылки уведомления конкретному пользователю
     """
@@ -80,7 +73,7 @@ async def notify_user_message(message: Message, state: FSMContext):
     await state.update_data(bot_message_id=sent_message.message_id)
 
 @admin_router.message(NotificationUser.waiting_for_user_id)
-async def process_notify_user_message(message: Message, state: FSMContext):
+async def notify_user_message(message: Message, state: FSMContext):
     """
     Принимает ID пользователя и запрашивает сообщение для отправки
     """
@@ -100,10 +93,8 @@ async def process_notify_user_message(message: Message, state: FSMContext):
     await state.set_state(NotificationUser.waiting_for_message)
 
 @admin_router.message(NotificationUser.waiting_for_message)
-async def process_notify_user_message_final(message: Message, state: FSMContext, bot: Bot):
-    """
-    Завершает отправку уведомления конкретному пользователю
-    """
+async def process_notify_user(message: Message, state: FSMContext, bot: Bot):
+    """Завершает отправку уведомления конкретному пользователю"""
 
     message_for_user = message.text
     await message.delete()
@@ -130,36 +121,32 @@ async def process_notify_user_message_final(message: Message, state: FSMContext,
     await state.clear()
 
 @admin_router.message(Command("delete_user"))
-async def delete_user_command(message: Message, state: FSMContext):
-    """
-    Начинает удаление конкретного пользователя
-    """
+async def delete_user(message: Message, state: FSMContext):
+    """Начинает удаление конкретного пользователя"""
 
     await message.answer(
         "👤 Введите Telegram ID для удаления пользователя:\n"
         "💡 Пример: `1293014025`",
         parse_mode="Markdown"
     )
-    await state.set_state(ModeratorStates.waiting_delete_user_tg_id)
+    await state.set_state(AdminStates.waiting_delete_user_tg_id)
 
-@admin_router.message(ModeratorStates.waiting_delete_user_tg_id)
+@admin_router.message(AdminStates.waiting_delete_user_tg_id)
 async def get_user_id_for_delete(message: Message, state: FSMContext):
-    """
-    Просит причину удаления пользователя
-    """
+    """Запрашивает причину удаления пользователя"""
+
     await state.update_data(user_id = message.text)
 
     await message.answer(
         "❔ Введите причину удаления пользователя из системы:\n",
         parse_mode="Markdown"
     )
-    await state.set_state(ModeratorStates.waiting_delete_user_reason)
+    await state.set_state(AdminStates.waiting_delete_user_reason)
 
-@admin_router.message(ModeratorStates.waiting_delete_user_reason)
+@admin_router.message(AdminStates.waiting_delete_user_reason)
 async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
-    """
-    Удаляет конкретного пользователя
-    """
+    """Удаляет конкретного пользователя"""
+
     reason_for_delete = message.text
     data = await state.get_data()
     user_id = data.get("user_id")
@@ -171,7 +158,8 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
     google_sheets_status = google_sheets_row = "⏳"
     
     try:
-        # БД ВСЕГДА работает (приоритетная)
+
+        # БД (приоритетная)
         try:
             db_success, db_result, db_user_id= await db_delete_user_by_tg_id(user_id)
             db_status = "✅" if db_success else "❌"
@@ -217,11 +205,12 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
                 await message.answer("⚠️ Уведомление пользователю не доставлено")
         else:
             await message.answer(
-                f"❌ <b>Ошибка БД</b>\n\n"
+                f"❌ <b>Ошибка удаления из базы данных</b>\n\n"
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"  └─ {db_result}\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status} (строка {google_sheets_row})\n\n"
-                f"⚠️ Пользователь НЕ удалён",
+                f"⚠️ Пользователь НЕ удалён\n\n"
+                f"❗️ При повторной ошибке обратитесь к разработчику",
                 parse_mode="HTML"
             )
             
@@ -230,29 +219,32 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
             f"💥 <b>Критическая ошибка:</b>\n"
             f"<code>{str(e)}</code>\n\n"
             f"БД: {db_status if db_status else 'Неизвестно'}\n"
-            f"Google Sheets: {google_sheets_status}",
+            f"Google Sheets: {google_sheets_status}\n\n"
+            f"❗️ Обратитесь к разработчику",
             parse_mode="HTML"
         )
     
     await state.clear()
 
-@admin_router.message(Command("supermegasecretcommandfordeleteallusers"))
+@admin_router.message(Command("clear_system"))
 async def delete_all_users(message: Message, state: FSMContext):
     """
-    Начинает полную очистку системы от данных пользователей
+    Начинает полную очистку БД и Google Sheets
     """
+
     await message.delete()
-    await message.answer("🗑️ Вы уверены что хотите <b>ПОЛНОСТЬЮ</b> очистить систему?\n\n"
+    await message.answer("🗑️ Вы уверены что хотите <b>ПОЛНОСТЬЮ</b> очистить систему?(Y/n)\n\n"
                         "⚠️ <b>Это удалит ВСЕХ пользователей и заявки!</b>",
                         parse_mode="HTML")
-    await state.set_state(ModeratorStates.waiting_accept_to_delete_all_users)
+    await state.set_state(AdminStates.waiting_accept_to_delete_all_users)
 
-@admin_router.message(ModeratorStates.waiting_accept_to_delete_all_users)
+@admin_router.message(AdminStates.waiting_accept_to_delete_all_users)
 async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot):
     """
-    Полностью очищает систему от данных пользователей
+    Полностью очищает БД и Google Sheets
     """
-    if message.text == "Ye$, I w@nt to de1ete":
+
+    if message.text == "Y":
         await message.delete()
         await message.answer("🔄 Выполняю полную очистку...")
     
@@ -262,7 +254,8 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
         db_status_ids, all_ids = await db_get_all_user_tg_ids()
         
         try:
-            # БД ВСЕГДА работает (приоритетная)
+
+            # БД (приоритетная)
             try:
                 db_success, db_result = await db_delete_all_users()
                 db_status = "✅" if db_success else "❌"
@@ -282,7 +275,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     google_sheets_total_deleted = google_sheets_success.get('error', 'Не удалось')
             except Exception as gs_error:
                 google_sheets_status = "⚠️"
-                google_sheets_total_deleted = f"Ошибка GS: {str(gs_error)}"
+                google_sheets_total_deleted = f"Ошибка Google Sheets: {str(gs_error)}"
             
             # Финальный отчет
             if db_success:
@@ -291,17 +284,18 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     f"💾 <b>База данных:</b> {db_status}\n"
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                     f"  └─ Удалено: {google_sheets_total_deleted}\n\n"
-                    f"❗️ Если данные не удалёны из GoogleSheets - сделайте это вручную",
+                    f"❗️ Если данные не удалёны из GoogleSheets - сделайте это вручную, обратитесь к разработчику",
                     parse_mode="HTML"
                 )
             else:
                 await message.answer(
-                    f"❌ <b>Ошибка очистки БД</b>\n\n"
+                    f"❌ <b>Ошибка очистки базы данных</b>\n\n"
                     f"💾 <b>База данных:</b> {db_status}\n"
                     f"  └─ {db_result}\n"
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                     f"  └─ {google_sheets_total_deleted}\n\n"
-                    f"⚠️ Очистка не выполнена",
+                    f"⚠️ Очистка не выполнена"
+                    f"❗️ При повторной ошибке обратитесь к разработчику",
                     parse_mode="HTML"
                 )
                 
@@ -310,7 +304,8 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                 f"💥 <b>Критическая ошибка:</b>\n"
                 f"<code>{str(e)}</code>\n\n"
                 f"БД: {db_status if db_status else 'Неизвестно'}\n"
-                f"Google Sheets: {google_sheets_status}",
+                f"Google Sheets: {google_sheets_status}"
+                f"❗️ Обратитесь к разработчику",
                 parse_mode="HTML"
             )
         
@@ -327,8 +322,8 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
         await state.clear()
 
     else:
-        await message.answer(f"❌ Команда для очистки системы указана неверно!\n\n"
-                             f"Очистка отменена! Больше так не балуйся 😏", parse_mode="HTML")
+        await message.answer(f"❌ Очистка системы отменена! Больше так не балуйся 😏", 
+                            parse_mode="HTML")
         
         await state.clear()
 
@@ -341,9 +336,9 @@ async def deduct_tiukoins_from_user(message: Message, state: FSMContext):
     await message.delete()
     await message.answer(text="Напишите ID пользователя и количество ТИУкоинов, которые хотите списать через пробел\n\n <i>Пример:1059294358 150</i>")
     
-    await state.set_state (ModeratorStates.deduct_tiukoins)
+    await state.set_state (AdminStates.deduct_tiukoins)
 
-@admin_router.message(ModeratorStates.deduct_tiukoins)
+@admin_router.message(AdminStates.deduct_tiukoins)
 async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext, bot: Bot):
     """
     Конец: Списывает определённое количество ТИУкоинов по ТГ_айди пользователя
@@ -356,8 +351,11 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
     
     await message.answer(f"🔄 Списываю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
 
+    # Инициализация статусов
     db_success = db_result = None
     google_sheets_status = google_sheets_row ="⏳"
+
+    # БД (приоритетная)
     try:
         db_success, db_result = await db_deduct_tiukoins(
             tg_id_str=str(user_id),
@@ -371,6 +369,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
         db_result = f"Ошибка: {str(db_error)}"
         db_status = "❌"
     
+    # Google Sheets (опционально)
     try:
         google_sheets_success = await googlesheet_service.deduct_tiukoins_async(
             tg_id=user_id,
@@ -384,7 +383,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
             google_sheets_row = google_sheets_success.get('error', 'Не удалось')
     except Exception as gs_error:
         google_sheets_status = "⚠️"
-        google_sheets_row = f"Ошибка GS: {str(gs_error)}"
+        google_sheets_row = f"Ошибка Google Sheets: {str(gs_error)}"
         
     # Финальный отчет
     try:
@@ -399,13 +398,14 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
                 parse_mode="HTML"
             )
 
+            # Уведомление пользователя
             await bot.send_message(
                 chat_id=user_id,
-                text=f"💎У вас было списано {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
+                text=f"💎 У вас было списано {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
 
         else:
             await message.answer(
-                f"❌ <b>Ошибка БД</b>\n\n"
+                f"❌ <b>Ошибка базы данных</b>\n\n"
                 f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"  └─ {db_result}\n"
@@ -435,9 +435,9 @@ async def add_tiukoins_to_user(message: Message, state: FSMContext):
     await message.delete()
     await message.answer(text="Напишите ID пользователя и количество ТИУкоинов, которые хотите добавить через пробел.\n\n <i>Пример:1059294358 150</i>")
     
-    await state.set_state (ModeratorStates.add_tiukoins)
+    await state.set_state (AdminStates.add_tiukoins)
 
-@admin_router.message(ModeratorStates.add_tiukoins)
+@admin_router.message(AdminStates.add_tiukoins)
 async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot: Bot):
     """
     Конец: Добавляет определённое количество ТИУкоинов по ТГ_айди пользователя
@@ -448,10 +448,13 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
     coins = float(parts[1])
     user_full_name = await db_get_user_full_name(user_id)
     await message.delete()
-    await message.answer(f"🔄 Добавляю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
+    await message.answer(f"🔄 Начисляю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
 
+    # Инициализация статусов
     db_success = db_result = None
     google_sheets_status = google_sheets_row ="⏳"
+
+    # БД (приоритетная)
     try:
         db_success, db_result = await db_add_tiukoins(
             tg_id_str=str(user_id),
@@ -464,6 +467,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
         db_result = f"Ошибка: {str(db_error)}"
         db_status = "❌"
     
+    # Google Sheets (опционально)
     try:
         google_sheets_success = await googlesheet_service.add_tiukoins_async(
             tg_id=user_id,
@@ -477,28 +481,29 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
             google_sheets_row = google_sheets_success.get('error', 'Не удалось')
     except Exception as gs_error:
         google_sheets_status = "⚠️"
-        google_sheets_row = f"Ошибка GS: {str(gs_error)}"
+        google_sheets_row = f"Ошибка Google Sheets: {str(gs_error)}"
         
     try:
         # Финальный отчет
         if db_success:
             await message.answer(
-                f"✅ <b>ТИУкоины добавлены!</b>\n\n"
+                f"✅ <b>ТИУкоины начислены!</b>\n\n"
                 f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
                 f"💎 <b>Добавлено:</b> {coins}\n"
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status} ({google_sheets_row} строка)\n\n"
-                f"❗️ Если ТИУкоины не добавлены в GoogleSheets - сделайте это вручную. Сообщите об ошибке разработчику.",
+                f"❗️ Если ТИУкоины не начислились в GoogleSheets - сделайте это вручную. Сообщите об ошибке разработчику.",
                 parse_mode="HTML"
             )
 
+            # Уведомление пользователя
             await bot.send_message(
                 chat_id=user_id,
-                text=f"💎Вам было добавлено {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
+                text=f"💎 Вам было добавлено {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
 
         else:
             await message.answer(
-                f"❌ <b>Ошибка  БД</b>\n\n"
+                f"❌ <b>Ошибка базы данных</b>\n\n"
                 f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"  └─ {db_result}\n"

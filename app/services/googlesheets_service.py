@@ -1,14 +1,11 @@
 from typing import Dict, Any, Optional
 import httpx
-import requests
 from ..config import config
 from .logger import bot_logger
 import time
 
 class GoogleSheetsService:
-    """
-    Сервис для работы с Google Apps Script (Google Sheets backend).
-    """
+    """Сервис для работы с Google Apps Script (Google Sheets backend)"""
 
     def __init__(self) -> None:
         self.url = config.apps_script_url
@@ -22,11 +19,12 @@ class GoogleSheetsService:
             "APPS_SCRIPT_URL, GOOGLE_SECRET_KEY")
     
     async def _make_request(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Асинхронный базовый метод с поддержкой редиректов Google Apps Script."""
+        """Асинхронный базовый метод с поддержкой редиректов Google Apps Script"""
+
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=10.0),
             follow_redirects=True,           # Следовать за редиректами
-            max_redirects=5,                 # Макс 5 редиректов (ТОЛЬКО ЗДЕСЬ)
+            max_redirects=5,                 # Макс 5 редиректов
             headers={
                 "User-Agent": "Tyuiumnichka/1.0",
                 "Content-Type": "application/json",
@@ -41,25 +39,18 @@ class GoogleSheetsService:
                     result = response.json()
                     return result
                 except ValueError:
-                    bot_logger.log_moderator_msg(
-                        tg_id="googlesheet_service", 
-                        username="googlesheet_service", 
-                        message="Не удалось распарсить JSON-ответ"
-                    )
                     return {"success": False, "error": "Некорректный ответ от сервера"}
                     
             except httpx.TimeoutException:
-                bot_logger.log_moderator_msg(tg_id="googlesheet_service", username="googlesheet_service", message="Таймаут запроса")
                 return {"success": False, "error": "Таймаут запроса к Google Sheets"}
             except httpx.HTTPStatusError as e:
-                bot_logger.log_moderator_msg(tg_id="googlesheet_service", username="googlesheet_service", message=f"HTTP {e.response.status_code}")
                 return {"success": False, "error": f"HTTP {e.response.status_code}"}
             except Exception as e:
-                bot_logger.log_moderator_msg(tg_id="googlesheet_service", username="googlesheet_service", message=f"Ошибка httpx: {e}")
                 return {"success": False, "error": f"Ошибка: {e}"}
     
     async def add_participant_async(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Добавляет участника (async)."""
+        """Добавляет участника после регистрации"""
+
         tg_id = data.get("tg_id")
         if tg_id is None:
             return {"success": False, "error": "Отсутствует tg_id"}
@@ -84,32 +75,20 @@ class GoogleSheetsService:
             }
         }
         
-        bot_logger.log_moderator_msg(
-            tg_id="googlesheet_service",
-            username=data.get("moderator_username", ""),
-            message=f"РЕГИСТРАЦИЯ: Google Sheets: отправка участника tg_id={tg_id}"
-        )
-        
         result = await self._make_request(payload)
         
         if result.get("success"):
             row = result.get("row")
-            bot_logger.log_moderator_msg(
-                tg_id="googlesheet_service",
-                username=data.get("moderator_username", ""),
-                message=f"РЕГИСТРАЦИЯ: Google Sheets: участник tg_id={tg_id} добавлен (row={row})"
-            )
             return {"success": True, "row": row, "tg_id": tg_id}
         
         error = result.get("error") or result.get("message") or "Неизвестная ошибка"
-        bot_logger.log_moderator_msg(
-            tg_id="googlesheet_service",
-            username=data.get("moderator_username", ""),
-            message=f"РЕГИСТРАЦИЯ: Google Sheets: ошибка добавления tg_id={tg_id}: {error}"
-        )
         return {"success": False, "error": error}
 
     async def add_event_application_async(self, data: Dict[str, Any], sheet_name: str) -> Dict[str, Any]:
+        """
+        Добавляет заявку на получение ТИУкоинов в соотвествующий лист направления внеучебной деятельности
+        """
+
         payload = {
             "secret": self.secret,
             "type": "new_event_application",
@@ -118,6 +97,8 @@ class GoogleSheetsService:
         return await self._make_request(payload)
 
     async def update_application_status_async(self, sheet_name: str, row_id: int, status: str, moderator: str) -> Dict[str, Any]:
+        """Обновляет статус заявки на получение ТИУкоинов"""
+
         payload = {
             "secret": self.secret,
             "type": "update_application_status",
@@ -127,83 +108,10 @@ class GoogleSheetsService:
             }
         }
         return await self._make_request(payload)
-
-    def _get_cached_catalog(self) -> Optional[Dict[str, Any]]:
-        """Проверяет кэш каталога"""
-        if (self._catalog_cache is None or
-            time.time() - self._catalog_cache_time > self.CACHE_TTL):
-            return None
-        return self._catalog_cache
-
-    async def get_catalog_items_async(self) -> Dict[str, Any]:
-        """Возвращает каталог с автоматическим кэшированием (async)"""
-        cached = self._get_cached_catalog()
-        if cached:
-            return cached
-        
-        payload = {
-            "secret": self.secret,
-            "type": "get_catalog_items",
-            "data": {}
-        }
-        catalog = await self._make_request(payload)
-        print(catalog)
-        self._catalog_cache = catalog
-        self._catalog_cache_time = time.time()
-        return catalog
-
-    async def get_item_name_by_id_async(self, item_id: str) -> str:
-        """Название предмета по ID из кэша (async)"""
-        catalog = await self.get_catalog_items_async() 
-        for item in catalog.get("items", []):
-            if item["id"] == item_id:
-                return item["name"]
-        return f"ID_{item_id[:8]}"
-
-    async def invalidate_catalog_cache_async(self):
-        """Принудительно обновить кэш (async)"""
-        self._catalog_cache = None
-        print("🗑️ Кэш каталога сброшен!")
-
-    async def cancel_reward_purchase_async(self, tg_id: int, item_id: str, amount: float | int) -> Dict[str, Any]:
-        payload = {
-            "secret": self.secret,
-            "type": "cancel_reward_purchase",
-            "data": {
-                "tg_id": tg_id,
-                "item_id": item_id,
-                "amount": float(amount)
-            }
-        }
-        return await self._make_request(payload)
-
-    async def purchase_item_async(self, tg_id: int, item_id: str, full_name: str, order_date: str = None) -> Dict[str, Any]:
-        payload = {
-            "secret": self.secret,
-            "type": "purchase_item",
-            "data": {
-                "tg_id": tg_id,
-                "item_id": item_id,
-                "full_name": full_name,
-                "order_date": order_date 
-            }
-        }
-        return await self._make_request(payload)
-
-    async def update_reward_status_async(self, request_id: int, status: str, moderator: str) -> Dict[str, Any]:
-        payload = {
-            "secret": self.secret,
-            "type": "update_reward_status",
-            "data": {
-                "request_id": request_id,
-                "status": status,
-                "moderator": f"@{moderator}"
-            }
-        }
-        return await self._make_request(payload)
     
     async def approve_application_async(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """🎉 Одобрение заявки: статус + ТИУкоины заявки + начисление участнику"""
+        """Одобрение заявки на получение ТИУкоинов(изменение статуса, Начисление ТИУкоинов"""
+
         payload = {
             "secret": self.secret,
             "type": "approve_application",
@@ -220,6 +128,10 @@ class GoogleSheetsService:
 
 
     async def update_tiukoins_async(self, sheet_name: str, row_id: int, tiukoins: str) -> Dict[str, Any]:
+        """
+        Обновление ТИУкоинов при введении коэффицента повторяемости
+        """
+
         payload = {
             "secret": self.secret,
             "type": "update_tiukoins", 
@@ -231,7 +143,94 @@ class GoogleSheetsService:
         }
         return await self._make_request(payload)
 
+    def _get_cached_catalog(self) -> Optional[Dict[str, Any]]:
+        """Проверяет кэш каталога"""
+
+        if (self._catalog_cache is None or
+            time.time() - self._catalog_cache_time > self.CACHE_TTL):
+            return None
+        return self._catalog_cache
+
+    async def get_catalog_items_async(self) -> Dict[str, Any]:
+        """Возвращает каталог с автоматическим кэшированием"""
+
+        cached = self._get_cached_catalog()
+        if cached:
+            return cached
+        
+        payload = {
+            "secret": self.secret,
+            "type": "get_catalog_items",
+            "data": {}
+        }
+        catalog = await self._make_request(payload)
+        self._catalog_cache = catalog
+        self._catalog_cache_time = time.time()
+        return catalog
+
+    async def get_item_name_by_id_async(self, item_id: str) -> str:
+        """Название предмета по ID из кэша"""
+
+        catalog = await self.get_catalog_items_async() 
+        for item in catalog.get("items", []):
+            if item["id"] == item_id:
+                return item["name"]
+        return f"ID_{item_id[:8]}"
+
+    async def invalidate_catalog_cache_async(self):
+        """Принудительно обновить кэш  (не используется)"""
+
+        self._catalog_cache = None
+        print("🗑️ Кэш каталога сброшен!")
+
+    async def purchase_item_async(self, tg_id: int, item_id: str, full_name: str, order_date: str = None) -> Dict[str, Any]:
+        """
+        Покупка поощрения пользователем (Списывание ТИУкоинов, создание заявки, -1 кол-во поощрения)
+        """
+
+        payload = {
+            "secret": self.secret,
+            "type": "purchase_item",
+            "data": {
+                "tg_id": tg_id,
+                "item_id": item_id,
+                "full_name": full_name,
+                "order_date": order_date 
+            }
+        }
+        return await self._make_request(payload)
+
+    async def update_reward_status_async(self, request_id: int, status: str, moderator: str) -> Dict[str, Any]:
+        """Обновление статуса выдачи поощрения"""
+
+        payload = {
+            "secret": self.secret,
+            "type": "update_reward_status",
+            "data": {
+                "request_id": request_id,
+                "status": status,
+                "moderator": f"@{moderator}"
+            }
+        }
+        return await self._make_request(payload)
+    
+    async def cancel_reward_purchase_async(self, tg_id: int, item_id: str, amount: float | int) -> Dict[str, Any]:
+        """Отклонение заявки на выдачу поощрения (Возврат ТИУкоинов, изменение статуса)"""
+
+        payload = {
+            "secret": self.secret,
+            "type": "cancel_reward_purchase",
+            "data": {
+                "tg_id": tg_id,
+                "item_id": item_id,
+                "amount": float(amount)
+            }
+        }
+        return await self._make_request(payload)
+
     async def add_tiukoins_async(self, tg_id: int, amount: int) -> Dict[str, Any]:
+        """Добавление ТИУкоинов"""
+
         payload = {
             "secret": self.secret,
             "type": "add_tiukoins",
@@ -240,14 +239,38 @@ class GoogleSheetsService:
         return await self._make_request(payload)
 
     async def refund_tiukoins_async(self, tg_id: int, amount: int) -> Dict[str, Any]:
+        """Возврат ТИУкоинов"""
+
         payload = {
             "secret": self.secret,
             "type": "refund_tiukoins",
             "data": {"tg_id": tg_id, "amount": amount}
         }
         return await self._make_request(payload)
+    
+    async def deduct_tiukoins_async(self, tg_id: int, amount: int) -> Dict[str, Any]:
+        """Списание ТИУКоинов"""
+
+        payload = {
+            "secret": self.secret,
+            "type": "deduct_tiukoins",
+            "data": {"tg_id": tg_id, "amount": amount}
+        }
+        return await self._make_request(payload)
+    
+    async def delete_user_by_tg_id_async(self, tg_id: int) -> Dict[str, Any]:
+        """Удаление пользователя по tg_id"""
+
+        payload = {
+            "secret": self.secret,
+            "type": "delete_user",
+            "data": {"tg_id": tg_id}
+        }
+        return await self._make_request(payload)
 
     async def clear_all_user_data_async(self) -> Dict[str, Any]:
+        """Полная очистка системы (пользователи+заявки+выдача поощрений)"""
+
         payload = {
             "secret": self.secret,
             "type": "clear_all_data",
@@ -255,23 +278,5 @@ class GoogleSheetsService:
         }
         return await self._make_request(payload)
 
-    async def delete_user_by_tg_id_async(self, tg_id: int) -> Dict[str, Any]:
-        payload = {
-            "secret": self.secret,
-            "type": "delete_user",
-            "data": {"tg_id": tg_id}
-        }
-        return await self._make_request(payload)
-    
-    async def deduct_tiukoins_async(self, tg_id: int, amount: int) -> Dict[str, Any]:
-        """Списание ТИУКоинов"""
-        payload = {
-            "secret": self.secret,
-            "type": "deduct_tiukoins",
-            "data": {"tg_id": tg_id, "amount": amount}
-        }
-        return await self._make_request(payload)
-
-
-# Глобальный экземпляр сервиса
+# Глобальный экземпляр
 googlesheet_service = GoogleSheetsService()

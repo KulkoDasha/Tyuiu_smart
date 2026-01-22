@@ -1187,9 +1187,9 @@ async def catalog_start(message: Message, state: FSMContext):
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
     await catalog.delete()
     await message.answer(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:",reply_markup = keyboard_markup)
-    await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
+    await state.set_state(CatalogOfRewardsStates.catalog_of_rewards_start)
 
-@user_router.callback_query(F.data == "cancel_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+@user_router.callback_query(F.data == "cancel_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def cancel_catalog(callback: CallbackQuery, state: FSMContext):
     """
     Кнопка "Закрыть каталог"
@@ -1198,7 +1198,7 @@ async def cancel_catalog(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
 
-@user_router.callback_query(F.data.startswith("view_item_"), StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+@user_router.callback_query(F.data.startswith("view_item_"), StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def show_item_details_handler(callback: CallbackQuery, state: FSMContext):
     """Просмотр выбранного поощрения из Google Sheets"""
     try:
@@ -1244,7 +1244,7 @@ async def show_catalog(callback: CallbackQuery, state: FSMContext):
         reply_markup=keyboard_markup,
         parse_mode="HTML"
     )
-    await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
+    await state.set_state(CatalogOfRewardsStates.catalog_of_rewards_start)
     await callback.answer()
 
 
@@ -1377,7 +1377,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         await callback.message.answer(f"Неожиданная ошибка: {e}")
         print(f"Ошибка при покупке товара: {e}") 
            
-@user_router.callback_query(F.data == "refresh_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+@user_router.callback_query(F.data == "refresh_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def refresh_catalog(callback: CallbackQuery, state: FSMContext):
     """🔄 Обновление каталога БЕЗ ошибки "not modified" """
     
@@ -1402,7 +1402,7 @@ async def refresh_catalog(callback: CallbackQuery, state: FSMContext):
             # Другие ошибки пробрасываем
             raise
 
-@user_router.callback_query(F.data == "error_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_revards_start))
+@user_router.callback_query(F.data == "error_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def error_catalog(callback: CallbackQuery, state: FSMContext):
     await callback.answer("❌ Ошибка загрузки каталога. Попробуйте позже.", show_alert=True)
 
@@ -1413,7 +1413,7 @@ async def cancel_purchase(callback:CallbackQuery,state: FSMContext):
     """
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
     await callback.message.edit_text(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:",reply_markup = keyboard_markup)
-    await state.set_state(CatalogOfRewardsStates.catalog_of_revards_start)
+    await state.set_state(CatalogOfRewardsStates.catalog_of_rewards_start)
     await callback.answer("❌ Покупка отменена", show_alert=True)
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['agreement_of_contest'],StateFilter(default_state))

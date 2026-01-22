@@ -1,6 +1,7 @@
 from .admin_states import (NotifificationAllUsers,
                            NotificationUser,
-                           ModeratorStates)
+                           ModeratorStates,
+                           AdminStates)
 
 from .user_states import (RegistrationFormStates,
                           EditRegistrationForm,
@@ -13,6 +14,7 @@ from .user_states import (RegistrationFormStates,
 __all__ = ["NotifificationAllUsers",
            "NotificationUser",
            "ModeratorStates",
+           "AdminStates",
            "RegistrationFormStates",
            "EditRegistrationForm",
            "EventApplicationStates",

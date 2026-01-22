@@ -2,25 +2,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from ..lexicon import LEXICON_MODERATOR_KEYBOARD
 
-class AdminPanelInlineButtons:
-    """
-    Инлайн-кнопки админа вызываются при ("/menu" в админ-панели)
-    """
-    
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["notification_all"],callback_data="notification_for_all")],
-                                [InlineKeyboardButton(text=LEXICON_MODERATOR_KEYBOARD["notification_user"], callback_data="notification_user")]
-                                ])
-        
-        return keyboard
-    
 class RegisterNewUserInlineButtons:
-    """
-    Инлайн-кнопки регистрации нового пользователя
-    """
+    """Инлайн-кнопки обработки регистрационной анкеты"""
 
     @staticmethod
     def get_inline_keyboard(user_id: int):
@@ -33,9 +16,7 @@ class RegisterNewUserInlineButtons:
         return keyboard
     
 class ProcessingUserApplicationInlineButtons:
-    """
-    Инлайн-кнопки обработки заявки пользователя
-    """
+    """Инлайн-кнопки обработки заявки на получение ТИУкоинов"""
 
     @staticmethod
     def get_inline_keyboard(application_id: int, user_id: int, event_role: str, db_application_id: int):
@@ -48,9 +29,7 @@ class ProcessingUserApplicationInlineButtons:
         return keyboard
 
 class ModeratorSupportInlineButtons:
-    """
-    Инлайн-кнопки поддержки
-    """
+    """Инлайн-кнопки поддержки"""
     
     @staticmethod
     def get_inline_keyboard(user_id: int):
@@ -63,9 +42,8 @@ class ModeratorSupportInlineButtons:
         return keyboard
 
 class ModeratorCloseRewards:
-    """
-    Инлайн-кнопки обработку заявки на получение поощрения
-    """
+    """Инлайн-кнопки обработки заявки на получение поощрения"""
+
     @staticmethod
     def get_inline_keyboard(request_id: int, user_id: int, item_id: str, item_price:int):
         req_str = str(request_id)
@@ -80,18 +58,11 @@ class ModeratorCloseRewards:
         if len(full_issue) > 60:
             # Сжимаем request_id → 3 цифры
             short_req = req_str[-3:]
-            full_issue = f"i_r_{req_str}_{user_str}_{item_price_str}_{item_str}"
+            full_issue = f"i_r_{short_req}_{user_str}_{item_price_str}_{item_str}"
             
-            if len(full_issue) > 60:
-                # Экстремально: user_id → 7 цифр
-                short_user = user_str[-7:]
-                full_issue = f"i_r_{req_str}_{user_str}_{item_price_str}_{item_str}"
-        
         issue_data = full_issue
         reject_data = full_issue.replace("i_r_", "r_r_")
-        
-        print(f"🔧 '{issue_data}' ({len(issue_data)} символов)")
-        
+                
         return InlineKeyboardMarkup(inline_keyboard=[
             [
                 InlineKeyboardButton(text="✅ Выдать", callback_data=issue_data),

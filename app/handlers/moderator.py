@@ -686,9 +686,8 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
     action = data["action"]
     
     # Быстрое название поощрения по айди
-    item_name = (await get_item_name_async(item_id)) if item_id else "Не указано"
+    item_name = (await googlesheet_service.get_item_name_by_id_async(item_id)) if item_id else "Не указано"
     
-    utc_time = callback.message.date #не используется
     ekaterinburg_time = datetime.now()
     moderator_username = callback.from_user.username or callback.from_user.full_name
     user_full_name = await db_get_user_full_name( str(user_id))
