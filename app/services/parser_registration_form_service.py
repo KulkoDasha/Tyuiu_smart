@@ -45,7 +45,7 @@ def parse_registration_form_from_message(message_text: str, user_id: int,
                  "approval_date": approval_date} if message_text else None
 
 def _extract_field(text: str, field_name: str) -> str:
-    """Улучшенный парсер (не используется)"""
+    """Улучшенный парсер"""
 
     # 1️⃣ • Поле: значение
     pattern = rf"•\s*{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)"

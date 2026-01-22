@@ -1,7 +1,6 @@
 from typing import Dict, Any, Optional
 import httpx
 from ..config import config
-from .logger import bot_logger
 import time
 
 class GoogleSheetsService:

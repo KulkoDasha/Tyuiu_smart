@@ -28,7 +28,7 @@ def parse_event_application_from_message(message_text: str, user_id: int) -> Dic
     return data
 
 def _extract_field(text: str, field_name: str) -> str:
-    """Улучшенный парсер (не используется)"""
+    """Улучшенный парсер"""
     patterns = [
         rf"•\s*{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)",
         rf"{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)"
