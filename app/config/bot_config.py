@@ -14,7 +14,6 @@ class LogSettings:
 class TgBot:
     token: str
 
-    
 @dataclass
 class Config:
     bot: TgBot
@@ -25,8 +24,7 @@ class Config:
     apps_script_url: str
 
 def load_config(path: str | None = None) -> Config:
-    """создает парсер(скрипт который собирает и структурирует данные), 
-        считывает переменные из файла .env и заполняет их"""
+    """Принимает данные из .env и загружает конфиг"""
     if path is None:
         env_path = str(Path(__file__).parent.parent / ".env")
     else:
@@ -42,8 +40,7 @@ def load_config(path: str | None = None) -> Config:
         log=LogSettings(
         level=os.getenv("LOG_LEVEL", "INFO"),
         format=os.getenv("LOG_FORMAT", "{asctime} - {levelname} - {name} - {message}"),
-        logs_dir=os.getenv("LOGS_DIR", "logs")
-        ),
+        logs_dir=os.getenv("LOGS_DIR", "logs")),
         moderator_chat_id = int(moderator_chat_id),
         admin_panel_id = admin_panel_id,
         google_secret_key = os.getenv("GOOGLE_SECRET_KEY"),

@@ -23,7 +23,10 @@ async def db_set_user(session,
                    email: str,
                    moderator_username: str
                    ) -> Optional[Tuple[bool, str, Optional[int]]]:
-    """Метод для добавления нового пользователя (проверка по tg_id и почте)"""
+    """
+    Метод для добавления нового пользователя (проверка по tg_id и уникальной почте)
+    """
+
     try:
         tg_id = int(tg_id_str)
         start_year = int(start_year_str)
@@ -75,12 +78,13 @@ async def db_delete_all_users(session) -> Tuple[bool, str]:
     Удаляет ВСЕХ пользователей из базы данных
     Сначала удаляет все связанные заявки, потом пользователей
     """
+
     try:
-        # 1. Сначала удаляем ВСЕ заявки
+        # Удаляем ВСЕ заявки
         result_apps = await session.execute(delete(Event_applications))
         deleted_apps_count = result_apps.rowcount
         
-        # 2. Потом удаляем ВСЕХ пользователей
+        # Удаляем ВСЕХ пользователей
         result_users = await session.execute(delete(Users))
         deleted_users_count = result_users.rowcount
         
@@ -101,9 +105,8 @@ async def db_delete_all_users(session) -> Tuple[bool, str]:
 
 @connection 
 async def db_get_user_full_name(session, tg_id_str:str ) -> str:
-    """
-    Получение ФИО студента по его tg ID
-    """
+    """Получение ФИО студента по его tg_id"""
+
     tg_id = int(tg_id_str)
     full_name = await session.scalar(select(Users.full_name).where(Users.tg_id == tg_id))
     if full_name:
@@ -117,6 +120,7 @@ async def db_user_exists(session, tg_id_str: str) -> bool:
     Проверяет, существует ли пользователь с заданным tg_id
     Возвращает True если существует, False если нет
     """
+
     tg_id = int(tg_id_str)
     exists = await session.scalar(
         select(1).where(Users.tg_id == tg_id)
@@ -135,7 +139,7 @@ async def db_submit_event_application (session,
                                     ) -> Tuple[int, str]:
     """
     Метод для добавления заявки пользователя по мероприятию (без подтверждения от модератора)
-    Проверка факта регистрации пользователя и отсутствия у него уже существующей заявки на данное мероприятие. 
+    Проверка факта регистрации пользователя и отсутствия у него уже существующей заявки на данное мероприятие
     """
     
     tg_id = int(tg_id_str)
@@ -203,9 +207,8 @@ async def db_approve_application(
     moderator_username: str,
     tiukoins_amount: float
 ) -> Tuple[bool, str, float]:
-    """
-    Модератор принимает заявку и начисляет ТИУкоины
-    """
+    """Модератор принимает заявку и начисляет ТИУкоины"""
+
     try:
 
         result = await session.execute(
@@ -249,11 +252,10 @@ async def db_reject_application(
     application_id: int,
     moderator_username: str
 ) -> Tuple[bool, str]:
-    """
-    Модератор отклоняет заявку
-    """
+    """Модератор отклоняет заявку"""
+
     try:
-        # 1. Находим заявку
+        # Находим заявку
         result = await session.execute(
             select(Event_applications).where(Event_applications.id == application_id)
         )
@@ -262,11 +264,11 @@ async def db_reject_application(
         if not application:
             return False, "Заявка не найдена"
         
-        # 2. Проверяем статус
+        # Проверяем статус
         if application.event_application_status != 'На рассмотрении':
             return False, f"Заявка уже имеет статус: {application.event_application_status}"
         
-        # 3. Обновляем заявку
+        # Обновляем заявку
         application.event_application_status = 'Отклонена'
         application.moderator = moderator_username
         application.amount_tiukoins = 0.0 
@@ -287,14 +289,13 @@ async def db_reject_application(
 
 @connection
 async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_of_item: str) -> Tuple[bool, str]:
-    """
-    Списание ТИУкоинов у пользователя при заказе поощрения
-    """
+    """Списание ТИУкоинов у пользователя при заказе поощрения"""
+
     try:
             
         tg_id = int(tg_id_str)
         
-        # 2. Получаем пользователя
+        # Получаем пользователя
         result = await session.execute(
             select(Users).where(Users.tg_id == tg_id)
         )
@@ -303,19 +304,19 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
         if not user:
             return False, f"Пользователь с TG ID {tg_id} не найден"
         
-        # 3. Проверяем баланс
+        # Проверяем баланс
         current_balance = user.tiukoins
         
         if current_balance < spend_amount:
             return False, f"Недостаточно ТИУкоинов.\nВаш баланс: {current_balance:.1f}. Требуется: {spend_amount:.1f}"
         
-        # 4. Рассчитываем новый баланс в переменной
+        # Рассчитываем новый баланс в переменной
         new_balance = current_balance - spend_amount
         
-        # 5. Обновляем поле
+        # Обновляем поле
         user.tiukoins = new_balance
         
-        # 6. Сохраняем
+        # Сохраняем
         await session.commit()
         
         logger.info(
@@ -336,14 +337,13 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
 
 @connection
 async def db_add_tiukoins(session, tg_id_str: str, spend_amount: float) -> Tuple[bool, str]:
-    """
-    Добавление ТИУкоинов пользователю
-    """
+    """Добавление ТИУкоинов пользователю"""
+
     try:
             
         tg_id = int(tg_id_str)
         
-        # 2. Получаем пользователя
+        # Получаем пользователя
         result = await session.execute(
             select(Users).where(Users.tg_id == tg_id)
         )
@@ -352,16 +352,16 @@ async def db_add_tiukoins(session, tg_id_str: str, spend_amount: float) -> Tuple
         if not user:
             return False, f"Пользователь с TG ID {tg_id} не найден"
         
-        # 3. Получаем баланс
+        # Получаем баланс
         current_balance = user.tiukoins
         
-        # 4. Рассчитываем новый баланс в переменной
+        # Рассчитываем новый баланс в переменной
         new_balance = current_balance + spend_amount
         
-        # 5. Обновляем поле
+        # Обновляем поле
         user.tiukoins = new_balance
         
-        # 6. Сохраняем
+        # Сохраняем
         await session.commit()
         
         logger.info(
@@ -380,9 +380,8 @@ async def db_add_tiukoins(session, tg_id_str: str, spend_amount: float) -> Tuple
         return False, f"Ошибка: {str(e)}"
     
 async def db_get_user_balance(session, tg_id_str: str) -> float:
-    """
-    Получает текущий баланс ТИУкоинов пользователя
-    """
+    """Получает текущий баланс ТИУкоинов пользователя"""
+
     try:
         # Преобразуем строку в число
         tg_id = int(tg_id_str)
@@ -402,8 +401,9 @@ async def db_return_tiukoins(session,
                           tg_id_str: str,
                           item_price_str: str) -> Tuple[bool, str]:
     """
-    Возврат ТИУкоинов пользователю при отклонении
+    Возврат ТИУкоинов пользователю при отклонении заявки на поощрение
     """
+
     try: 
         tg_id = int(tg_id_str)
         item_price = float(item_price_str)
@@ -439,13 +439,12 @@ async def db_return_tiukoins(session,
 
 @connection
 async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, Optional[int]]:
-    """
-    Удаляет пользователя по tg_id.
-    """
+    """Удаляет пользователя по tg_id"""
+
     try:
         tg_id = int(tg_id_str)
         
-        # 1. Находим пользователя
+        # Находим пользователя
         result = await session.execute(
             select(Users).where(Users.tg_id == tg_id)
         )
@@ -457,7 +456,7 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, O
         
         logger.info(f"Удаляю пользователя: {user.full_name} (tg_id: {tg_id})")
         
-        # 2. Удаляем (cascade delete удалит связанные заявки автоматически)
+        # Удаляем (cascade delete удалит связанные заявки автоматически)
         user_db_id = user.id
 
         await session.delete(user)
@@ -476,8 +475,9 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, O
 async def db_get_application_history(session, tg_id_str: str) -> Tuple[bool, list[list]]:
     """
     Последние заявки пользователя за последние 3 месяца (по тг айди)
-    Возвращает: направление, название мероприятия, дату, роль, ТИУкоины, статус 
+    Возвращает: направление, название мероприятия, дату, роль, ТИУкоины, статус
     """
+
     try:
         tg_id = int(tg_id_str)
         three_months_ago = datetime.now() - timedelta(days=90)
@@ -516,8 +516,9 @@ async def db_get_application_history(session, tg_id_str: str) -> Tuple[bool, lis
 @connection
 async def db_get_all_user_tg_ids(session) -> Tuple[bool, list[int]]:
     """
-    Возвращает список всех TG ID пользователей из базы данных 
+    Возвращает список всех tg_id пользователей из базы данных
     """
+
     try:
         stmt = select(Users.tg_id) 
         

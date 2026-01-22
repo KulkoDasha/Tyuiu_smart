@@ -3,9 +3,8 @@ from aiogram.fsm.state import State, StatesGroup
 
 @dataclass
 class RegistrationFormStates(StatesGroup):
-    """
-    Состояния при регистрации
-    """
+    """Состояния при регистрации пользователя"""
+
     full_name = State()
     institute= State()
     direction = State()
@@ -20,8 +19,9 @@ class RegistrationFormStates(StatesGroup):
 @dataclass 
 class EditRegistrationForm(StatesGroup):
     """
-    Состояния при изменении данных
+    Состояния при изменении данных в регистрационной анкете
     """
+
     start = State()
     edit_full_name = State()
     edit_institute = State()
@@ -37,8 +37,9 @@ class EditRegistrationForm(StatesGroup):
 @dataclass
 class EventApplicationStates(StatesGroup):
     """
-    Состояния при заполнения заявки
+    Состояния при заполнения заявки на получение ТИУкоинов
     """
+
     event_direction = State()
     name_event = State()
     date_event = State()
@@ -49,9 +50,8 @@ class EventApplicationStates(StatesGroup):
 
 @dataclass
 class ChangeEventApplicationStates(StatesGroup):
-    """
-    Состояния при изменении заявки
-    """
+    """Состояния при изменении заявки на получение ТИУкоинов"""
+
     start = State()
     change_event_direction = State()
     change_name_event = State()
@@ -63,9 +63,8 @@ class ChangeEventApplicationStates(StatesGroup):
 
 @dataclass
 class SupportStates(StatesGroup):
-    """
-    Состояния при нажатии на кнопку поддержки
-    """
+    """Состояния при нажатии на кнопку поддержки"""
+
     support_start = State()
     support_write_moderator = State()
     support_choice_direction = State()
@@ -74,18 +73,16 @@ class SupportStates(StatesGroup):
     
 @dataclass
 class CatalogOfRewardsStates(StatesGroup):
-    """
-    Состояния при просмотре каталога поощрений
-    """
-    catalog_of_revards_start = State()
+    """Состояния при просмотре Каталога поощрений"""
+
+    catalog_of_rewards_start = State()
     show_item_details_state = State()
     show_purchase_confirmation_state = State()
     
 @dataclass
 class AboutCompetition(StatesGroup):
-    """
-    Состояния при нажатии на кнопку О конкурсе и Мои ТИУкоины
-    """
+    """Состояния при нажатии на кнопку О конкурсе и Мои ТИУкоины"""
+
     about_competition_start = State()
     my_tiukoins_start = State()
     

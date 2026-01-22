@@ -3,7 +3,8 @@ from .logger import bot_logger
 from typing import Dict
 
 def parse_event_application_from_message(message_text: str, user_id: int) -> Dict:
-    """Парсит заявку из сообщения модератора"""
+    """Парсит заявку на получение ТИУкоинов"""
+    
     data = {"user_id": user_id}
     
     fields = [
@@ -23,17 +24,11 @@ def parse_event_application_from_message(message_text: str, user_id: int) -> Dic
         value = _extract_field(message_text, field_name)
         if value: 
             data[key] = value
-    
-    # Логгер
-    bot_logger.log_moderator_msg(
-    tg_id="parser_event_application_service",
-    username= "parser_event_application_service",
-    message=f"ЗАЯВКА: Парсер для пользователя {user_id} вернул: {data}"
-    )
 
     return data
 
 def _extract_field(text: str, field_name: str) -> str:
+    """Улучшенный парсер"""
     patterns = [
         rf"•\s*{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)",
         rf"{re.escape(field_name)}:\s*(.+?)(?=\n•|\n\n|\n|$)"

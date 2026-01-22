@@ -16,8 +16,7 @@ from .user_keyboard import (MenuKeyboard,
                            AboutTheCompetition,
                            MyTiukoins)
 
-from .moderator_keyboard import (AdminPanelInlineButtons,
-                                 RegisterNewUserInlineButtons,
+from .moderator_keyboard import (RegisterNewUserInlineButtons,
                                  ProcessingUserApplicationInlineButtons,
                                  ModeratorSupportInlineButtons,
                                  ModeratorCloseRewards)
@@ -38,7 +37,6 @@ __all__ = [
     "ChangeRegistrationFormInlineButtons",
     "ConfirmRegistrationFormInlineButtons",
     "SupportInlineButtons",
-    "AdminPanelInlineButtons",
     "RegisterNewUserInlineButtons",
     "ProcessingUserApplicationInlineButtons",
     "ReRegister",

@@ -1,13 +1,10 @@
 from aiogram.types import KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
-from aiogram import Bot
 
 from ..lexicon import LEXICON_USER_KEYBOARD
 
 class MenuKeyboard:
-    """
-    Клавиатура для меню пользователя
-    """
+    """Клавиатура для меню пользователя"""
 
     @staticmethod
     def get_keyboard_menu():
@@ -26,9 +23,7 @@ class MenuKeyboard:
         return builder.as_markup(resize_keyboard=True)
     
 class AgreementInlineButtons:
-    """
-    Инлайн-кнопки согласия
-    """
+    """Инлайн-кнопки обработки согласия на ОПД"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -43,9 +38,7 @@ class AgreementInlineButtons:
 
 
 class ChoiceOfInstituteInlineButtons:
-    """
-    Инлайн кнопки выбора института обучения
-    """
+    """Инлайн-кнопки выбора структурного подразделения обучения"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -64,9 +57,7 @@ class ChoiceOfInstituteInlineButtons:
         return keyboard
     
 class DirectionOfActivitiesInlineButtons:
-    """
-    Инлайн кнопки выбора направления внеучебного направления
-    """
+    """Инлайн-кнопки выбора направления внеучебного направления"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -95,9 +86,7 @@ class DirectionOfActivitiesInlineButtons:
         return keyboard
 
 class ChangeRegistrationFormInlineButtons:
-    """
-    Инлайн кнопки для изменения анкеты
-    """
+    """Инлайн-кнопки для изменения анкеты"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -117,9 +106,7 @@ class ChangeRegistrationFormInlineButtons:
         return keyboard
 
 class ConfirmRegistrationFormInlineButtons:
-    """
-    Инлайн-кнопки подтверждения заявки
-    """
+    """Инлайн-кнопки подтверждения заявки"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -132,9 +119,7 @@ class ConfirmRegistrationFormInlineButtons:
         return keyboard
     
 class ReRegister:
-    """
-    Инлайн-кнопка для перепрохождения регистрации
-    """
+    """Инлайн-кнопка для перепрохождения регистрации"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -146,9 +131,7 @@ class ReRegister:
         return keyboard
     
 class ChoiceOfRoleInlineButtons:
-    """
-    Инлайн кнопки выбора роли участника в мероприятии
-    """
+    """Инлайн-кнопки выбора роли участника в мероприятии"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -169,9 +152,7 @@ class ChoiceOfRoleInlineButtons:
         return keyboard
 
 class ApplicationConfirmationInlineButtons:
-    """
-    Инлайн-кнопки подтверждения заявки
-    """
+    """Инлайн-кнопки подтверждения заявки"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -184,9 +165,7 @@ class ApplicationConfirmationInlineButtons:
         return keyboard
     
 class ChangeOfApplicationInlineButtons:
-    """
-    Инлайн-кнопки изменения заявки
-    """
+    """Инлайн-кнопки изменения заявки на получение ТИУкоинов"""
 
     @staticmethod
     def get_inline_keyboard():
@@ -203,9 +182,7 @@ class ChangeOfApplicationInlineButtons:
         return keyboard
 
 class AddMaterial:
-    """
-    Кнопки для добавления дополнительных материалов в заявку 
-    """
+    """Инлайн-кнопки для добавления дополнительных материалов в заявку """
     
     @staticmethod
     def get_inline_keyboard():
@@ -218,9 +195,7 @@ class AddMaterial:
         return keyboard
 
 class AddMaterialConfirm:
-    """
-    Кнопки для завершения заявки
-    """
+    """Инлайн-кнопки для завершения заявки"""
     
     @staticmethod
     def get_inline_keyboard():
@@ -232,9 +207,7 @@ class AddMaterialConfirm:
         return keyboard
 
 class SupportInlineButtons:
-    """
-    Инлайн-клавиатура поддержки
-    """
+    """Инлайн-клавиатура поддержки"""
     @staticmethod
     def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
@@ -248,9 +221,7 @@ class SupportInlineButtons:
 
 
 class SelectingRewardInlineButtons:
-    """
-    Инлайн-кнопки выбора поощрения
-    """
+    """Инлайн-кнопки выбора поощрения"""
     
     @staticmethod
     def get_inline_keyboard(item_id: int):
@@ -266,9 +237,7 @@ class SelectingRewardInlineButtons:
         return keyboard
 
 class ConfirmationRewardInlineButtons:
-    """
-    Инлайн-кнопки подтверждения выбора поощрения
-    """
+    """Инлайн-кнопки подтверждения выбора поощрения"""
     
     @staticmethod
     def get_inline_keyboard(item_id: int):
@@ -283,9 +252,7 @@ class ConfirmationRewardInlineButtons:
         return keyboard
 
 class AboutTheCompetition:
-    """
-    Инлайн-кнопки О конкурсе
-    """
+    """Инлайн-кнопки О конкурсе"""
     
     @staticmethod
     def get_inline_keyboard():
@@ -300,9 +267,7 @@ class AboutTheCompetition:
         return keyboard
 
 class MyTiukoins:
-    """
-    Инлайн-кнопки Мои ТИУкоины
-    """
+    """Инлайн-кнопки Мои ТИУкоины"""
     
     @staticmethod
     def get_inline_keyboard():

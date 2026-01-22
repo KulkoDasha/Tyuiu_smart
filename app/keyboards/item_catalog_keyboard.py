@@ -4,8 +4,9 @@ from ..services import googlesheet_service
 
 class DynamicCatalogKeyboard:
     @staticmethod
-    async def create_table_keyboard(bot: Bot = None) -> InlineKeyboardMarkup:
-        """Создает динамическую таблицу из Google Sheets"""
+    async def create_table_keyboard() -> InlineKeyboardMarkup:
+        """Создает динамическую таблицу поощрений из Google Sheets"""
+
         try:
             catalog = await googlesheet_service.get_catalog_items_async()
             
@@ -23,7 +24,7 @@ class DynamicCatalogKeyboard:
                 InlineKeyboardButton(text="💎 Стоимость", callback_data="ignore")
             ])
             
-            # Товары (3 колонки)
+            # Товары (2 колонки)
             for item in items:
                 keyboard.append([
                     InlineKeyboardButton(
@@ -47,5 +48,5 @@ class DynamicCatalogKeyboard:
                 [InlineKeyboardButton(text="❌ Ошибка загрузки", callback_data="error_catalog")]
             ])
 
-# ✅ Глобальная переменная (для совместимости)
+# Глобальный экземпляр
 catalog_of_rewards = DynamicCatalogKeyboard()
