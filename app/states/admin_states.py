@@ -21,7 +21,7 @@ class ModeratorStates(StatesGroup):
     """Различные состояния для модераторов"""
 
     waiting_reject_reason = State()
-    waiting_edit_comment = State()
+    waiting_appeal_answer = State()
     application_id = State()
     waiting_reject_application_reason = State()
     waiting_repeatability_factor = State()

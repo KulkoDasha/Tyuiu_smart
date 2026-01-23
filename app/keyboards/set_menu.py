@@ -3,6 +3,7 @@ from aiogram import Bot
 
 async def set_main_menu(bot: Bot):
     main_menu_commands = [
+        BotCommand(command="/start", description="Запустить бота"),
         BotCommand(command="/getmytgid", description="Узнать свой телеграмм айди"),
         BotCommand(command="/help", description="Информация о проекте"),
         BotCommand(command="/support", description="Поддержка"),

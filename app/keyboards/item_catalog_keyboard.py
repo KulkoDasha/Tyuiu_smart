@@ -1,5 +1,4 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram import Bot
 from ..services import googlesheet_service
 
 class DynamicCatalogKeyboard:
