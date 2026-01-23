@@ -18,14 +18,12 @@ logging.basicConfig(
     format=config.log.format,
     style='{'
 )
-logger = logging.getLogger(__name__)
 
 async def main():
     session_path = Path("session")
     if session_path.exists():
         shutil.rmtree(session_path)
         print("Старые сессии удалены")
-        logger.info("Старые сессии удалены")
     
     bot = Bot(
         token=config.bot.token,
@@ -45,7 +43,7 @@ async def main():
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("🛑 Остановка по Ctrl+C")
     except Exception as e:
-        bot_logger.log_error(
+        bot_logger.log_user_msg(
             error_msg=f"Критическая ошибка бота: {str(e)}",
             error_type="CRITICAL",
             traceback=traceback.format_exc()

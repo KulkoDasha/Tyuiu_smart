@@ -7,8 +7,6 @@ from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 
-logger = logging.getLogger(__name__)
-
 @connection
 async def db_set_user(session, 
                    tg_id_str: str, 
@@ -36,12 +34,10 @@ async def db_set_user(session,
         existing_email = await session.scalar(select(Users).where(Users.email == email))
 
         if user:
-            logger.info(f"Студент с ID {tg_id} уже существует")
-            return False, "Участник уже зарегистрирован", None
+            return False, f"Пользователь с ID {tg_id} уже существует", None
         
         if existing_email:
-            logger.info(f"Почта {email} уже используется")
-            return False, "Почта уже зарегистрирована", None
+            return False, f"Почта {email} уже используется", None
 
         new_user = Users(
             tg_id = tg_id,
@@ -63,11 +59,9 @@ async def db_set_user(session,
         user_id = new_user.id
 
         await session.commit()
-        logger.info(f"Зарегистрирован студент с TG ID {tg_id}, ID в БД: {user_id}")
-        return True, "Пользователь успешно добавлен", user_id
+        return True, f"Пользователь {tg_id} успешно добавлен в БД (ID: {user_id})", user_id
     
     except SQLAlchemyError as e:
-        logger.error(f"Ошибка при добавлении студента: {e}")
         await session.rollback()
         return False, f"Ошибка базы данных: {str(e)}", None
     
@@ -90,17 +84,14 @@ async def db_delete_all_users(session) -> Tuple[bool, str]:
         
         await session.commit()
         
-        logger.warning(f"💥 УДАЛЕНО ВСЕ! Заявки: {deleted_apps_count}, Пользователи: {deleted_users_count}")
         return True, f"✅ Успешно удалено {deleted_users_count} пользователей и {deleted_apps_count} заявок"
     
     except SQLAlchemyError as e:
         await session.rollback()
-        logger.error(f"❌ Ошибка БД при удалении всех пользователей: {e}")
-        return False, f"Ошибка БД: {str(e)}"
+        return False, f"Ошибка БД при удалении всех пользователей: {str(e)}"
     
     except Exception as e:
-        logger.error(f"❌ Критическая ошибка при удалении: {e}")
-        return False, f"Ошибка: {str(e)}"
+        return False, f"❌ Критическая ошибка БД при удалении всех пользователей: {str(e)}"
 
 
 @connection 
@@ -150,8 +141,7 @@ async def db_submit_event_application (session,
         if bool_user_exists == False:
             return -1, f"Пользователь с ID: {tg_id} не зарегестрирован"
     except Exception as e:
-        logger.error(f"Ошибка при проверке пользователя {tg_id}: {e}")
-        return -1, f"Ошибка при проверке пользователя: {str(e)}"
+        return -1, f"Ошибка при проверке пользователя {tg_id}: {str(e)}"
     
 
     try:
@@ -169,8 +159,7 @@ async def db_submit_event_application (session,
             if existing_application_status in ['Принята', 'На рассмотрении ']:
                 return -1, "Заявка уже существует"
     except Exception as e:
-        logger.error(f"Ошибка при проверке дубликатов заявки {tg_id}: {e}")
-        return -1, f"Ошибка при проверке заявок: {str(e)}"
+        return -1, f"Ошибка при проверке дубликатов заявки {tg_id}: {str(e)}"
     
     try:        
         new_event_application = Event_applications(
@@ -191,13 +180,11 @@ async def db_submit_event_application (session,
         
         await session.commit()
 
-        logger.info(f"Студент с ID {tg_id} подал заявку")
-        return application_id, "Заявка успешно подана"
+        return application_id, f"Пользователь {tg_id} подал заявку"
     
     except SQLAlchemyError as e:
-        logger.error(f"Ошибка при добавлении заявки студентом: {e}")
         await session.rollback()
-        return -1, f"Ошибка базы данных: {str(e)}"
+        return -1, f"Ошибка при добавлении заявки студентом {tg_id}: {e}"
     
 
 @connection
@@ -242,8 +229,7 @@ async def db_approve_application(
 
     except Exception as e:
         await session.rollback()
-        logger.error(f"Ошибка при принятии заявки {application_id}: {e}")
-        return False, f"Ошибка базы данных: {str(e)}", 0.0
+        return False, f"Ошибка при принятии заявки {application_id}: {str(e)}", 0.0
 
 
 @connection
@@ -275,16 +261,11 @@ async def db_reject_application(
         
         await session.commit()
         
-        logger.info(
-            f"Заявка #{application_id} отклонена модератором @{moderator_username}"
-        )
-        
-        return True, "Заявка отклонена"
+        return True, f"Заявка №{application_id} отклонена модератором @{moderator_username}"
         
     except SQLAlchemyError as e:
         await session.rollback()
-        logger.error(f"Ошибка при отклонении заявки {application_id}: {e}")
-        return False, f"Ошибка базы данных: {str(e)}"
+        return False, f"Ошибка БД при отклонении заявки {application_id}: {str(e)}"
     
 
 @connection
@@ -302,7 +283,7 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
         user = result.scalar_one_or_none()
         
         if not user:
-            return False, f"Пользователь с TG ID {tg_id} не найден"
+            return False, f"Пользователь {tg_id} не найден. \n Зарегистрируйтесь в системе, если вы не зарегистрированы."
         
         # Проверяем баланс
         current_balance = user.tiukoins
@@ -319,21 +300,13 @@ async def db_deduct_tiukoins(session, tg_id_str: str, spend_amount: float, name_
         # Сохраняем
         await session.commit()
         
-        logger.info(
-            f"✅ Списано {spend_amount} ТИУкоинов у пользователя {tg_id}. "
-            f"Поощрение: {name_of_item}. "
-            f"Было: {current_balance:.1f}, стало: {new_balance:.1f}"
-        )
-        
-        return True, f"✅ Успешно! Списано {spend_amount} ТИУкоинов. Новый баланс: {new_balance:.1f}"
+        return True, f"✅ Успешно! Списано {spend_amount} ТИУкоинов за {name_of_item} у пользователя {tg_id}\n. Новый баланс: {new_balance:.1f}"
         
     except SQLAlchemyError as e:
         await session.rollback()
-        logger.error(f"Ошибка при списании ТИУкоинов у пользователя {tg_id}: {e}")
-        return False, f"Ошибка базы данных: {str(e)}"
+        return False, f"Ошибка БД при списании ТИУкоинов у пользователя {tg_id}: {str(e)}"
     except Exception as e:
-        logger.error(f"Неожиданная ошибка при списании ТИУкоинов: {e}")
-        return False, f"Ошибка: {str(e)}"
+        return False, f"Ошибка БД при списании ТИУкоинов: {str(e)}"
 
 @connection
 async def db_add_tiukoins(session, tg_id_str: str, spend_amount: float) -> Tuple[bool, str]:
@@ -364,19 +337,12 @@ async def db_add_tiukoins(session, tg_id_str: str, spend_amount: float) -> Tuple
         # Сохраняем
         await session.commit()
         
-        logger.info(
-            f"✅ Добавлено {spend_amount} ТИУкоинов пользователю {tg_id}. "
-            f"Было: {current_balance:.1f}, стало: {new_balance:.1f}"
-        )
-        
-        return True, f"✅ Успешно! добавлено {spend_amount} ТИУкоинов. Новый баланс: {new_balance:.1f}"
+        return True, f"✅ Успешно! добавлено {spend_amount} ТИУкоинов пользователю {tg_id}. Новый баланс: {new_balance:.1f}"
         
     except SQLAlchemyError as e:
         await session.rollback()
-        logger.error(f"Ошибка при добавлении ТИУкоинов у пользователя {tg_id}: {e}")
-        return False, f"Ошибка базы данных: {str(e)}"
+        return False, f"Ошибка БД при добавлении ТИУкоинов у пользователя {tg_id}: {str(e)}"
     except Exception as e:
-        logger.error(f"Неожиданная ошибка при добавлении ТИУкоинов: {e}")
         return False, f"Ошибка: {str(e)}"
     
 async def db_get_user_balance(session, tg_id_str: str) -> float:
@@ -390,11 +356,10 @@ async def db_get_user_balance(session, tg_id_str: str) -> float:
         result = await session.execute(select(Users).where(Users.tg_id == tg_id))
         user = result.scalars().first()
         
-        return user.tiukoins if user else 0.0
+        return user.tiukoins if user else 0.0, "Баланс успешно получен"
     
     except Exception as e:
-        logger.error(f"Ошибка получения баланса пользователя {tg_id}: {e}")
-        return 0.0
+        return 0.0, f"Ошибка получения баланса пользователя {tg_id}: {str(e)}"
     
 @connection
 async def db_return_tiukoins(session,
@@ -424,17 +389,14 @@ async def db_return_tiukoins(session,
         user.tiukoins = new_balance
         await session.commit()
 
-        logger.info(f"✅ Возвращено {item_price} ТИУкоинов пользователю {tg_id}. ")
-        return True, f"✅ Успешно! Возвращено {item_price} ТИУкоинов. Новый баланс: {new_balance:.1f}"
+        return True, f"✅ Успешно! Возвращено {item_price} ТИУкоинов пользователю {tg_id}. Новый баланс: {new_balance:.1f}"
     
     except SQLAlchemyError as e:
         await session.rollback()
-        logger.error(f"❌ Ошибка БД при возврате ТИУкоинов пользователю {tg_id}: {e}")
-        return False, f"Ошибка базы данных: {str(e)}"
+        return False, f"❌ Ошибка БД при возврате ТИУкоинов пользователю {tg_id}: {str(e)}"
     
     except Exception as e:
-        logger.error(f"❌ Неожиданная ошибка при возврате ТИУкоинов: {e}")
-        return False, f"Ошибка: {str(e)}"
+        return False, f"❌ Неожиданная ошибка БД при возврате ТИУкоинов: {str(e)}"
     
 
 @connection
@@ -451,10 +413,7 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, O
         user = result.scalars().first()
         
         if not user:
-            logger.info(f"Пользователь с tg_id {tg_id} не найден")
-            return False, f"Пользователь с ID {tg_id} не найден", None
-        
-        logger.info(f"Удаляю пользователя: {user.full_name} (tg_id: {tg_id})")
+            return False, f"Пользователь {tg_id} не найден", None
         
         # Удаляем (cascade delete удалит связанные заявки автоматически)
         user_db_id = user.id
@@ -462,13 +421,11 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, O
         await session.delete(user)
         await session.commit()
         
-        logger.info(f"✅ Успешно удален пользователь tg_id={tg_id}")
         return True, f"✅ Удален пользователь: {user.full_name} ({user.tg_id})", user_db_id
         
     except Exception as e:
-        logger.error(f"❌ Ошибка удаления пользователя {tg_id_str}: {e}")
         await session.rollback()
-        return False, f"❌ Ошибка: {str(e)}", None
+        return False, f"❌ Ошибка БД удаления пользователя {tg_id_str}: {str(e)}", None
 
     
 @connection
@@ -501,16 +458,13 @@ async def db_get_application_history(session, tg_id_str: str) -> Tuple[bool, lis
                 app.event_application_status
             ])
 
-        logger.info(f"📋 Заявки пользователя {tg_id}: найдено {len(apps_list)} за 3 месяца")
-        return True, apps_list
+        return True, apps_list, f"Заявки пользователя {tg_id}: найдено {len(apps_list)} за 3 месяца"
     
     except SQLAlchemyError as e:
-        logger.error(f"❌ Ошибка БД при получении заявок пользователя {tg_id}: {e}")
-        return False, []
+        return False, [], f"Ошибка БД при получении заявок пользователя {tg_id}: {e}"
 
     except Exception as e:
-        logger.error(f"❌ Неожиданная ошибка при получении заявок: {e}")
-        return False, []
+        return False, [], f"Неожиданная ошибка БД при получении заявок: {e}"
     
 
 @connection
@@ -526,13 +480,10 @@ async def db_get_all_user_tg_ids(session) -> Tuple[bool, list[int]]:
         tg_ids = result.scalars().all()
         all_ids = [str(id) for id in tg_ids]
         
-        logger.info(f"📋 Всего пользователей в БД: {len(all_ids)}")
-        return True, list(all_ids)  
+        return True, list(all_ids), f"Всего пользователей в БД: {len(all_ids)}"  
 
     except SQLAlchemyError as e:
-        logger.error(f"❌ Ошибка БД при получении всех TG ID: {e}")
-        return False, []
+        return False, [], f"❌ Ошибка БД при получении всех tg_id: {e}"
     
     except Exception as e:
-        logger.error(f"❌ Неожиданная ошибка: {e}")
-        return False, []
+        return False, [], f"❌ Неожиданная ошибка БД: {e}"

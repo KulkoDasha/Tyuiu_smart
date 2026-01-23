@@ -79,6 +79,13 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     except Exception as e:
         db_status = f"❌ Ошибка PostgreSQL: {str(e)}"
 
+    bot_logger.log_moderator_msg(tg_id = callback.from_user.id,
+                        username = callback.from_user.username,
+                        message = f"РЕГИСТРАЦИЯ: Одобрил анкету\n"
+                        f"Пользователь: {form_data.get('full_name', '')} (ID: {user_id})\n"
+                        f"База данных: {db_status}\n"
+                        f"Google Sheets: {sheets_status[2:]})")
+
     await callback.answer(f"✅ Анкета пользователя {user_id} одобрена!", show_alert = True)
     await callback.message.edit_text(
         f"✅ <b>Анкета одобрена</b>\n\n"
@@ -130,6 +137,13 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         )
         moder_chat_id = data.get("moder_chat_id")
         moder_message_id = data.get("moder_message_id")
+
+        bot_logger.log_moderator_msg(tg_id = message.from_user.id,
+                    username = message.from_user.username,
+                    message = f"РЕГИСТРАЦИЯ: Отклонил анкету\n"
+                    f"Пользователь: {user_id}\n"
+                    f"Причина: {reason}")
+
         await bot.edit_message_text(
         chat_id = moder_chat_id,
         message_id = moder_message_id,
@@ -288,6 +302,13 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
     db_status = await approve_db(db_application_id,moderator_username,coins)
     if db_status.startswith("❌"):
         await callback.message.edit_text("Произошла ошибка при сохранении заявки. Пожалуйста, попробуйте позже. Если ошибка повторяется сообщите разработчикам.")
+
+        bot_logger.log_moderator_msg(tg_id = callback.from_user.id,
+                    username = callback.from_user.username,
+                    message = f"ЗАЯВКА: Ошибка при принятии\n"
+                            f"Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
+                            f"База данных: {db_status}")
+
         await state.clear()
         return
     
@@ -304,10 +325,22 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
     # Статус googlesheets
     sheets_status = "✅ Обновлено" if googlesheets_result.get("success") else f"❌ {googlesheets_result.get('error', 'Ошибка')}"
     try:
+
         await send_message(callback, user_id, app_data, coins, sheets_status,
                            db_status, moderator_username, ekaterinburg_time, bot, row_id)
+        
+        bot_logger.log_moderator_msg(tg_id = callback.from_user.id,
+                    username = callback.from_user.username,
+                    message = f"ЗАЯВКА: Одобрил заявку\n"
+                              f"Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
+                              f"Направление: {app_data.get('event_direction', 'Неизвестно')}"
+                              f"Название мероприятия: {app_data.get('name_of_event')}"
+                              f"Начислено: {coins} ТИУкоинов\n"
+                              f"База данных:</b> {db_status[2:]}\n"
+                              f"Google Sheets:</b> {sheets_status} (строка {row_id})")
+
     except Exception:
-        await callback.message.answer('Не удалось отправить заявку пользователю')
+        await callback.message.answer('Не удалось отправить ответ пользователю')
     
 async def approve_db(db_application_id: int, moderator_username: str, coins:float):
     """Отправляет заявку в БД"""
@@ -336,8 +369,8 @@ async def send_message(callback: CallbackQuery, user_id: int,
             f"✅ <b>Заявка одобрена</b>\n\n"
             f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id}, @{callback.from_user.username})\n"
             f"💰 <b>Начислено:</b> {coins} ТИУкоинов\n"
-            f"📊 <b>Google Sheets:</b> {sheets_status} ({app_data.get('event_direction', 'Неизвестно')}, строка {row_id})\n"
             f"💾 <b>База данных:</b> {db_status}\n"
+            f"📊 <b>Google Sheets:</b> {sheets_status} ({app_data.get('event_direction', 'Неизвестно')}, строка {row_id})\n"
             f"👮 <b>Модератор:</b> @{moderator_username}\n"
             f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup = None, parse_mode = "HTML"
@@ -381,6 +414,13 @@ async def waiting_repeatability_factor(message: Message, bot: Bot, state: FSMCon
 
         db_status = await approve_db(db_application_id, moderator_username, awarded_amount)
         if db_status.startswith("❌"):
+
+            bot_logger.log_moderator_msg(tg_id = message.from_user.id,
+                    username = message.from_user.username,
+                    message = f"ЗАЯВКА: Ошибка при принятии\n"
+                            f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                            f"База данных: {db_status}")
+
             await message.edit_text("Произошла ошибка при сохранении в базу данных. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь к разработчикам")
             await state.clear()
             return
@@ -390,6 +430,16 @@ async def waiting_repeatability_factor(message: Message, bot: Bot, state: FSMCon
         try:
             callback_message_id = data.get("callback_message_id")
             chat_id = data.get("chat_id")
+
+            bot_logger.log_moderator_msg(tg_id = message.from_user.id,
+                    username = message.from_user.username,
+                    message = f"ЗАЯВКА: Одобрил заявку\n"
+                              f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                              f"Направление: {data.get('event_direction', 'Неизвестно')}"
+                              f"Название мероприятия: {data.get('name_of_event')}"
+                              f"Начислено: {coins} ТИУкоинов\n"
+                              f"База данных:</b> {db_status[2:]}\n"
+                              f"Google Sheets:</b> {sheets_status} (строка {row_id})")
             
             await bot.edit_message_text(
                 chat_id = chat_id,
@@ -398,14 +448,22 @@ async def waiting_repeatability_factor(message: Message, bot: Bot, state: FSMCon
                     f"✅ <b>Заявка одобрена</b>\n\n"
                     f"👤 <b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
                     f"💰 <b>Начислено:</b> {awarded_amount} ТИУкоинов\n"
-                    f"📊 <b>Google Sheets:</b> {sheets_status} ({data.get('event_direction', 'Неизвестно')}, строка {row_id})\n"
                     f"💾 <b>База данных:</b> {db_status}\n"
+                    f"📊 <b>Google Sheets:</b> {sheets_status} ({data.get('event_direction', 'Неизвестно')}, строка {row_id})\n"
                     f"👮 <b>Модератор:</b> @{moderator_username}\n"
                     f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
                 ), parse_mode = "HTML"
             )
         except Exception as e:
-           pass
+            bot_logger.log_moderator_msg(tg_id = message.from_user.id,
+                    username = message.from_user.username,
+                    message = f"ЗАЯВКА: Ошибка при принятии\n"
+                              f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                              f"Направление: {data.get('event_direction', 'Неизвестно')}"
+                              f"Название мероприятия: {data.get('name_of_event')}"
+                              f"База данных:</b> {db_status[2:]}\n"
+                              f"Google Sheets:</b> {sheets_status} (строка {row_id})\n"
+                              f"Ошибка: {e}")
         
         # Уведомляем пользователя
         try:
@@ -500,15 +558,15 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         )
         sheets_status = "✅ Обновлено" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
         
-        # Уведомляем пользователя
-        await bot.send_message(
-            chat_id = user_id,
-            text = (f"😔 Ваша заявка на получение ТИУкоинов отклонена.\n\n<b>Мероприятие:</b> «{app_data.get('name_of_event')}»\n<b>Направление внеучебной деятельности:</b> «{app_data.get('event_direction')}»\n"
-                 f"📝 <b>Причина:</b> {reason}\n\n"
-                 f"Пожалуйста, заполните заявку заново."),
-            parse_mode = "HTML"
-        )
-        
+        bot_logger.log_moderator_msg(tg_id = message.from_user.id,
+                    username = message.from_user.username,
+                    message = f"ЗАЯВКА: Отклонил заявку\n"
+                              f"Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
+                              f"Направление: {data.get('event_direction', 'Неизвестно')}"
+                              f"Название мероприятия: {data.get('name_of_event')}"
+                              f"База данных:</b> {db_status[2:]}\n"
+                              f"Google Sheets:</b> {sheets_status} (строка {row_id})")
+
         # Обновляем сообщение модератора
         moder_chat_id = data.get("moder_chat_id")
         moder_message_id = data.get("moder_message_id")
@@ -519,11 +577,20 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
             text = f"❌ <b>Заявка отклонена</b>\n\n"
                  f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
                  f"📝 <b>Причина:</b> {reason}\n"
-                 f"📊 <b>Google Sheets:</b> {sheets_status} ({app_data.get('event_direction', 'Неизвестно')}, строка {row_id})\n"
                  f"💾 <b>База данных:</b> {db_status}\n"
+                 f"📊 <b>Google Sheets:</b> {sheets_status} ({app_data.get('event_direction', 'Неизвестно')}, строка {row_id})\n"
                  f"👮 <b>Модератор:</b> @{moderator_username}\n"
                  f"🕐 <b>Время отклонения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup = None,
+            parse_mode = "HTML"
+        )
+
+        # Уведомляем пользователя
+        await bot.send_message(
+            chat_id = user_id,
+            text = (f"😔 Ваша заявка на получение ТИУкоинов отклонена.\n\n<b>Мероприятие:</b> «{app_data.get('name_of_event')}»\n<b>Направление внеучебной деятельности:</b> «{app_data.get('event_direction')}»\n"
+                 f"📝 <b>Причина:</b> {reason}\n\n"
+                 f"Пожалуйста, заполните заявку заново."),
             parse_mode = "HTML"
         )
         
@@ -534,6 +601,17 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         
     except Exception as e:
         await message.answer(f"❗️ Не удалось отклонить заявку: {e}")
+
+        bot_logger.log_moderator_msg(tg_id = message.from_user.id,
+                    username = message.from_user.username,
+                    message = f"ЗАЯВКА: Ошибка при отклонении\n"
+                              f"Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
+                              f"Направление: {data.get('event_direction', 'Неизвестно')}"
+                              f"Название мероприятия: {data.get('name_of_event')}"
+                              f"База данных:</b> {db_status[2:]}\n"
+                              f"Google Sheets:</b> {sheets_status} (строка {row_id})\n"
+                              f"Ошибка: {e}")
+
         await state.clear()
 
 def parse_short_callback_data(callback_data: str) -> Dict[str, Any]:
@@ -605,11 +683,21 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         sheets_result = await googlesheet_service.update_reward_status_async(request_id, "Выдано", moderator_username)
         sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
 
+        bot_logger.log_moderator_msg(tg_id = callback.from_user.id,
+            username = callback.from_user.username,
+            message = f"ПООЩРЕНИЕ: Выдал поощрение\n"
+                        f"Заявка №{request_id}\n"
+                        f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                        f"Поощрение: {item_name}\n"
+                        f"Стоимость: {item_price} ТИУкоинов\n"
+                        f"Google Sheets: {sheets_status}")
+
+
         # Ответ модератору
         await callback.message.edit_text(
             f"✅ <b>Поощрение выдано!</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id}, @{callback.from_user.username or 'без username'})\n"
+            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
             f"🎁 <b>Поощрение:</b> {item_name}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"📊 <b>Google Sheets:</b> {sheets_status}\n"
@@ -634,12 +722,22 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
             sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
             catalog_result = await googlesheet_service.cancel_reward_purchase_async(tg_id = user_id, item_id = item_id, amount = item_price) 
             catalog_status = f"📦 <b>Осталось:</b> {catalog_result.get('new_quantity', 0)} шт."
+        
+        bot_logger.log_moderator_msg(tg_id = callback.from_user.id,
+            username = callback.from_user.username,
+            message = f"ПООЩРЕНИЕ: Отменил выдачу\n"
+                        f"Заявка №{request_id}\n"
+                        f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                        f"Поощрение: {item_name}\n"
+                        f"Стоимость: {item_price} ТИУкоинов\n"
+                        f"Google Sheets: {sheets_status}"
+                        f"{tiukoins_status[2:]}\n")
 
             # Ответ модератору
         await callback.message.edit_text(
             f"❌ <b>Выдача отменена!</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id}, @{callback.from_user.username or 'без username'})\n"
+            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
             f"🎁 <b>Поощрение:</b> {item_name}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"📊 <b>Google Sheets:</b> {sheets_status}\n"
@@ -661,7 +759,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
        )
         if action == "reject":
-            student_text += f"\n\n<i>ТИУкоины возвращены!</i> ({item_price})\nПри необходимости обратитесь в поддержку."
+            student_text += f"\n\n<i>ТИУкоины возвращены!</i> ({item_price})\nПри необходимости обратитесь в поддержку /support."
         
         await bot.send_message(
             chat_id = user_id,

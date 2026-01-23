@@ -1,6 +1,6 @@
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import Message, CallbackQuery,FSInputFile,ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
@@ -32,7 +32,6 @@ confirm_material_keyboard = AddMaterialConfirm.get_inline_keyboard()
 about_competition_keyboard = AboutTheCompetition.get_inline_keyboard()
 my_tiukoins = MyTiukoins.get_inline_keyboard()
 catalog_of_rewards = catalog_of_rewards
-logger = logging.getLogger(__name__)
 
 competition_regulations_path = "app\\files\\docs\\Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.pdf"
 agreement_path = "app\\files\\docs\\Soglasie_na_obrabotku_personalnx_dannx.pdf"
@@ -76,6 +75,10 @@ async def give_agreement(callback:CallbackQuery, state: FSMContext):
     await callback.message.answer(text=LEXICON_TEXT["registration_fill_full_name"])
     await state.set_state(RegistrationFormStates.full_name)
     await callback.answer()
+    
+    bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                            username = callback.from_user.username,
+                            message = f"РЕГИСТРАЦИЯ: Принял согласие на ОПД")
 
 @user_router.callback_query(F.data == "refuse_agreement")
 async def refuse_agreement(callback:CallbackQuery):
@@ -265,8 +268,13 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
         else:
             await _process_unknown_action(callback)
             await callback.answer()
+
     except Exception as e:
         await _handle_error(callback, e) 
+
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                        username = callback.from_user.username,
+                        message = f"РЕГИСТРАЦИЯ: Ошибка при отправке анкеты \n{e}")
         await callback.answer()     
 
 async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bot):
@@ -291,9 +299,25 @@ async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bo
     try:
         await bot.send_message(**send_params)
         await callback.message.edit_text(text=LEXICON_TEXT["registration_end"])
+
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                                username = callback.from_user.username,
+                                message = f"РЕГИСТРАЦИЯ: Отправил анкету модератору\n"
+                                          f"ФИО: {data.get('full_name', 'Не указано')}\n"
+                                          f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
+                                          f"Направление: {data.get('direction', 'Не указано')}\n"
+                                          f"Группа: {data.get('group', 'Не указано')}\n"
+                                          f"Email: {data.get('email', 'Не указано')}")
+
         await state.clear()
+
     except Exception as send_error:
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                                username = callback.from_user.username,
+                                message = f"РЕГИСТРАЦИЯ: Ошибка отправки модератору \n{send_error}")
+        
         raise Exception(f"Ошибка отправки модератору: {send_error}")
+
 
 async def _process_change_form(callback: CallbackQuery, state: FSMContext):
     """Обработка изменения анкеты"""
@@ -729,6 +753,11 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             
     except Exception as e:
         await callback.answer("❌ Произошла ошибка", show_alert = True)
+
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                                username = callback.from_user.username,
+                                message = f"ЗАЯВКА: Ошибка отправки модератору\n{e}")
+        
         await callback.message.edit_text("❌ Произошла ошибка. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
         await state.clear()
 
@@ -763,12 +792,32 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
                 callback, user_id, sheets_result, database_result, ekaterinburg_time,
                 user_full_name, data, clean_role, bot, thread_id, event_direction
             )
+        
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                                username = callback.from_user.username,
+                                message = f"ЗАЯВКА: Отправил заявку модератору\n"
+                                f"База данных: {database_result['message'][2:]}\n"
+                                f"Google Sheets: {True if sheets_result.get('success') else False}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
+                                f"ФИО: {user_full_name}\n"
+                                f"Направление: {data.get('event_direction', 'Не указано')}\n"
+                                f"Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
+                                f"Роль: {data.get('event_role', 'Не указано')}\n"
+                                f"Материалы: {len(data.get('supporting_materials', []))} шт.")
+
         if not send_moderator:
             await callback.message.answer("❌ Ваша заявка не отправлена модератору. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
+
+            bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                                    username = callback.from_user.username,
+                                    message = f"ЗАЯВКА: Ошибка отправки модератору\n{e}")
         
     except Exception as e:
         
         await callback.message.answer("❌ Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
+
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                                username = callback.from_user.username,
+                                message = f"ЗАЯВКА: Ошибка отправки модератору\n{e}")
     
     await callback.answer()
     await state.clear()
@@ -859,8 +908,8 @@ async def send_to_moderator(callback: CallbackQuery, user_id: int,
             "📋 <b>Новая заявка на проверку</b>\n\n"
             f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
             f"(<b>ID:</b> {user_id})\n"
-            f"📊 <b>Google Sheets:</b> {'✅ ' if sheets_result.get('success') else '❌'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
             f"💾 <b>База данных:</b> {database_result['message']}\n"
+            f"📊 <b>Google Sheets:</b> {'✅' if sheets_result.get('success') else '❌'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
             f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 <b>Данные заявки:</b>\n"
             f"• <b>ФИО</b>: {user_full_name}\n"
@@ -1038,7 +1087,7 @@ async def change_event_location(message:Message, state:FSMContext):
 @user_router.callback_query(StateFilter(ChangeEventApplicationStates.change_role_at_the_event))
 async def application_edit_role(callback:CallbackQuery, state:FSMContext):
     
-    event_role = LEXICON_USER_KEYBOARD.get(callback.data, 'Неизвестая роль')
+    event_role = LEXICON_USER_KEYBOARD.get(callback.data, 'Неизвестная роль')
     await state.update_data(event_role=event_role)
     await callback.message.edit_text(f"✅ Вы выбрали: {event_role}")   
     await callback.answer()
@@ -1057,15 +1106,20 @@ async def balance_or_history(callback:CallbackQuery,state:FSMContext):
     
     if callback.data == "my_tyuiu_coins":
         async with async_session() as session:
-            balance = await db_get_user_balance(session, str(callback.from_user.id))
+            balance, message = await db_get_user_balance(session, str(callback.from_user.id))
         await callback.message.edit_text(f"💎 <b>Ваш баланс:</b> {balance} ТИУкоинов")
         await callback.answer()
         await state.clear()
         
     elif callback.data == "application_history":
         await callback.message.delete()
-        db_success, db_applications = await db_get_application_history(str(callback.from_user.id))
+        db_success, db_applications, message = await db_get_application_history(str(callback.from_user.id))
         if not db_success:
+
+            bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                        username = callback.from_user.username,
+                        message = f"ИСТОРИЯ ЗАЯВОК: Ошибка получения\n{message}")
+
             await callback.message.answer(
                 "❌ Не удалось загрузить историю заявок. Попробуйте позже.",
                 reply_markup=menu_keyboard
@@ -1076,7 +1130,7 @@ async def balance_or_history(callback:CallbackQuery,state:FSMContext):
             
         if not db_applications:
             await callback.message.answer(
-                "📭 У вас пока нет заявок за последние 3 месяца.",
+                "📭 У вас нет заявок за последние 3 месяца.",
                 parse_mode="HTML",
                 reply_markup=menu_keyboard
             )
@@ -1325,6 +1379,16 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                     "message_thread_id": ISSUANCE_OF_INCENTIVES,
                     "parse_mode":"HTML"
                 }
+        
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                        username = callback.from_user.username,
+                        message = f"ПООЩРЕНИЕ: Отправил заявку модератору\n"
+                                f"Заявка №{request_id}\n"
+                                f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                                f"Поощрение: {item['name']}\n"
+                                f"Стоимость: {item['price']}\n"
+                                f"Google Sheets:{sheets_status} (Строка: {sheets_row})\n"
+                                f"Дата оформления:{purchase_date}\n")
             
         asyncio.create_task(bot.send_message(**send_params))
 
@@ -1452,7 +1516,7 @@ async def support_process(callback:CallbackQuery,state:FSMContext):
 
 @user_router.callback_query(StateFilter(SupportStates.support_choice_direction))
 async def support_choice_direction(callback:CallbackQuery, state:FSMContext):
-    """Обработчик инлайн-кнопки написать модератору направления"""
+    """Выбор направления для поддержки"""
     
     event_direction, thread_id = TOPIC_MAPPING[callback.data]
     await state.update_data(

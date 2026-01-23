@@ -15,15 +15,19 @@ class BotLogger:
 
         self.user_logger = logging.getLogger("UserLog")
         self.moderator_logger = logging.getLogger("ModeratorLog")
+        self.admin_logger = logging.getLogger("AdminLog")
 
         self.user_logger.propagate = False
         self.moderator_logger.propagate = False
+        self.admin_logger.propagate = False
 
         self.user_logger.setLevel(logging.DEBUG)
         self.moderator_logger.setLevel(logging.DEBUG)
+        self.admin_logger.setLevel(logging.DEBUG)
         
         self.user_logger.handlers.clear()
         self.moderator_logger.handlers.clear()
+        self.admin_logger.handlers.clear()
 
         formatter = logging.Formatter(
             '[%(asctime)s] %(levelname)s | %(name)s | %(message)s', 
@@ -45,6 +49,13 @@ class BotLogger:
         self.moderator_handler.setFormatter(formatter)
         self.moderator_logger.addHandler(self.moderator_handler)
 
+        self.admin_handler = TimedRotatingFileHandler(
+            self.logs_dir / "AdminLog.log",
+            when='midnight', interval=1, backupCount=30, encoding='utf-8'
+        )
+        self.admin_handler.setFormatter(formatter)
+        self.admin_logger.addHandler(self.admin_handler)
+
     def log_user_msg(self, tg_id: str, username: str, message: str, level: str = "INFO"):
         """Пользовательские логи"""
         
@@ -53,6 +64,12 @@ class BotLogger:
 
     def log_moderator_msg(self, tg_id: str, username: str, message: str, level: str = "INFO"):
         """Модераторские логи"""
+
+        full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
+        self.moderator_logger.info(full_msg)
+
+    def log_admin_msg(self, tg_id: str, username: str, message: str, level: str = "INFO"):
+        """Админские логи"""
 
         full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
         self.moderator_logger.info(full_msg)
