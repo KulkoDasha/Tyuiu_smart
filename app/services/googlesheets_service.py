@@ -21,7 +21,7 @@ class GoogleSheetsService:
         """Асинхронный базовый метод с поддержкой редиректов Google Apps Script"""
 
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(30.0, connect=10.0),
+            timeout=httpx.Timeout(30.0, connect=15.0),
             follow_redirects=True,           # Следовать за редиректами
             max_redirects=5,                 # Макс 5 редиректов
             headers={

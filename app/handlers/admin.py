@@ -307,7 +307,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
         # Инициализация статусов
         db_success = db_result = None
         google_sheets_status = google_sheets_total_deleted = "⏳"
-        db_status_ids, all_ids, message = await db_get_all_user_tg_ids()
+        db_status_ids, all_ids, db_message = await db_get_all_user_tg_ids()
         
         try:
 
@@ -395,7 +395,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
             try:
                 await bot.send_message(
                     chat_id=chat_id,
-                    text = "🔄 <b>Система «ТИУмничка» была полностью очищена.</>b\n\n😊 Благодарим вас за использование нашего сервиса!",
+                    text = "🔄 <b>Система «ТИУмничка» была полностью очищена.<b/>\n\n😊 Благодарим вас за использование нашего сервиса!",
                     reply_markup=ReplyKeyboardRemove())
                 
             except Exception as e:

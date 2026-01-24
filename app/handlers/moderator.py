@@ -50,7 +50,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     sheets_result = await googlesheet_service.add_participant_async(form_data)
     
     # Статус для модератора
-    sheets_status = f"✅ Добавлен ({sheets_result.get("row")} строка)" if sheets_result["success"] else f"❌ {sheets_result.get('error', 'Ошибка')}"
+    sheets_status = f"✅ Добавлен ({sheets_result.get('row')} строка)" if sheets_result.get('success') else f"❌ {sheets_result.get('error', 'Ошибка')}"
 
     db_status = ""
     try:
@@ -207,7 +207,7 @@ async def the_request_answer(callback: CallbackQuery, state: FSMContext):
     for line in lines:
         if line.strip().startswith("Сообщение:"):
             message_line = line.strip()
-            return
+            break
     
     if message_line:
         message_line = message_line.replace("Сообщение:", "")
@@ -333,11 +333,11 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
                     username = callback.from_user.username,
                     message = f"ЗАЯВКА: Одобрил заявку\n"
                               f"Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
-                              f"Направление: {app_data.get('event_direction', 'Неизвестно')}"
-                              f"Название мероприятия: {app_data.get('name_of_event')}"
+                              f"Направление: {app_data.get('event_direction', 'Неизвестно')}\n"
+                              f"Название мероприятия: {app_data.get('name_of_event')}\n"
                               f"Начислено: {coins} ТИУкоинов\n"
-                              f"База данных:</b> {db_status[2:]}\n"
-                              f"Google Sheets:</b> {sheets_status} (строка {row_id})")
+                              f"База данных: {db_status[2:]}\n"
+                              f"Google Sheets: {sheets_status} (строка {row_id})")
 
     except Exception:
         await callback.message.answer('Не удалось отправить ответ пользователю')
@@ -681,7 +681,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
     if action == "issue":
         # Выдача: update_status
         sheets_result = await googlesheet_service.update_reward_status_async(request_id, "Выдано", moderator_username)
-        sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
+        sheets_status = f"✅ (Строка: {sheets_result.get('row', 'N/A')})" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
 
         bot_logger.log_moderator_msg(tg_id = callback.from_user.id,
             username = callback.from_user.username,
@@ -697,7 +697,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         await callback.message.edit_text(
             f"✅ <b>Поощрение выдано!</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n\n"
             f"🎁 <b>Поощрение:</b> {item_name}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"📊 <b>Google Sheets:</b> {sheets_status}\n"
@@ -719,7 +719,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         sheets_status = ""
         if item_id:
             sheets_result = await googlesheet_service.update_reward_status_async(request_id, "Отменено", moderator_username)
-            sheets_status = f"✅ Строка {sheets_result.get('row', 'N/A')}" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
+            sheets_status = f"✅ (Строка: {sheets_result.get('row', 'N/A')})" if sheets_result.get("success") else f"❌ {sheets_result.get('error', 'Ошибка')}"
             catalog_result = await googlesheet_service.cancel_reward_purchase_async(tg_id = user_id, item_id = item_id, amount = item_price) 
             catalog_status = f"📦 <b>Осталось:</b> {catalog_result.get('new_quantity', 0)} шт."
         
@@ -737,7 +737,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         await callback.message.edit_text(
             f"❌ <b>Выдача отменена!</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n\n"
             f"🎁 <b>Поощрение:</b> {item_name}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"📊 <b>Google Sheets:</b> {sheets_status}\n"

@@ -797,7 +797,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
                                 username = callback.from_user.username,
                                 message = f"ЗАЯВКА: Отправил заявку модератору\n"
                                 f"База данных: {database_result['message'][2:]}\n"
-                                f"Google Sheets: {True if sheets_result.get('success') else False}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
+                                f"Google Sheets: {'Успешно' if sheets_result.get('success') else 'Ошибка'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
                                 f"ФИО: {user_full_name}\n"
                                 f"Направление: {data.get('event_direction', 'Не указано')}\n"
                                 f"Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
@@ -909,7 +909,7 @@ async def send_to_moderator(callback: CallbackQuery, user_id: int,
             f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
             f"(<b>ID:</b> {user_id})\n"
             f"💾 <b>База данных:</b> {database_result['message']}\n"
-            f"📊 <b>Google Sheets:</b> {'✅' if sheets_result.get('success') else '❌'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
+            f"📊 <b>Google Sheets:</b> {'✅' if sheets_result.get('success') else '❌'} ({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
             f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 <b>Данные заявки:</b>\n"
             f"• <b>ФИО</b>: {user_full_name}\n"
@@ -1345,7 +1345,15 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         request_id = sheets_result.get("request_id")
         
         sheets_status = "✅" if sheets_result.get("success") else "❌"
-        sheets_row = sheets_result.get('row', 'N/A') if sheets_result.get("success") else "Ошибка"
+
+        if sheets_status == "❌":
+            # Если не удалось списать тиукоины
+            await callback.message.answer(f"❌ <b>Ошибка</b>\n\n{sheets_result.get('error')}")
+            await db_add_tiukoins(tg_id_str=str(user_id), spend_amount=item['price'])
+            await state.clear()
+            return
+
+        sheets_row = sheets_result.get('row', 'N/A') if sheets_result.get('success') else sheets_result.get('error')
         
         confirm_text = (
             f"✅ <b>Заявка на получение поощрения оформлена!</b>\n\n"
@@ -1387,8 +1395,8 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                                 f"Пользователь: {user_full_name} (ID: {user_id})\n"
                                 f"Поощрение: {item['name']}\n"
                                 f"Стоимость: {item['price']}\n"
-                                f"Google Sheets:{sheets_status} (Строка: {sheets_row})\n"
-                                f"Дата оформления:{purchase_date}\n")
+                                f"Google Sheets: {sheets_status} (Строка: {sheets_row})\n"
+                                f"Дата оформления: {purchase_date}")
             
         asyncio.create_task(bot.send_message(**send_params))
 

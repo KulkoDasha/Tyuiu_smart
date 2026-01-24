@@ -56,23 +56,23 @@ class BotLogger:
         self.admin_handler.setFormatter(formatter)
         self.admin_logger.addHandler(self.admin_handler)
 
-    def log_user_msg(self, tg_id: str, username: str, message: str, level: str = "INFO"):
+    def log_user_msg(self, tg_id, username, message: str, level: str = "INFO"):
         """Пользовательские логи"""
         
         full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
         self.user_logger.info(full_msg)
 
-    def log_moderator_msg(self, tg_id: str, username: str, message: str, level: str = "INFO"):
+    def log_moderator_msg(self, tg_id, username, message: str, level: str = "INFO"):
         """Модераторские логи"""
 
         full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
         self.moderator_logger.info(full_msg)
 
-    def log_admin_msg(self, tg_id: str, username: str, message: str, level: str = "INFO"):
+    def log_admin_msg(self, tg_id, username, message: str, level: str = "INFO"):
         """Админские логи"""
 
         full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
-        self.moderator_logger.info(full_msg)
+        self.admin_logger.info(full_msg)
 
 # Глобальный экземпляр
 bot_logger = BotLogger(config.log)
