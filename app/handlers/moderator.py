@@ -562,10 +562,10 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
                     username = message.from_user.username,
                     message = f"ЗАЯВКА: Отклонил заявку\n"
                               f"Пользователь: {app_data.get('full_name', '')} (ID: {user_id})\n"
-                              f"Направление: {data.get('event_direction', 'Неизвестно')}"
-                              f"Название мероприятия: {data.get('name_of_event')}"
-                              f"База данных:</b> {db_status[2:]}\n"
-                              f"Google Sheets:</b> {sheets_status} (строка {row_id})")
+                              f"Направление: {data.get('event_direction', 'Неизвестно')}\n"
+                              f"Название мероприятия: {data.get('name_of_event')}\n"
+                              f"База данных: {db_status[2:]}\n"
+                              f"Google Sheets: {sheets_status} (строка {row_id})")
 
         # Обновляем сообщение модератора
         moder_chat_id = data.get("moder_chat_id")
