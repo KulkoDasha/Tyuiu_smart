@@ -105,7 +105,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
         f"📊 <b>Google Sheets:</b> {sheets_status}\n"
         f"👮 <b>Модератор:</b> @{callback.from_user.username or callback.from_user.full_name}\n"
         f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
-        f"❗️ Если информация о пользователе не появилась в Google Sheets - заполните вручную. Сообщите об ошибке разработчику.",
+        f"❗️ Если информация о пользователе не появилась в Google Sheets - заполните вручную. Обратитесь к разработчику с данной проблемой.",
         reply_markup = None)
     
     try:
