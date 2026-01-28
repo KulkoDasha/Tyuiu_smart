@@ -917,7 +917,7 @@ async def send_to_moderator(callback: CallbackQuery, user_id: int,
             f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
             f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n\n"
-            f"❗️ Если заявка не отображается в Google Sheets то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
+            f"❗️ Если заявка не отображается в Google Sheets, то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
         )
        
     moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(

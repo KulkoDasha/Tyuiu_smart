@@ -348,7 +348,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     f"💾 <b>База данных:</b> {db_status}\n"
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                     f"  └─ Удалено строк: {google_sheets_total_deleted}\n\n"
-                    f"❗️ Если данные не удалёны из Google Sheets - сделайте это вручную, обратитесь к разработчику",
+                    f"❗️ Если данные не удалены из Google Sheets - сделайте это вручную, обратитесь к разработчику",
                     parse_mode="HTML"
                 )
                     
