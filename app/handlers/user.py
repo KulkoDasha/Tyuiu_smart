@@ -6,7 +6,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from datetime import datetime
 import pytz
-import logging
 import asyncio
 
 from database import *
@@ -40,9 +39,7 @@ ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 
 @user_router.message(CommandStart(), StateFilter(default_state))
 async def start(message: Message):
-    """
-    Хендлер на /start с проверкой есть ли пользователь в базе данных
-    """
+    """Хендлер на /start с проверкой есть ли пользователь в базе данных"""
     
     user_id = str(message.from_user.id)
     user_exists = await db_user_exists(user_id)
@@ -67,9 +64,7 @@ async def send_the_agreement(callback: CallbackQuery):
 
 @user_router.callback_query(F.data == "give_agreement")
 async def give_agreement(callback:CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает нажатие на кнопку принять согласие и начинает заполнение анкеты
-    """
+    """Обрабатывает нажатие на кнопку принять согласие и начинает заполнение анкеты"""
 
     await callback.message.edit_text(text=LEXICON_TEXT["give_agreement"])
     await callback.message.answer(text=LEXICON_TEXT["registration_fill_full_name"])
@@ -302,9 +297,9 @@ async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bo
 
         bot_logger.log_user_msg(tg_id = callback.from_user.id,
                                 username = callback.from_user.username,
-                                message = f"РЕГИСТРАЦИЯ: Отправил анкету модератору\n"
+                                message = f"РЕГИСТРАЦИЯ: Отправил анкету\n"
                                           f"ФИО: {data.get('full_name', 'Не указано')}\n"
-                                          f"Структурное подразделение обучения: {data.get('institute', 'Не указано')}\n"
+                                          f"Структурное подразделение обучения: {data.get('institute', 'Не указано')[2:]}\n"
                                           f"Направление: {data.get('direction', 'Не указано')}\n"
                                           f"Группа: {data.get('group', 'Не указано')}\n"
                                           f"Email: {data.get('email', 'Не указано')}")
@@ -314,7 +309,7 @@ async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bo
     except Exception as send_error:
         bot_logger.log_user_msg(tg_id = callback.from_user.id,
                                 username = callback.from_user.username,
-                                message = f"РЕГИСТРАЦИЯ: Ошибка отправки модератору \n{send_error}")
+                                message = f"РЕГИСТРАЦИЯ: Ошибка отправки анкеты\n{send_error}")
         
         raise Exception(f"Ошибка отправки модератору: {send_error}")
 
@@ -545,9 +540,14 @@ async def edit_email_incorrect(message:Message):
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['submit_application'],StateFilter(default_state))
 async def application_start(message: Message, state: FSMContext):
     """Обработка кнопки подать заявку"""
-    
-    await message.answer(LEXICON_TEXT["application_select_event_topic"], reply_markup = direction_of_activities_keyboard )
-    await state.set_state(EventApplicationStates.event_direction)
+
+    user_id = str(message.from_user.id)
+    user_exists = await db_user_exists(user_id)
+    if user_exists:
+        await message.answer(LEXICON_TEXT["application_select_event_topic"], reply_markup = direction_of_activities_keyboard )
+        await state.set_state(EventApplicationStates.event_direction)
+    else:
+        await message.answer(text=LEXICON_TEXT["not_registred"], reply_markup=ReplyKeyboardRemove())
 
 @user_router.callback_query(StateFilter(EventApplicationStates.event_direction))
 async def event_direction(callback: CallbackQuery, state: FSMContext):
@@ -739,9 +739,7 @@ async def show_updated_application(message:Message, state: FSMContext):
 
 @user_router.callback_query(StateFilter(EventApplicationStates.application_process_end ))
 async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    """
-    Обрабатывает нажатие на кнопки отправить заявку/изменить заявку
-    """
+    """Обрабатывает нажатие на кнопки отправить заявку/изменить заявку"""
     
     try:
         if callback.data == "confirm_application":
@@ -756,7 +754,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
 
         bot_logger.log_user_msg(tg_id = callback.from_user.id,
                                 username = callback.from_user.username,
-                                message = f"ЗАЯВКА: Ошибка отправки модератору\n{e}")
+                                message = f"ЗАЯВКА: Ошибка отправки заявки\n{e}")
         
         await callback.message.edit_text("❌ Произошла ошибка. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
         await state.clear()
@@ -795,9 +793,9 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
         
         bot_logger.log_user_msg(tg_id = callback.from_user.id,
                                 username = callback.from_user.username,
-                                message = f"ЗАЯВКА: Отправил заявку модератору\n"
-                                f"База данных: {database_result['message'][2:]}\n"
-                                f"Google Sheets: {'Успешно' if sheets_result.get('success') else 'Ошибка'}({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
+                                message = f"ЗАЯВКА: Отправил заявку\n"
+                                f"База данных: {database_result['message']}\n"
+                                f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} ({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
                                 f"ФИО: {user_full_name}\n"
                                 f"Направление: {data.get('event_direction', 'Не указано')}\n"
                                 f"Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
@@ -809,7 +807,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
 
             bot_logger.log_user_msg(tg_id = callback.from_user.id,
                                     username = callback.from_user.username,
-                                    message = f"ЗАЯВКА: Ошибка отправки модератору\n{e}")
+                                    message = f"ЗАЯВКА: Ошибка отправки заявки\n{e}")
         
     except Exception as e:
         
@@ -817,7 +815,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
 
         bot_logger.log_user_msg(tg_id = callback.from_user.id,
                                 username = callback.from_user.username,
-                                message = f"ЗАЯВКА: Ошибка отправки модератору\n{e}")
+                                message = f"ЗАЯВКА: Ошибка отправки заявки\n{e}")
     
     await callback.answer()
     await state.clear()
@@ -919,7 +917,7 @@ async def send_to_moderator(callback: CallbackQuery, user_id: int,
             f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
             f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n\n"
-            f"P.S. Если заявка не отображается в Google Sheets то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
+            f"❗️ Если заявка не отображается в Google Sheets то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
         )
        
     moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(
@@ -1114,14 +1112,11 @@ async def balance_or_history(callback:CallbackQuery,state:FSMContext):
     elif callback.data == "application_history":
         await callback.message.delete()
         db_success, db_applications, message = await db_get_application_history(str(callback.from_user.id))
+
         if not db_success:
 
-            bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                        username = callback.from_user.username,
-                        message = f"ИСТОРИЯ ЗАЯВОК: Ошибка получения\n{message}")
-
             await callback.message.answer(
-                "❌ Не удалось загрузить историю заявок. Попробуйте позже.",
+                "❌ Не удалось загрузить историю заявок. Попробуйте позже. При повторной ошибке - обратитесь в поддержку /support",
                 reply_markup=menu_keyboard
             )
             await callback.answer()
@@ -1152,10 +1147,10 @@ async def balance_or_history(callback:CallbackQuery,state:FSMContext):
             app_text = (
                 f"\n📋 <b>Заявка #{i}</b>\n"
                 f"🎯 <b>Направление:</b> {app[0]}\n"
-                f"📌 <b>Мероприятие:</b> {app[1]}\n"
+                f"📌 <b>Мероприятие:</b> «{app[1]}»\n"
                 f"📅 <b>Дата:</b> {app[2]}\n"
                 f"👤 <b>Роль:</b> {app[3]}\n"
-                f"💰 <b>ТИУкоины:</b> {app[4]}\n"
+                f"💎 <b>ТИУкоины:</b> {app[4]}\n"
                 f"<b>Статус:</b> {status_emoji} {app[5]}\n"
             )
             application_text += app_text
@@ -1210,12 +1205,17 @@ def split_message(text: str, max_length: int = 4096) -> list:
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['catalog_of_rewards'],StateFilter(default_state))
 async def catalog_start(message: Message, state: FSMContext):
     """Обрабатывает нажатие на кнопку 'Каталог Поощрений'"""
-    
-    catalog = await message.answer("⏳ Загружаем каталог поощрений...")
-    keyboard_markup = await catalog_of_rewards.create_table_keyboard()
-    await catalog.delete()
-    await message.answer(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:", reply_markup = keyboard_markup)
-    await state.set_state(CatalogOfRewardsStates.catalog_of_rewards_start)
+
+    user_id = str(message.from_user.id)
+    user_exists = await db_user_exists(user_id)
+    if user_exists:
+        catalog = await message.answer("⏳ Загружаем каталог поощрений...")
+        keyboard_markup = await catalog_of_rewards.create_table_keyboard()
+        await catalog.delete()
+        await message.answer(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:", reply_markup = keyboard_markup)
+        await state.set_state(CatalogOfRewardsStates.catalog_of_rewards_start)
+    else:
+        await message.answer(text=LEXICON_TEXT["not_registred"], reply_markup=ReplyKeyboardRemove())
 
 @user_router.callback_query(F.data == "cancel_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def cancel_catalog(callback: CallbackQuery, state: FSMContext):
@@ -1387,18 +1387,17 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                     "message_thread_id": ISSUANCE_OF_INCENTIVES,
                     "parse_mode":"HTML"
                 }
-        
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                        username = callback.from_user.username,
-                        message = f"ПООЩРЕНИЕ: Отправил заявку модератору\n"
-                                f"Заявка №{request_id}\n"
-                                f"Пользователь: {user_full_name} (ID: {user_id})\n"
-                                f"Поощрение: {item['name']}\n"
-                                f"Стоимость: {item['price']}\n"
-                                f"Google Sheets: {sheets_status} (Строка: {sheets_row})\n"
-                                f"Дата оформления: {purchase_date}")
             
         asyncio.create_task(bot.send_message(**send_params))
+
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+                username = callback.from_user.username,
+                message = f"ПООЩРЕНИЕ: Отправил заявку\n"
+                        f"Заявка №{request_id}\n"
+                        f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                        f"Поощрение: {item['name']}\n"
+                        f"Стоимость: {item['price']}\n"
+                        f"Google Sheets: {sheets_status} (Строка: {sheets_row})")
 
         await callback.message.edit_text(text = confirm_text, parse_mode = "HTML")
         await state.clear()
@@ -1406,6 +1405,14 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
             
     except Exception as e:
         await callback.message.answer(f"Неожиданная ошибка: {e}")
+
+        bot_logger.log_user_msg(tg_id = callback.from_user.id,
+            username = callback.from_user.username,
+            message = f"ПООЩРЕНИЕ: Ошибка\n"
+                    f"Заявка №{request_id}\n"
+                    f"Пользователь: {user_full_name} (ID: {user_id})\n"
+                    f"Google Sheets: {sheets_status} (Строка: {sheets_row})\n"
+                    f"Ошибка: {e}")
            
 @user_router.callback_query(F.data == "refresh_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def refresh_catalog(callback: CallbackQuery):
@@ -1509,16 +1516,14 @@ async def support_process(callback:CallbackQuery,state:FSMContext):
     elif callback.data == "feedback":
         await callback.message.delete()
         await callback.message.answer(
-            text = LEXICON_TEXT["feedback_text"], reply_markup = ReplyKeyboardRemove()
-        )
+            text = LEXICON_TEXT["feedback_text"])
         await state.set_state(SupportStates.support_feedback)
         await callback.answer()
         
     else:
         await callback.message.delete()
         await callback.message.answer(
-            text = LEXICON_TEXT["support_text"], reply_markup = ReplyKeyboardRemove()
-        )
+            text = LEXICON_TEXT["support_text"])
         await state.set_state(SupportStates.support_error)
         await callback.answer()
 
@@ -1532,7 +1537,7 @@ async def support_choice_direction(callback:CallbackQuery, state:FSMContext):
     )
     await callback.message.edit_text(f"✅ Вы выбрали: {event_direction}")
     await callback.answer()
-    await callback.message.answer(text = LEXICON_TEXT["support_text"], reply_markup = ReplyKeyboardRemove())
+    await callback.message.answer(text = LEXICON_TEXT["support_text"])
     await state.set_state(SupportStates.support_write_moderator)
 
 @user_router.message(StateFilter(SupportStates.support_write_moderator))

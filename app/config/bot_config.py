@@ -25,16 +25,20 @@ class Config:
 
 def load_config(path: str | None = None) -> Config:
     """Принимает данные из .env и загружает конфиг"""
+
     if path is None:
         env_path = str(Path(__file__).parent.parent / ".env")
     else:
         env_path = path
+
     load_dotenv(dotenv_path=path, override=True)
     token = os.getenv("BOT_TOKEN")
     moderator_chat_id = os.getenv("MODERATOR_CHAT_ID")
     admin_panel_id = TOPIC_ADMIN_PANEL
+
     if token is None:
         raise ValueError(f"BOT_TOKEN не найден в файле {env_path}")
+    
     return Config(
         bot=TgBot(token=token),
         log=LogSettings(

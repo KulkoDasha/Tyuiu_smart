@@ -42,7 +42,6 @@ class DynamicCatalogKeyboard:
             return InlineKeyboardMarkup(inline_keyboard=keyboard)
             
         except Exception as e:
-            print(f"❌ Keyboard error: {e}")
             return InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="❌ Ошибка загрузки", callback_data="error_catalog")]
             ])

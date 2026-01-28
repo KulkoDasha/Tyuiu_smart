@@ -180,7 +180,6 @@ class GoogleSheetsService:
         """Принудительно обновить кэш  (не используется)"""
 
         self._catalog_cache = None
-        print("🗑️ Кэш каталога сброшен!")
 
     async def purchase_item_async(self, tg_id: int, item_id: str, full_name: str, order_date: str = None) -> Dict[str, Any]:
         """
