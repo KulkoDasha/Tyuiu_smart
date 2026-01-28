@@ -317,7 +317,7 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
     coins = ROLE_LEXICON[event_role]
     db_status = await approve_db(db_application_id, moderator_username, coins)
     if db_status.startswith("❌"):
-        await callback.message.edit_text(" Произошла ошибка при сохранении заявки. Пожалуйста, попробуйте позже. Если ошибка повторяется сообщите разработчикам.")
+        await callback.message.edit_text("❗️ Произошла ошибка при сохранении в базу данных. Обратитесь к разработчику с данной проблемой.")
 
         bot_logger.log_moderator_msg(tg_id = callback.from_user.id,
                     username = callback.from_user.username,
