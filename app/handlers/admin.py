@@ -29,7 +29,7 @@ async def process_notify_all_users_message(message: Message, state: FSMContext, 
     db_status, all_ids, db_message = await db_get_all_user_tg_ids()
 
     if db_status == False:
-        await message.answer(f"{db_message}\n\n❗️ Попробуйте ещё раз. При повторной ошибке обратитесь к разработчику")
+        await message.answer(f"{db_message}\n\n❗️ Попробуйте ещё раз. Если ошибка повторяется - обратитесь к разработчику с данной проблемой.")
         await state.clear()
         return
 
@@ -175,7 +175,7 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
     try:
         user_full_name = await db_get_user_full_name(user_id)
     except Exception as e:
-        await message.answer("❌ Неверный ID пользователя\n\n❗️ Попробуйте ещё раз, обратитесь к разработчику.")
+        await message.answer("❌ Неверный ID пользователя\n\n❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.")
         await state.clear()
         return
 
@@ -226,7 +226,7 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
                 f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id})\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                 f"  └─ Строка: {google_sheets_row}\n\n"
-                f"❗️ Если пользователь не удалён из Google Sheets - сделайте это вручную",
+                f"❗️ Если пользователь не удалён из Google Sheets - сделайте это вручную. Обратитесь к разработчику с данной проблемой.",
                 parse_mode="HTML"
             )
 
@@ -260,7 +260,7 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
                 f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                 f"  └─ {google_sheets_row}\n\n"
                 f"⚠️ Пользователь {user_id} НЕ удалён\n\n"
-                f"❗️ Попробуйте ещё раз. При повторной ошибке обратитесь к разработчику",
+                f"❗️ Попробуйте ещё раз. Если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
                 parse_mode="HTML"
             )
             
@@ -280,7 +280,7 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
             f"  └─ {db_result}\n"
             f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
             f"  └─ {google_sheets_row}\n\n"
-            f"❗️ Обратитесь к разработчику",
+            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
             parse_mode="HTML"
         )
     
@@ -348,7 +348,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     f"💾 <b>База данных:</b> {db_status}\n"
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                     f"  └─ Удалено строк: {google_sheets_total_deleted}\n\n"
-                    f"❗️ Если данные не удалены из Google Sheets - сделайте это вручную, обратитесь к разработчику",
+                    f"❗️ Если данные не удалены из Google Sheets - сделайте это вручную, обратитесь к разработчику с данной проблемой.",
                     parse_mode="HTML"
                 )
                     
@@ -377,7 +377,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                     f"  └─ Удалено строк: {google_sheets_total_deleted}\n\n"
                     f"⚠️ Очистка НЕ выполнена\n\n"
-                    f"❗️ Попробуйте ещё раз. При повторной ошибке обратитесь к разработчику",
+                    f"❗️ Попробуйте ещё раз. Если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
                     parse_mode="HTML"
                 )
                 
@@ -397,7 +397,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                 f"  └─ {db_result}\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                 f"  └─ Удалено строк: {google_sheets_total_deleted}\n\n"
-                f"❗️ Обратитесь к разработчику",
+                f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
                 parse_mode="HTML"
             )
         
@@ -479,14 +479,14 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                 f"  └─ Строка: {google_sheets_row}\n\n"
-                f"❗️ Если ТИУкоины не списались из Google Sheets - сделайте это вручную. Сообщите об ошибке разработчику.",
+                f"❗️ Если ТИУкоины не списались из Google Sheets - сделайте это вручную. Обратитесь к разработчику с данной проблемой.",
                 parse_mode="HTML"
             )
 
             # Уведомление пользователю
             await bot.send_message(
                 chat_id=user_id,
-                text=f"💎 У вас было списано {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
+                text=f"💎 У вас было списано {coins} ТИУкоинов.\n\n❗️ Если это произошло по ошибке - обратитесь в /support")
 
         else:
             bot_logger.log_admin_msg(tg_id = message.from_user.id,
@@ -504,7 +504,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
                 f"  └─ {db_result}\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                 f"  └─ {google_sheets_row}\n\n"
-                f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+                f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
                 parse_mode="HTML"
             )
     except Exception as e:
@@ -525,7 +525,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
             f"  └─ {db_result}\n"
             f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
             f"  └─ {google_sheets_row}\n\n"
-            f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
             parse_mode="HTML"
         )
     
@@ -602,14 +602,14 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                 f"  └─ Строка: {google_sheets_row}\n\n"
-                f"❗️ Если ТИУкоины не начислились в Google Sheets - сделайте это вручную. Сообщите об ошибке разработчику.",
+                f"❗️ Если ТИУкоины не начислились в Google Sheets - сделайте это вручную. Обратитесь к разработчику с данной проблемой.",
                 parse_mode="HTML"
             )
 
             # Уведомление пользователю
             await bot.send_message(
                 chat_id=user_id,
-                text=f"💎 Вам было начислено {coins} ТИУкоинов.\n\n❗️Если это произошло по ошибке - обратитесь в /support.")
+                text=f"💎 Вам было начислено {coins} ТИУкоинов.\n\n❗️ Если это произошло по ошибке - обратитесь в /support")
 
         else:
 
@@ -628,7 +628,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
                 f"  └─ {db_result}\n"
                 f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
                 f"  └─ {google_sheets_row}\n\n"
-                f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+                f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
                 parse_mode="HTML"
             )
             
@@ -649,7 +649,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
             f"  └─ {db_result}\n"
             f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
             f"  └─ {google_sheets_row}\n\n"
-            f"❗️ Попробуйте ещё раз, если ошибка повторится - сообщите разработчику.",
+            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
             parse_mode="HTML"
         )
     

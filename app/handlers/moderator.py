@@ -440,7 +440,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot, state: FSMCon
                             f"База данных: {db_status}"
                             f"Google Sheets: {sheets_status}")
 
-            await message.edit_text("❗️ Произошла ошибка при сохранении в базу данных. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь к разработчикам")
+            await message.edit_text("❗️ Произошла ошибка при сохранении в базу данных. Обратитесь к разработчику с данной проблемой.")
             await state.clear()
             return
 
@@ -777,7 +777,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
        )
         if action == "reject":
-            student_text += f"\n\n<i>ТИУкоины возвращены!</i> ({item_price})\nПри необходимости обратитесь в поддержку /support."
+            student_text += f"\n\n<i>ТИУкоины возвращены!</i> ({item_price})\nПри необходимости обратитесь в поддержку /support"
         
         await bot.send_message(
             chat_id = user_id,
