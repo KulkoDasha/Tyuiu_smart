@@ -52,7 +52,6 @@ class ModeratorCloseRewards:
         item_price_str = str(item_price)
         
         full_issue = f"i_r_{req_str}_{user_str}_{item_price_str}_{item_str}"
-        print (full_issue)
         
         # Автоматическое сжатие если >60 байт
         if len(full_issue) > 60:

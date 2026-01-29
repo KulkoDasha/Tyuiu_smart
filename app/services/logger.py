@@ -60,19 +60,43 @@ class BotLogger:
         """Пользовательские логи"""
         
         full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
-        self.user_logger.info(full_msg)
+        
+        if level.upper() == "ERROR":
+            self.user_logger.error(full_msg)
+        elif level.upper() == "WARNING":
+            self.user_logger.warning(full_msg)
+        elif level.upper() == "DEBUG":
+            self.user_logger.debug(full_msg)
+        else:
+            self.user_logger.info(full_msg)
 
     def log_moderator_msg(self, tg_id, username, message: str, level: str = "INFO"):
         """Модераторские логи"""
 
         full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
-        self.moderator_logger.info(full_msg)
+
+        if level.upper() == "ERROR":
+            self.moderator_logger.error(full_msg)
+        elif level.upper() == "WARNING":
+            self.moderator_logger.warning(full_msg)
+        elif level.upper() == "DEBUG":
+            self.moderator_logger.debug(full_msg)
+        else:
+            self.moderator_logger.info(full_msg)
 
     def log_admin_msg(self, tg_id, username, message: str, level: str = "INFO"):
         """Админские логи"""
 
         full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
-        self.admin_logger.info(full_msg)
+        
+        if level.upper() == "ERROR":
+            self.admin_logger.error(full_msg)
+        elif level.upper() == "WARNING":
+            self.admin_logger.warning(full_msg)
+        elif level.upper() == "DEBUG":
+            self.admin_logger.debug(full_msg)
+        else:
+            self.admin_logger.info(full_msg)
 
 # Глобальный экземпляр
 bot_logger = BotLogger(config.log)

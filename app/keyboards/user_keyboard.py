@@ -259,7 +259,7 @@ class AboutTheCompetition:
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                             [
-                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["agreement_of_contest"], callback_data=f"about_competition"),
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["contest_full_text"], callback_data=f"about_competition"),
                                 InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["contest_cards"], callback_data=f"see_cards")
                             ]
                         ])

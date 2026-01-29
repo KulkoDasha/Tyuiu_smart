@@ -9,7 +9,7 @@ LEXICON_USER_KEYBOARD = {
     "application_history": "📝 История заявок",
 
     "contest_cards": "🖼️ Карточки",
-    "contest_full_text": "📄 Полный текст документа",
+    "contest_full_text": "📄 Положение конкурса",
 
     "read_the_agreement": "📃 Ознакомиться с текстом согласия",
     "give_agreement": "✅ Даю согласие",
