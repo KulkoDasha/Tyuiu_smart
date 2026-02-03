@@ -357,7 +357,7 @@ async def process_delete_all_users(message: Message, state: FSMContext, bot:Bot)
                     try:
                         await bot.send_message(
                             chat_id=chat_id,
-                            text = "🔄 <b>Система «ТИУмничка» была полностью очищена.</b>\n\n😊 Благодарим вас за использование нашего сервиса!",
+                            text = "<b>🎒«ТИУмничка» уходит на каникулы!</b>\n\n😊 Учебный год завершается — пришло время копить воспоминания.\nА в новом учебном году стартуем заново: нужно будет повторно пройти регистрацию и копить ТИУкоины с чистого листа.\n\nСпасибо, что были с нами в этом году, наши ТИУмнички! 💙",
                             reply_markup=ReplyKeyboardRemove())
                     except Exception as e:
                         await message.answer(f"Ошибка отправки {chat_id}: Чат не найден\n\n Ошибка: {e}")
