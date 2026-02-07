@@ -1226,7 +1226,7 @@ async def cancel_catalog(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 @user_router.callback_query(F.data.startswith("view_item_"), StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
-async def show_item_details_handler(callback: CallbackQuery, state: FSMContext):
+async def show_item_details_handler(callback: CallbackQuery, state: FSMContext, bot: Bot):
     """Просмотр выбранного поощрения из Google Sheets"""
     
     try:
@@ -1239,10 +1239,12 @@ async def show_item_details_handler(callback: CallbackQuery, state: FSMContext):
     # Получаем данные из Google Sheets
     catalog = await googlesheet_service.get_catalog_items_async()
     item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
-    
     if item:
         keyboard = SelectingRewardInlineButtons.get_inline_keyboard(item_id)
         
+        link_on_photo = item['link_on_photo']
+        #####await bot.send_photo(chat_id=callback.message.chat.id, photo=f'{link_on_photo}')
+
         await callback.message.edit_text(
             f"🎁 <b>{item['name']}</b>\n\n"
             f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
