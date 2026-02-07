@@ -7,7 +7,6 @@ from aiogram.fsm.state import default_state
 from datetime import datetime
 import pytz
 import asyncio
-import requests
 
 from database import *
 from ..states import *
