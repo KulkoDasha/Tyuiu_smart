@@ -7,6 +7,7 @@ from aiogram.fsm.state import default_state
 from datetime import datetime
 import pytz
 import asyncio
+import requests
 
 from database import *
 from ..states import *
@@ -1243,8 +1244,33 @@ async def show_item_details_handler(callback: CallbackQuery, state: FSMContext, 
         keyboard = SelectingRewardInlineButtons.get_inline_keyboard(item_id)
         
         link_on_photo = item['link_on_photo']
-        #####await bot.send_photo(chat_id=callback.message.chat.id, photo=f'{link_on_photo}')
-
+        print(link_on_photo)
+        
+        if "https://disk.yandex.ru"in link_on_photo or "https://drive.google.com" in link_on_photo:
+            caption = (f"🎁 <b>{item['name']}</b>\n\n"
+               f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
+               f"📝 <b>Примечание:</b> {item['notes']}\n\n"
+               f"<i>Хотите выбрать это поощрение?</i>")
+            await callback.message.delete()
+            await bot.send_photo(
+                chat_id=callback.message.chat.id,
+                photo=link_on_photo,
+                caption=caption,
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
+        else:
+            await callback.message.edit_text(
+            f"🎁 <b>{item['name']}</b>\n\n"
+            f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
+            f"📝 <b>Примечание:</b> {item['notes']}\n"
+            f"❌ Изображение не найдено\n\n"
+            f"<i>Хотите выбрать это поощрение?</i>",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        #await bot.send_photo (chat_id=callback.message.chat.id, photo=f'{link_on_photo}')
+        '''
         await callback.message.edit_text(
             f"🎁 <b>{item['name']}</b>\n\n"
             f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
@@ -1252,7 +1278,7 @@ async def show_item_details_handler(callback: CallbackQuery, state: FSMContext, 
             f"<i>Хотите выбрать это поощрение?</i>",
             reply_markup=keyboard,
             parse_mode="HTML"
-        )
+        )'''
         await state.set_state(CatalogOfRewardsStates.show_item_details_state)
     else:
         await callback.answer("❌ Товар не найден", show_alert=True)
@@ -1262,7 +1288,8 @@ async def show_item_details_handler(callback: CallbackQuery, state: FSMContext, 
 @user_router.callback_query(F.data == "close_all",StateFilter(CatalogOfRewardsStates.show_item_details_state))
 async def close_all(callback:CallbackQuery, state: FSMContext):
     
-    await callback.message.edit_text(LEXICON_TEXT["cancel_fsm"])
+    await callback.message.delete()
+    await callback.message.answer(LEXICON_TEXT["cancel_fsm"])
     await state.clear()
     await callback.answer()
     
@@ -1270,8 +1297,9 @@ async def close_all(callback:CallbackQuery, state: FSMContext):
 async def show_catalog(callback: CallbackQuery, state: FSMContext):
     """Возврат к каталогу"""
     
+    await callback.message.delete()
     keyboard_markup = await catalog_of_rewards.create_table_keyboard()
-    await callback.message.edit_text(
+    await callback.message.answer(
         "🛒 <b>Каталог поощрений</b>\n\nВыберите товар:",
         reply_markup = keyboard_markup,
         parse_mode = "HTML"
@@ -1283,6 +1311,7 @@ async def show_catalog(callback: CallbackQuery, state: FSMContext):
 async def select_item(callback: CallbackQuery, state: FSMContext):
     """Подтверждение покупки"""
     
+    await callback.message.delete()
     item_id = callback.data.replace("select_item_", "")
     catalog = await googlesheet_service.get_catalog_items_async()
     item = next((i for i in catalog.get("items", []) if i["id"] == item_id), None)
@@ -1290,7 +1319,7 @@ async def select_item(callback: CallbackQuery, state: FSMContext):
     if item:
         keyboard = ConfirmationRewardInlineButtons.get_inline_keyboard(item_id)
         
-        await callback.message.edit_text(
+        await callback.message.answer(
             f"✅ <b>Подтверждение покупки</b>\n\n"
             f"🎁 <b>Поощрение:</b> {item['name']}\n"
             f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n\n"
