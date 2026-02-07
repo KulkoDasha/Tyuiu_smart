@@ -1264,21 +1264,10 @@ async def show_item_details_handler(callback: CallbackQuery, state: FSMContext, 
             f"🎁 <b>{item['name']}</b>\n\n"
             f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
             f"📝 <b>Примечание:</b> {item['notes']}\n"
-            f"❌ Изображение не найдено\n\n"
             f"<i>Хотите выбрать это поощрение?</i>",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
-        #await bot.send_photo (chat_id=callback.message.chat.id, photo=f'{link_on_photo}')
-        '''
-        await callback.message.edit_text(
-            f"🎁 <b>{item['name']}</b>\n\n"
-            f"💎 <b>Стоимость:</b> {item['price']} ТИУкоинов\n"
-            f"📝 <b>Примечание:</b> {item['notes']}\n\n"
-            f"<i>Хотите выбрать это поощрение?</i>",
-            reply_markup=keyboard,
-            parse_mode="HTML"
-        )'''
         await state.set_state(CatalogOfRewardsStates.show_item_details_state)
     else:
         await callback.answer("❌ Товар не найден", show_alert=True)
