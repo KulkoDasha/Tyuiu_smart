@@ -1649,11 +1649,13 @@ async def sticker(message:Message, bot: Bot):
 @user_router.message(Command(commands = "recall_the_agreement"), StateFilter(default_state))
 async def recall_the_agreement(message: Message, state: FSMContext):
     """Обрабатывает нажатие на кнопку отозвать согласие"""
+    
     await message.answer(LEXICON_TEXT["recall_the_agreement"], reply_markup = recall_the_agreement_keyboard)
     await state.set_state(Recall.wait_answer)
 
 @user_router.callback_query(StateFilter(Recall.wait_answer))
 async def wait_answer(callback:CallbackQuery, state: FSMContext):
+    
     if callback.data == "notrecall":
         await callback.message.edit_text(LEXICON_TEXT["cancel_fsm"])
         await state.clear()
@@ -1665,6 +1667,7 @@ async def wait_answer(callback:CallbackQuery, state: FSMContext):
             await state.clear()
         else:
             print('Ошибка')
+            await state.clear()
         await callback.answer()
     else:
         await callback.message.answer(LEXICON_TEXT["in_state"])
@@ -1672,7 +1675,9 @@ async def wait_answer(callback:CallbackQuery, state: FSMContext):
 
 async def process_recall_user(callback:CallbackQuery):
     """Удаляет пользователя из БД и Google_Sheets"""
+    
     user_id = callback.from_user.id
+    
     # Инициализация статусов БД и Google Sheets
     db_success = db_result = db_user_id = None
     google_sheets_status = google_sheets_row = "⏳"
