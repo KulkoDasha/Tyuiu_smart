@@ -90,5 +90,8 @@ LEXICON_USER_KEYBOARD = {
 
     "support_write_moderator_of_the_direct":"Обратиться к модератору направления",
     "support_feedback":"Обратная связь",
-    "support_error":"Сообщить об ошибке"
+    "support_error":"Сообщить об ошибке",
+    
+    "recall":"✅ Да",
+    "notrecall":"❌ Нет"
 }

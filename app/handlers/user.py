@@ -30,6 +30,7 @@ additional_material_keyboard = AddMaterial.get_inline_keyboard()
 confirm_material_keyboard = AddMaterialConfirm.get_inline_keyboard()
 about_competition_keyboard = AboutTheCompetition.get_inline_keyboard()
 my_tiukoins = MyTiukoins.get_inline_keyboard()
+recall_the_agreement_keyboard = RecallTheAgreement.get_inline_keyboard()
 catalog_of_rewards = catalog_of_rewards
 
 competition_regulations_path = "app\\files\\docs\\Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.pdf"
@@ -1644,3 +1645,99 @@ async def sticker(message:Message, bot: Bot):
     
     await message.delete()
     await bot.send_sticker(chat_id = message.from_user.id,sticker='CAACAgIAAxkBAAECCW9pcf5whyOfSwac8j-BoA-FJC9ibAACCFwAAivjEUgq_1ezGy98fzgE')
+
+@user_router.message(Command(commands = "recall_the_agreement"), StateFilter(default_state))
+async def recall_the_agreement(message: Message, state: FSMContext):
+    """Обрабатывает нажатие на кнопку отозвать согласие"""
+    await message.answer(LEXICON_TEXT["recall_the_agreement"], reply_markup = recall_the_agreement_keyboard)
+    await state.set_state(Recall.wait_answer)
+
+@user_router.callback_query(StateFilter(Recall.wait_answer))
+async def wait_answer(callback:CallbackQuery, state: FSMContext):
+    if callback.data == "notrecall":
+        await callback.message.edit_text(LEXICON_TEXT["cancel_fsm"])
+        await state.clear()
+        await callback.answer()
+    elif callback.data == "recall":
+        await callback.message.edit_text(LEXICON_TEXT["recall"])
+        result = await process_recall_user(callback)
+        if result:
+            await state.clear()
+        else:
+            print('Ошибка')
+        await callback.answer()
+    else:
+        await callback.message.answer(LEXICON_TEXT["in_state"])
+        await callback.answer()
+
+async def process_recall_user(callback:CallbackQuery):
+    """Удаляет пользователя из БД и Google_Sheets"""
+    user_id = callback.from_user.id
+    # Инициализация статусов БД и Google Sheets
+    db_success = db_result = db_user_id = None
+    google_sheets_status = google_sheets_row = "⏳"
+    
+    try:
+        # БД (приоритетная)
+        try:
+            db_success, db_result, db_user_id= await db_delete_user_by_tg_id(user_id)
+            db_status = "✅" if db_success else "❌"
+        except Exception as db_error:
+            db_success = False
+            db_result = f"Ошибка: {str(db_error)}"
+            db_status = "❌"
+        
+        # Google Sheets (опционально)
+        try:
+            google_sheets_success = await googlesheet_service.delete_user_by_tg_id_async(int(user_id))
+
+            if google_sheets_success.get("success"):
+                google_sheets_status = "✅"
+                google_sheets_row = google_sheets_success.get('deleted_row', 'N/A')
+            else:
+                google_sheets_status = "⚠️"
+                google_sheets_row = google_sheets_success.get('message', 'Не найден')
+        except Exception as gs_error:
+            google_sheets_status = "⚠️"
+            google_sheets_row = f"Ошибка Google Sheets: {str(gs_error)}"
+        
+        # Финальный отчет
+        if db_success:
+            bot_logger.log_admin_msg(tg_id = callback.message.from_user.id,
+            username = callback.message.from_user.username,
+            message = f"УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Успешно\n"
+                    f"Пользователь: {callback.message.from_user.username} (ID: {user_id})\n"
+                    f"База данных: {db_status} (ID: {db_user_id}) \n"
+                    f"Google Sheets: {google_sheets_status} (строка {google_sheets_row})")
+
+            await callback.message.delete()
+            await callback.message.answer(
+                text = f"❌ <b>Ваш аккаунт был удалён из системы!<b>\n\nДля повторной регистрации воспользуйтесь командой /start.",
+                reply_markup=ReplyKeyboardRemove(),
+                parse_mode="HTML")
+
+        else:
+            bot_logger.log_admin_msg(tg_id = callback.message.from_user.id,
+            username = callback.message.from_user.username,
+            message = f"УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Ошибка БД\n"
+                    f"Пользователь: {callback.message.from_user.username} (ID: {user_id})\n"
+                    f"База данных: {db_status}\n"
+                    f"  └─ {db_result}\n"
+                    f"Google Sheets: {google_sheets_status} ({google_sheets_row})")
+            
+    except Exception as e:
+        bot_logger.log_admin_msg(tg_id = callback.message.from_user.id,
+            username = callback.message.from_user.username,
+            message = f"УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Критическая ошибка\n"
+                        f"База данных: {db_status if db_status else 'Неизвестно'}\n"
+                        f"  └─ {db_result}\n"
+                        f"Google Sheets: {google_sheets_status} ({google_sheets_row})\n"
+                        f"{str(e)}")
+
+        await callback.message.answer(
+            f"💥 <b>Произошла ошибка!</b>\n"
+            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
+            parse_mode="HTML"
+        )
+
+    
