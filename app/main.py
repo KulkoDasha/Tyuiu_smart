@@ -43,15 +43,14 @@ async def main():
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("🛑 Остановка по Ctrl+C")
     except Exception as e:
-        bot_logger.log_user_msg(
-            error_msg=f"Критическая ошибка бота: {str(e)}",
-            error_type="CRITICAL",
-            traceback=traceback.format_exc()
+        bot_logger.log_admin_msg(
+            tg_id=0,
+            message=f"🚨 КРИТИЧЕСКАЯ ОШИБКА БОТА: {str(e)}\n"
+                   f"Traceback:\n{traceback.format_exc()}"
         )
     finally:
         await bot.session.close()
         print("✅ Бот остановлен")
 
-    
 if __name__ == "__main__":
     asyncio.run(main())

@@ -72,9 +72,10 @@ async def give_agreement(callback:CallbackQuery, state: FSMContext):
     await state.set_state(RegistrationFormStates.full_name)
     await callback.answer()
     
-    bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                            username = callback.from_user.username,
-                            message = f"РЕГИСТРАЦИЯ: Принял согласие на ОПД")
+    bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message="РЕГИСТРАЦИЯ: ✅ Согласие на ОПД получено"
+        )
 
 @user_router.callback_query(F.data == "refuse_agreement")
 async def refuse_agreement(callback:CallbackQuery):
@@ -226,7 +227,7 @@ async def email_sent(message: Message, state: FSMContext):
     
     await state.update_data(email = message.text)
     data = await state.get_data()
-    await message.answer("✅ <b>Анкета успешно заполнена!</b>\nПодтвердите данные или выберите что изменить\n\n"
+    await message.answer("✅ <b>Анкета успешно заполнена!</b>\nПодтвердите данные или выберите, что изменить\n\n"
                          f"<b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
                          f"<b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
                          f"<b>Направление:</b> {data.get('direction', 'Не указано')}\n"
@@ -268,9 +269,12 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     except Exception as e:
         await _handle_error(callback, e) 
 
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                        username = callback.from_user.username,
-                        message = f"РЕГИСТРАЦИЯ: Ошибка при отправке анкеты \n{e}")
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"РЕГИСТРАЦИЯ: ❌ Ошибка отправки анкеты\n"
+                    f"Ошибка: {str(e)}"
+        )
+
         await callback.answer()     
 
 async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bot):
@@ -296,21 +300,24 @@ async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bo
         await bot.send_message(**send_params)
         await callback.message.edit_text(text=LEXICON_TEXT["registration_end"])
 
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                                username = callback.from_user.username,
-                                message = f"РЕГИСТРАЦИЯ: Отправил анкету\n"
-                                          f"ФИО: {data.get('full_name', 'Не указано')}\n"
-                                          f"Структурное подразделение обучения: {data.get('institute', 'Не указано')[2:]}\n"
-                                          f"Направление: {data.get('direction', 'Не указано')}\n"
-                                          f"Группа: {data.get('group', 'Не указано')}\n"
-                                          f"Email: {data.get('email', 'Не указано')}")
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"РЕГИСТРАЦИЯ: ✅ Анкета успешно отправлена\n"
+                    f"ФИО: {pii_masker.mask_full_name(data.get('full_name', '')) or 'Не указано'}\n"
+                    f"Структурное подразделение обучения: {data.get('institute', 'Не указано')[2:]}\n"
+                    f"Направление: {pii_masker.mask_direction(data.get('direction', '')) or 'Не указано'}\n"
+                    f"Группа: {pii_masker.mask_group(data.get('group', '')) or 'Не указано'}\n"
+                    f"Email: {pii_masker.mask_email(data.get('email', '')) or 'Не указано'}"
+        )
 
         await state.clear()
 
     except Exception as send_error:
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                                username = callback.from_user.username,
-                                message = f"РЕГИСТРАЦИЯ: Ошибка отправки анкеты\n{send_error}")
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"❌ РЕГИСТРАЦИЯ: Ошибка отправки анкеты\n"
+                    f"Ошибка: {str(send_error)}"
+        )
         
         raise Exception(f"Ошибка отправки модератору: {send_error}")
 
@@ -753,9 +760,11 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
     except Exception as e:
         await callback.answer("❌ Произошла ошибка", show_alert = True)
 
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                                username = callback.from_user.username,
-                                message = f"ЗАЯВКА: Ошибка отправки заявки\n{e}")
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ЗАЯВКА: ❌ Ошибка отправки\n"
+                    f"Ошибка: {str(e)}"
+        )
         
         await callback.message.edit_text("❌ Произошла ошибка. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
         await state.clear()
@@ -792,31 +801,36 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
                 user_full_name, data, clean_role, bot, thread_id, event_direction
             )
         
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                                username = callback.from_user.username,
-                                message = f"ЗАЯВКА: Отправил заявку\n"
-                                f"База данных: {database_result['message']}\n"
-                                f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} ({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
-                                f"ФИО: {user_full_name}\n"
-                                f"Направление: {data.get('event_direction', 'Не указано')}\n"
-                                f"Название мероприятия: {data.get('name_of_event', 'Не указано')}\n"
-                                f"Роль: {data.get('event_role', 'Не указано')}\n"
-                                f"Материалы: {len(data.get('supporting_materials', []))} шт.")
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ЗАЯВКА: ✅ Заявка отправлена\n"
+                    f"БД: {database_result['message']}\n"
+                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
+                    f"ФИО: {pii_masker.mask_full_name(user_full_name)}\n"
+                    f"Направление: {data.get('event_direction', '') or 'Не указано'}\n"
+                    f"Мероприятие: {data.get('name_of_event', 'Не указано')}\n"
+                    f"Роль: {data.get('event_role', 'Не указано')}\n"
+                    f"Материалы: {len(data.get('supporting_materials', []))} шт."
+        )
 
         if not send_moderator:
             await callback.message.answer("❌ Ваша заявка не отправлена модератору. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
 
-            bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                                    username = callback.from_user.username,
-                                    message = f"ЗАЯВКА: Ошибка отправки заявки\n{e}")
+            bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ЗАЯВКА: ❌ Ошибка отправки\n"
+                    f"Ошибка: {str(e)}"
+        )
         
     except Exception as e:
         
         await callback.message.answer("❌ Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
 
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                                username = callback.from_user.username,
-                                message = f"ЗАЯВКА: Ошибка отправки заявки\n{e}")
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"📋 ЗАЯВКА: ❌ Ошибка отправки\n"
+                    f"Ошибка: {str(e)}"
+        )
     
     await callback.answer()
     await state.clear()
@@ -1410,14 +1424,15 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
             
         asyncio.create_task(bot.send_message(**send_params))
 
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-                username = callback.from_user.username,
-                message = f"ПООЩРЕНИЕ: Отправил заявку\n"
-                        f"Заявка №{request_id}\n"
-                        f"Пользователь: {user_full_name} (ID: {user_id})\n"
-                        f"Поощрение: {item['name']}\n"
-                        f"Стоимость: {item['price']}\n"
-                        f"Google Sheets: {sheets_status} (Строка: {sheets_row})")
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ПООЩРЕНИЕ: ✅ Заявка отправлена\n"
+                    f"Заявка №{request_id}\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                    f"Товар: {item['name']}\n"
+                    f"Цена: {item['price']} ТИУкоинов\n"
+                    f"Google Sheets: {sheets_status}"
+        )
 
         await callback.message.edit_text(text = confirm_text, parse_mode = "HTML")
         await state.clear()
@@ -1426,13 +1441,14 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     except Exception as e:
         await callback.message.answer(f"Неожиданная ошибка: {e}")
 
-        bot_logger.log_user_msg(tg_id = callback.from_user.id,
-            username = callback.from_user.username,
-            message = f"ПООЩРЕНИЕ: Ошибка\n"
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ПООЩРЕНИЕ: ❌ Ошибка\n"
                     f"Заявка №{request_id}\n"
-                    f"Пользователь: {user_full_name} (ID: {user_id})\n"
-                    f"Google Sheets: {sheets_status} (Строка: {sheets_row})\n"
-                    f"Ошибка: {e}")
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                    f"Google Sheets: {sheets_status}\n"
+                    f"Ошибка: {str(e)}"
+        )
            
 @user_router.callback_query(F.data == "refresh_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def refresh_catalog(callback: CallbackQuery):
@@ -1707,12 +1723,13 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
         
         # Финальный отчет
         if db_success:
-            bot_logger.log_user_msg(tg_id = callback.message.from_user.id,
-            username = callback.message.from_user.username,
-            message = f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Успешно\n"
-                    f"Пользователь: {callback.message.from_user.username} (ID: {user_id})\n"
-                    f"База данных: {db_status} (ID: {db_user_id}) \n"
-                    f"Google Sheets: {google_sheets_status} (строка {google_sheets_row})")
+            bot_logger.log_user_msg(
+            tg_id=callback.message.from_user.id,
+            message=f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ: ✅ Удалён\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                    f"База данных: {db_status} (ID: {db_user_id})\n"
+                    f"Google Sheets: {google_sheets_status}"
+        )
             
             moderator_message = (f"✅ <b>Пользователь {user_full_name} (ID: {user_id}) отозвал согласие и был удалён из системы</b>\n\n"
                                 f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id})\n"
@@ -1734,26 +1751,29 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
                 parse_mode="HTML")
 
         else:
-            bot_logger.log_user_msg(tg_id = callback.message.from_user.id,
-            username = callback.message.from_user.username,
-            message = f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Ошибка БД\n"
-                    f"Пользователь: {callback.message.from_user.username} (ID: {user_id})\n"
-                    f"База данных: {db_status}\n"
-                    f"  └─ {db_result}\n"
-                    f"Google Sheets: {google_sheets_status} ({google_sheets_row})")
+            bot_logger.log_user_msg(
+                tg_id=callback.message.from_user.id,
+                message=f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ: ❌ Ошибка БД\n"
+                        f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                        f"База данных: {db_status}\n"
+                        f"  └─ {db_result}\n"
+                        f"Google Sheets: {google_sheets_status}"
+            )
             
     except Exception as e:
-        bot_logger.log_user_msg(tg_id = callback.message.from_user.id,
-            username = callback.message.from_user.username,
-            message = f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Критическая ошибка\n"
-                        f"База данных: {db_status if db_status else 'Неизвестно'}\n"
-                        f"  └─ {db_result}\n"
-                        f"Google Sheets: {google_sheets_status} ({google_sheets_row})\n"
-                        f"{str(e)}")
+        bot_logger.log_user_msg(
+            tg_id=callback.message.from_user.id,
+            message=f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ: 🚨 КРИТИЧЕСКАЯ ОШИБКА\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"            
+                    f"База данных: {db_status or 'Неизвестно'}\n"
+                    f"  └─ {db_result}\n"
+                    f"Google Sheets: {google_sheets_status}\n"
+                    f"Ошибка: {str(e)}"
+        )
 
         await callback.message.answer(
             f"💥 <b>Произошла ошибка!</b>\n"
-            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь в поддержку.",
+            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь в поддержку /support.",
             parse_mode="HTML"
         )
 

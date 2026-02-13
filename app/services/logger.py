@@ -1,102 +1,59 @@
 import logging
 from pathlib import Path
 from logging.handlers import TimedRotatingFileHandler
+from typing import Optional
 from ..config.bot_config import config 
+from .pii_masker import pii_masker
+
 
 class BotLogger:
-    """
-    Логгер для ведения пользовательских и модераторских логов
-    """
-
+    """Универсальный логгер"""
+    
     def __init__(self, log_config):
         self.logs_dir = Path(log_config.logs_dir)
         self.logs_dir.mkdir(exist_ok=True)
-        print(f"📁 Логи: {self.logs_dir.absolute()}")
-
-        self.user_logger = logging.getLogger("UserLog")
-        self.moderator_logger = logging.getLogger("ModeratorLog")
-        self.admin_logger = logging.getLogger("AdminLog")
-
-        self.user_logger.propagate = False
-        self.moderator_logger.propagate = False
-        self.admin_logger.propagate = False
-
-        self.user_logger.setLevel(logging.DEBUG)
-        self.moderator_logger.setLevel(logging.DEBUG)
-        self.admin_logger.setLevel(logging.DEBUG)
         
-        self.user_logger.handlers.clear()
-        self.moderator_logger.handlers.clear()
-        self.admin_logger.handlers.clear()
-
+        self.user_logger = self._setup_logger("UserLog", "UserLog.log")
+        self.moderator_logger = self._setup_logger("ModeratorLog", "ModeratorLog.log")
+        self.admin_logger = self._setup_logger("AdminLog", "AdminLog.log")
+    
+    def _setup_logger(self, name: str, filename: str) -> logging.Logger:
+        logger = logging.getLogger(name)
+        logger.propagate = False
+        logger.setLevel(logging.INFO)
+        logger.handlers.clear()
+        
         formatter = logging.Formatter(
-            '[%(asctime)s] %(levelname)s | %(name)s | %(message)s', 
+            '[%(asctime)s] %(levelname)s | %(name)s | %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
-
-        # Правила ротации логов
-        self.user_handler = TimedRotatingFileHandler(
-            self.logs_dir / "UserLog.log",
+        
+        handler = TimedRotatingFileHandler(
+            self.logs_dir / filename,
             when='midnight', interval=1, backupCount=30, encoding='utf-8'
         )
-        self.user_handler.setFormatter(formatter)
-        self.user_logger.addHandler(self.user_handler)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        return logger
+    
+    def log_user_msg(self, tg_id: int, message: str, level: str = "INFO") -> None:
+        """Бизнес-события пользователей"""
+        full_msg = f"tg_id={tg_id} | {message}"
+        self._log_message(self.user_logger, full_msg, level)
+    
+    def log_moderator_msg(self, tg_id: int, message: str, level: str = "INFO") -> None:
+        """Модераторские действия"""
+        full_msg = f"tg_id={tg_id} | {message}"
+        self._log_message(self.moderator_logger, full_msg, level)
+    
+    def log_admin_msg(self, tg_id: int, message: str, level: str = "INFO") -> None:
+        """Админские действия"""
+        full_msg = f"tg_id={tg_id} | {message}"
+        self._log_message(self.admin_logger, full_msg, level)
+    
+    def _log_message(self, logger: logging.Logger, message: str, level: str):
+        level = level.upper()
+        getattr(logger, level.lower())(message)
 
-        self.moderator_handler = TimedRotatingFileHandler(
-            self.logs_dir / "ModeratorLog.log",
-            when='midnight', interval=1, backupCount=30, encoding='utf-8'
-        )
-        self.moderator_handler.setFormatter(formatter)
-        self.moderator_logger.addHandler(self.moderator_handler)
 
-        self.admin_handler = TimedRotatingFileHandler(
-            self.logs_dir / "AdminLog.log",
-            when='midnight', interval=1, backupCount=30, encoding='utf-8'
-        )
-        self.admin_handler.setFormatter(formatter)
-        self.admin_logger.addHandler(self.admin_handler)
-
-    def log_user_msg(self, tg_id, username, message: str, level: str = "INFO"):
-        """Пользовательские логи"""
-        
-        full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
-        
-        if level.upper() == "ERROR":
-            self.user_logger.error(full_msg)
-        elif level.upper() == "WARNING":
-            self.user_logger.warning(full_msg)
-        elif level.upper() == "DEBUG":
-            self.user_logger.debug(full_msg)
-        else:
-            self.user_logger.info(full_msg)
-
-    def log_moderator_msg(self, tg_id, username, message: str, level: str = "INFO"):
-        """Модераторские логи"""
-
-        full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
-
-        if level.upper() == "ERROR":
-            self.moderator_logger.error(full_msg)
-        elif level.upper() == "WARNING":
-            self.moderator_logger.warning(full_msg)
-        elif level.upper() == "DEBUG":
-            self.moderator_logger.debug(full_msg)
-        else:
-            self.moderator_logger.info(full_msg)
-
-    def log_admin_msg(self, tg_id, username, message: str, level: str = "INFO"):
-        """Админские логи"""
-
-        full_msg = f"tg_id={tg_id} | username=@{username or 'no_username'} | {message}"
-        
-        if level.upper() == "ERROR":
-            self.admin_logger.error(full_msg)
-        elif level.upper() == "WARNING":
-            self.admin_logger.warning(full_msg)
-        elif level.upper() == "DEBUG":
-            self.admin_logger.debug(full_msg)
-        else:
-            self.admin_logger.info(full_msg)
-
-# Глобальный экземпляр
 bot_logger = BotLogger(config.log)
