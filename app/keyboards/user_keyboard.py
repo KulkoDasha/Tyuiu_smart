@@ -280,3 +280,17 @@ class MyTiukoins:
                         ])
         
         return keyboard
+
+class RecallTheAgreement:
+    """Инлайн-кнопки при отзыве согласия"""
+    @staticmethod
+    def get_inline_keyboard():
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                            [
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["recall"], callback_data=f"recall_agreement"),
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["notrecall"], callback_data=f"not_recall_agreement")
+                            ]
+                        ])
+        
+        return keyboard

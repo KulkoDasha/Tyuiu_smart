@@ -14,7 +14,8 @@ from .user_keyboard import (MenuKeyboard,
                            SelectingRewardInlineButtons,
                            ConfirmationRewardInlineButtons,
                            AboutTheCompetition,
-                           MyTiukoins)
+                           MyTiukoins,
+                           RecallTheAgreement)
 
 from .moderator_keyboard import (RegisterNewUserInlineButtons,
                                  ProcessingUserApplicationInlineButtons,
@@ -48,4 +49,5 @@ __all__ = [
     "AddMaterialConfirm",
     "ConfirmationRewardInlineButtons",
     "AboutTheCompetition",
-    "MyTiukoins"]
+    "MyTiukoins",
+    "RecallTheAgreement"]
