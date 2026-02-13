@@ -288,8 +288,8 @@ class RecallTheAgreement:
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                             [
-                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["recall"], callback_data=f"recall"),
-                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["notrecall"], callback_data=f"notrecall")
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["recall"], callback_data=f"recall_agreement"),
+                                InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["notrecall"], callback_data=f"not_recall_agreement")
                             ]
                         ])
         

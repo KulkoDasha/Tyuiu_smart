@@ -1648,36 +1648,35 @@ async def sticker(message:Message, bot: Bot):
 
 @user_router.message(Command(commands = "recall_the_agreement"), StateFilter(default_state))
 async def recall_the_agreement(message: Message, state: FSMContext):
-    """Обрабатывает нажатие на кнопку отозвать согласие"""
+    """Обрабатывает нажатие на команду отозвать согласие"""
     
     await message.answer(LEXICON_TEXT["recall_the_agreement"], reply_markup = recall_the_agreement_keyboard)
-    await state.set_state(Recall.wait_answer)
+    await state.set_state(RecallAgreement.wait_answer)
 
-@user_router.callback_query(StateFilter(Recall.wait_answer))
-async def wait_answer(callback:CallbackQuery, state: FSMContext):
+@user_router.callback_query(StateFilter(RecallAgreement.wait_answer))
+async def wait_answer(callback:CallbackQuery, state: FSMContext, bot:Bot):
     
-    if callback.data == "notrecall":
+    if callback.data == "not_recall_agreement":
         await callback.message.edit_text(LEXICON_TEXT["cancel_fsm"])
         await state.clear()
         await callback.answer()
-    elif callback.data == "recall":
+    elif callback.data == "recall_agreement":
         await callback.message.edit_text(LEXICON_TEXT["recall"])
-        result = await process_recall_user(callback)
+        result = await process_recall_user(callback,bot)
         if result:
             await state.clear()
         else:
-            print('Ошибка')
             await state.clear()
         await callback.answer()
     else:
         await callback.message.answer(LEXICON_TEXT["in_state"])
         await callback.answer()
 
-async def process_recall_user(callback:CallbackQuery):
+async def process_recall_user(callback:CallbackQuery, bot: Bot):
     """Удаляет пользователя из БД и Google_Sheets"""
     
     user_id = callback.from_user.id
-    
+    user_full_name = await db_get_user_full_name(user_id)
     # Инициализация статусов БД и Google Sheets
     db_success = db_result = db_user_id = None
     google_sheets_status = google_sheets_row = "⏳"
@@ -1708,13 +1707,26 @@ async def process_recall_user(callback:CallbackQuery):
         
         # Финальный отчет
         if db_success:
-            bot_logger.log_admin_msg(tg_id = callback.message.from_user.id,
+            bot_logger.log_user_msg(tg_id = callback.message.from_user.id,
             username = callback.message.from_user.username,
-            message = f"УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Успешно\n"
+            message = f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Успешно\n"
                     f"Пользователь: {callback.message.from_user.username} (ID: {user_id})\n"
                     f"База данных: {db_status} (ID: {db_user_id}) \n"
                     f"Google Sheets: {google_sheets_status} (строка {google_sheets_row})")
-
+            
+            moderator_message = (f"✅ <b>Пользователь {user_full_name} (ID: {user_id}) отозвал согласие и был удалён из системы</b>\n\n"
+                                f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id})\n"
+                                f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
+                                f"  └─ Строка: {google_sheets_row}\n\n"
+                                f"❗️ Если пользователь не удалён из Google Sheets - сделайте это вручную. Обратитесь к разработчику с данной проблемой.")
+            send_params = {
+                "chat_id": config.moderator_chat_id,
+                "text": moderator_message,
+                "message_thread_id": TOPIC_REGISTRATION_NEW_USER
+            }
+            
+            await bot.send_message(**send_params)
+    
             await callback.message.delete()
             await callback.message.answer(
                 text = f"❌ <b>Ваш аккаунт был удалён из системы!<b>\n\nДля повторной регистрации воспользуйтесь командой /start.",
@@ -1722,18 +1734,18 @@ async def process_recall_user(callback:CallbackQuery):
                 parse_mode="HTML")
 
         else:
-            bot_logger.log_admin_msg(tg_id = callback.message.from_user.id,
+            bot_logger.log_user_msg(tg_id = callback.message.from_user.id,
             username = callback.message.from_user.username,
-            message = f"УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Ошибка БД\n"
+            message = f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Ошибка БД\n"
                     f"Пользователь: {callback.message.from_user.username} (ID: {user_id})\n"
                     f"База данных: {db_status}\n"
                     f"  └─ {db_result}\n"
                     f"Google Sheets: {google_sheets_status} ({google_sheets_row})")
             
     except Exception as e:
-        bot_logger.log_admin_msg(tg_id = callback.message.from_user.id,
+        bot_logger.log_user_msg(tg_id = callback.message.from_user.id,
             username = callback.message.from_user.username,
-            message = f"УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Критическая ошибка\n"
+            message = f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ: Критическая ошибка\n"
                         f"База данных: {db_status if db_status else 'Неизвестно'}\n"
                         f"  └─ {db_result}\n"
                         f"Google Sheets: {google_sheets_status} ({google_sheets_row})\n"
@@ -1741,7 +1753,7 @@ async def process_recall_user(callback:CallbackQuery):
 
         await callback.message.answer(
             f"💥 <b>Произошла ошибка!</b>\n"
-            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
+            f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь в поддержку.",
             parse_mode="HTML"
         )
 

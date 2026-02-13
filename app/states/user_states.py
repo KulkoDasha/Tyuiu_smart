@@ -87,7 +87,7 @@ class AboutCompetition(StatesGroup):
     my_tiukoins_start = State()
     
 @dataclass
-class Recall(StatesGroup):
+class RecallAgreement(StatesGroup):
     """Состояния при отзыве согласия"""
     
     wait_answer = State()
