@@ -758,7 +758,7 @@ async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot)
             await handle_unknown_callback(callback)
             
     except Exception as e:
-        await callback.answer("❌ Произошла ошибка", show_alert = True)
+        await callback.answer("❌ Произошла ошибка. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support", show_alert = True)
 
         bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
@@ -818,7 +818,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
 
             bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
-            message=f"ЗАЯВКА: ❌ Ошибка отправки\n"
+            message=f"ЗАЯВКА: ❌ Ошибка отправки модератору\n"
                     f"Ошибка: {str(e)}"
         )
         
@@ -828,7 +828,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
 
         bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
-            message=f"📋 ЗАЯВКА: ❌ Ошибка отправки\n"
+            message=f"ЗАЯВКА: ❌ Ошибка отправки\n"
                     f"Ошибка: {str(e)}"
         )
     
