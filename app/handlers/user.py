@@ -788,7 +788,20 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
         database_result = await save_application_to_database(state, callback)
         
         if not database_result.get("success"):
-            await callback.message.answer("❌ Ошибка сохранения заявки. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
+
+            bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ЗАЯВКА: ❌ Ошибка БД\n"
+                    f"БД: {database_result['message']}\n"
+                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
+                    f"ФИО: {pii_masker.mask_full_name(user_full_name)}\n"
+                    f"Направление: {data.get('event_direction', '') or 'Не указано'}\n"
+                    f"Мероприятие: {data.get('name_of_event', 'Не указано')}\n"
+                    f"Роль: {data.get('event_role', 'Не указано')}\n"
+                    f"Материалы: {len(data.get('supporting_materials', []))} шт."
+        )
+            
+            await callback.message.answer("❌ Ошибка отправки заявки. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
             await callback.answer()
             await state.clear()
             return 
@@ -819,6 +832,13 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ❌ Ошибка отправки модератору\n"
+                    f"БД: {database_result['message']}\n"
+                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
+                    f"ФИО: {pii_masker.mask_full_name(user_full_name)}\n"
+                    f"Направление: {data.get('event_direction', '') or 'Не указано'}\n"
+                    f"Мероприятие: {data.get('name_of_event', 'Не указано')}\n"
+                    f"Роль: {data.get('event_role', 'Не указано')}\n"
+                    f"Материалы: {len(data.get('supporting_materials', []))} шт."
                     f"Ошибка: {str(e)}"
         )
         
@@ -828,7 +848,9 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
 
         bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
-            message=f"ЗАЯВКА: ❌ Ошибка отправки\n"
+            message=f"ЗАЯВКА: ❌ Неожиданная ошибка\n"
+                    f"БД: {database_result['message']}\n"
+                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
                     f"Ошибка: {str(e)}"
         )
     
@@ -1129,6 +1151,12 @@ async def balance_or_history(callback:CallbackQuery,state:FSMContext):
         db_success, db_applications, message = await db_get_application_history(str(callback.from_user.id))
 
         if not db_success:
+            
+            bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ИСТОРИЯ ЗАЯВОК: ❌ Ошибка БД\n"
+                    f"Ошибка: {message}"
+                )
 
             await callback.message.answer(
                 "❌ Не удалось загрузить историю заявок. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support",
@@ -1382,7 +1410,17 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
 
         if sheets_status == "❌":
             # Если не удалось списать тиукоины
-            await callback.message.answer(f"❌ <b>Ошибка</b>\n\n{sheets_result.get('error')}")
+
+            bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ПООЩРЕНИЕ: ❌ Ошибка Google Sheets\n"
+                    f"Заявка №{request_id}\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                    f"Товар: {item['name']}\n"
+                    f"Цена: {item['price']} ТИУкоинов\n"
+                    f"Google Sheets: {sheets_result.get('error')}"
+        )
+            await callback.message.answer(f"❌ <b>Ошибка</b>\n\nОбратитесь в поддержку /support.")
             await db_add_tiukoins(tg_id_str=str(user_id), spend_amount=item['price'])
             await state.clear()
             return
@@ -1439,11 +1477,11 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         await callback.answer("✅ Покупка завершена!", show_alert = True)
             
     except Exception as e:
-        await callback.message.answer(f"Неожиданная ошибка: {e}")
+        await callback.message.answer(f"❌ Произошла ошибка. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
 
         bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
-            message=f"ПООЩРЕНИЕ: ❌ Ошибка\n"
+            message=f"ПООЩРЕНИЕ: ❌ Неожиданная шибка\n"
                     f"Заявка №{request_id}\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"Google Sheets: {sheets_status}\n"
@@ -1758,6 +1796,12 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
                         f"База данных: {db_status}\n"
                         f"  └─ {db_result}\n"
                         f"Google Sheets: {google_sheets_status}"
+            )
+
+            await callback.message.answer(
+                f"💥 <b>Произошла ошибка!</b>\n"
+                f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь в поддержку /support.",
+                parse_mode="HTML"
             )
             
     except Exception as e:
