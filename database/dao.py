@@ -2,7 +2,7 @@ import logging
 
 from .database_service import connection
 from .models import Users, Event_applications 
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, text
 from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
@@ -82,6 +82,10 @@ async def db_delete_all_users(session) -> Tuple[bool, str]:
         result_users = await session.execute(delete(Users))
         deleted_users_count = result_users.rowcount
         
+        await session.commit()
+
+        await session.execute(text("ALTER SEQUENCE users_id_seq RESTART WITH 1"))
+        await session.execute(text("ALTER SEQUENCE event_applications_id_seq RESTART WITH 1"))
         await session.commit()
         
         return True, f"✅ Успешно удалено {deleted_users_count} пользователей и {deleted_apps_count} заявок"
