@@ -63,7 +63,7 @@ async def db_set_user(session,
     
     except SQLAlchemyError as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", None, f"Ошибка БД при добавлении пользователя: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", None, f"Ошибка БД при добавлении пользователя: {str(e)}"
     
 
 @connection
@@ -92,10 +92,10 @@ async def db_delete_all_users(session) -> Tuple[bool, str, Optional[str]]:
     
     except SQLAlchemyError as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при удалении всех пользователей: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при удалении всех пользователей: {str(e)}"
     
     except Exception as e:
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Критическая ошибка БД при удалении всех пользователей: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Критическая ошибка БД при удалении всех пользователей: {str(e)}"
 
 
 @connection 
@@ -145,7 +145,7 @@ async def db_submit_event_application (session,
         if bool_user_exists == False:
             return -1, f"Пользователь с ID: {tg_id} не зарегестрирован", None
     except Exception as e:
-        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка при проверке пользователя {tg_id}: {str(e)}"
+        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка при проверке пользователя {tg_id}: {str(e)}"
     
 
     try:
@@ -163,7 +163,7 @@ async def db_submit_event_application (session,
             if existing_application_status in ['Принята', 'На рассмотрении ']:
                 return -1, "Заявка уже существует", None
     except Exception as e:
-        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при проверке дубликатов заявки {tg_id}: {str(e)}"
+        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при проверке дубликатов заявки {tg_id}: {str(e)}"
     
     try:        
         new_event_application = Event_applications(
@@ -188,7 +188,7 @@ async def db_submit_event_application (session,
     
     except SQLAlchemyError as e:
         await session.rollback()
-        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка при добавлении заявки студентом {tg_id}: {e}"
+        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка при добавлении заявки студентом {tg_id}: {e}"
     
 
 @connection
@@ -233,7 +233,7 @@ async def db_approve_application(
 
     except Exception as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", 0.0, f"Ошибка при принятии заявки {application_id}: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", 0.0, f"Ошибка при принятии заявки {application_id}: {str(e)}"
 
 
 @connection
@@ -269,7 +269,7 @@ async def db_reject_application(
         
     except SQLAlchemyError as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при отклонении заявки {application_id}: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при отклонении заявки {application_id}: {str(e)}"
     
 
 @connection
@@ -312,9 +312,9 @@ async def db_deduct_tiukoins(
         
     except SQLAlchemyError as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при списании ТИУкоинов у пользователя {tg_id}: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при списании ТИУкоинов у пользователя {tg_id}: {str(e)}"
     except Exception as e:
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при списании ТИУкоинов: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при списании ТИУкоинов: {str(e)}"
 
 @connection
 async def db_add_tiukoins(session,
@@ -351,9 +351,9 @@ async def db_add_tiukoins(session,
         
     except SQLAlchemyError as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при добавлении ТИУкоинов у пользователя {tg_id}: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при добавлении ТИУкоинов у пользователя {tg_id}: {str(e)}"
     except Exception as e:
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка: {str(e)}"
     
 async def db_get_user_balance(session, tg_id_str: str) -> Tuple[float, str, Optional[str]]:
     """Получает текущий баланс ТИУкоинов пользователя"""
@@ -369,7 +369,7 @@ async def db_get_user_balance(session, tg_id_str: str) -> Tuple[float, str, Opti
         return user.tiukoins if user else 0.0, "Баланс успешно получен", None
     
     except Exception as e:
-        return 0.0, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при получении баланса пользователя {tg_id}: {str(e)}"
+        return 0.0, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при получении баланса пользователя {tg_id}: {str(e)}"
     
 @connection
 async def db_return_tiukoins(session,
@@ -403,10 +403,10 @@ async def db_return_tiukoins(session,
     
     except SQLAlchemyError as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при возврате ТИУкоинов пользователю {tg_id}: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при возврате ТИУкоинов пользователю {tg_id}: {str(e)}"
     
     except Exception as e:
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Неожиданная ошибка БД при возврате ТИУкоинов: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Неожиданная ошибка БД при возврате ТИУкоинов: {str(e)}"
     
 
 @connection
@@ -435,7 +435,7 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, O
         
     except Exception as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику", None, f"Ошибка БД при удалении пользователя {tg_id_str}: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", None, f"Ошибка БД при удалении пользователя {tg_id_str}: {str(e)}"
 
     
 @connection
@@ -471,10 +471,10 @@ async def db_get_application_history(session, tg_id_str: str) -> Tuple[bool, lis
         return True, apps_list, f"Заявки пользователя {tg_id}: найдено {len(apps_list)} за 3 месяца", None
     
     except SQLAlchemyError as e:
-        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при получении заявок пользователя {tg_id}: {e}"
+        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при получении заявок пользователя {tg_id}: {e}"
 
     except Exception as e:
-        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Неожиданная ошибка БД при получении заявок: {e}"
+        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Неожиданная ошибка БД при получении заявок: {e}"
     
 
 @connection
@@ -493,7 +493,7 @@ async def db_get_all_user_tg_ids(session) -> Tuple[bool, list[int], Optional[str
         return True, list(all_ids), f"Всего пользователей в БД: {len(all_ids)}", None  
 
     except SQLAlchemyError as e:
-        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику", f"Ошибка БД при получении всех tg_id: {e}"
+        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при получении всех tg_id: {e}"
     
     except Exception as e:
-        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику",  f"Неожиданная ошибка БД: {e}"
+        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.",  f"Неожиданная ошибка БД: {e}"
