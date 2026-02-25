@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
-database_url = os.getenv("DATABASE_URL")
+db_credentials = os.getenv("DB_CREDENTIALS")
 
-engine = create_async_engine(database_url, echo=True)
+engine = create_async_engine(db_credentials, echo=True)
 
 async_session = async_sessionmaker(engine, class_=AsyncSession)
 

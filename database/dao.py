@@ -11,14 +11,7 @@ from datetime import datetime, timedelta
 async def db_set_user(session, 
                    tg_id_str: str, 
                    full_name: str, 
-                   institute: str, 
-                   direction: str, 
-                   group: str,
-                   course_str: str,
-                   start_year_str: str,
-                   end_year_str: str,
-                   phone_number:str,
-                   email: str,
+                   username: str,
                    moderator_username: str
                    ) -> Optional[Tuple[bool, str, Optional[int], Optional[str]]]:
     """
@@ -27,29 +20,10 @@ async def db_set_user(session,
 
     try:
         tg_id = int(tg_id_str)
-        start_year = int(start_year_str)
-        end_year = int(end_year_str)
-        course = int(course_str)
-        user = await session.scalar(select(Users).where(Users.tg_id == tg_id))
-        existing_email = await session.scalar(select(Users).where(Users.email == email))
-
-        if user:
-            return False, f"Пользователь с ID {tg_id} уже существует", None, None
-        
-        if existing_email:
-            return False, f"Почта {email} уже используется", None, None
 
         new_user = Users(
             tg_id = tg_id,
             full_name = full_name,
-            institute = institute,
-            direction = direction,
-            group = group,
-            course = course,
-            start_year = start_year,
-            end_year = end_year,
-            phone_number = phone_number,
-            email = email,
             tiukoins = 0.0,
             approval_date = datetime.now(),
             moderator_username = moderator_username
@@ -59,7 +33,7 @@ async def db_set_user(session,
         user_id = new_user.id
 
         await session.commit()
-        return True, f"Пользователь {tg_id} успешно добавлен в БД (ID: {user_id})", user_id, None
+        return True, f"Пользователь {tg_id} успешно добавлен в БД (ID: {user_id})", user_id, "✅ Успешно"
     
     except SQLAlchemyError as e:
         await session.rollback()
@@ -88,7 +62,7 @@ async def db_delete_all_users(session) -> Tuple[bool, str, Optional[str]]:
         await session.execute(text("ALTER SEQUENCE event_applications_id_seq RESTART WITH 1"))
         await session.commit()
         
-        return True, f"✅ Успешно удалено {deleted_users_count} пользователей и {deleted_apps_count} заявок", None
+        return True, f"✅ Успешно удалено {deleted_users_count} пользователей и {deleted_apps_count} заявок", "✅ Успешно"
     
     except SQLAlchemyError as e:
         await session.rollback()
@@ -145,7 +119,7 @@ async def db_submit_event_application (session,
         if bool_user_exists == False:
             return -1, f"Пользователь с ID: {tg_id} не зарегестрирован", None
     except Exception as e:
-        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка при проверке пользователя {tg_id}: {str(e)}"
+        return -1, f"❌ Ошибка базы данных. Обратитесь в поддержку /support.", f"Ошибка при проверке пользователя {tg_id}: {str(e)}"
     
 
     try:
@@ -161,9 +135,9 @@ async def db_submit_event_application (session,
         if existing_application:
             existing_application_status = existing_application.event_application_status
             if existing_application_status in ['Принята', 'На рассмотрении ']:
-                return -1, "Заявка уже существует", None
+                return -1, "Такая заявка уже существует", None
     except Exception as e:
-        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при проверке дубликатов заявки {tg_id}: {str(e)}"
+        return -1, f"❌ Ошибка базы данных. Обратитесь в поддержку /support.", f"Ошибка БД при проверке дубликатов заявки {tg_id}: {str(e)}"
     
     try:        
         new_event_application = Event_applications(
@@ -184,11 +158,11 @@ async def db_submit_event_application (session,
         
         await session.commit()
 
-        return application_id, f"Пользователь {tg_id} подал заявку", None
+        return application_id, f"Пользователь {tg_id} подал заявку", "✅ Успешно"
     
     except SQLAlchemyError as e:
         await session.rollback()
-        return -1, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка при добавлении заявки студентом {tg_id}: {e}"
+        return -1, f"❌ Ошибка базы данных. Обратитесь в поддержку /support.", f"Ошибка при добавлении заявки студентом {tg_id}: {e}"
     
 
 @connection
@@ -229,7 +203,7 @@ async def db_approve_application(
         )
 
         await session.commit()
-        return True, "Заявка принята и ТИУкоины начислены", tiukoins_amount, None
+        return True, "Заявка принята и ТИУкоины начислены", tiukoins_amount, "✅ Успешно"
 
     except Exception as e:
         await session.rollback()
@@ -265,7 +239,7 @@ async def db_reject_application(
         
         await session.commit()
         
-        return True, f"Заявка №{application_id} отклонена модератором @{moderator_username}", None
+        return True, f"Заявка №{application_id} отклонена модератором @{moderator_username}", "✅ Успешно"
         
     except SQLAlchemyError as e:
         await session.rollback()
@@ -308,13 +282,13 @@ async def db_deduct_tiukoins(
         # Сохраняем
         await session.commit()
         
-        return True, f"✅ Успешно! Списано {spend_amount} ТИУкоинов за {name_of_item} у пользователя {tg_id}\n. Новый баланс: {new_balance:.1f}", None
+        return True, f"✅ Успешно! Списано {spend_amount} ТИУкоинов за {name_of_item} у пользователя {tg_id}\n. Новый баланс: {new_balance:.1f}", "✅ Успешно"
         
     except SQLAlchemyError as e:
         await session.rollback()
         return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при списании ТИУкоинов у пользователя {tg_id}: {str(e)}"
     except Exception as e:
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при списании ТИУкоинов: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при списании ТИУкоинов у пользователя {tg_id}: {str(e)}"
 
 @connection
 async def db_add_tiukoins(session,
@@ -347,13 +321,13 @@ async def db_add_tiukoins(session,
         # Сохраняем
         await session.commit()
         
-        return True, f"✅ Успешно! добавлено {spend_amount} ТИУкоинов пользователю {tg_id}. Новый баланс: {new_balance:.1f}", None
+        return True, f"✅ Успешно! добавлено {spend_amount} ТИУкоинов пользователю {tg_id}. Новый баланс: {new_balance:.1f}", "✅ Успешно"
         
     except SQLAlchemyError as e:
         await session.rollback()
         return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при добавлении ТИУкоинов у пользователя {tg_id}: {str(e)}"
     except Exception as e:
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при добавлении ТИУкоинов: {str(e)}"
     
 async def db_get_user_balance(session, tg_id_str: str) -> Tuple[float, str, Optional[str]]:
     """Получает текущий баланс ТИУкоинов пользователя"""
@@ -366,10 +340,10 @@ async def db_get_user_balance(session, tg_id_str: str) -> Tuple[float, str, Opti
         result = await session.execute(select(Users).where(Users.tg_id == tg_id))
         user = result.scalars().first()
         
-        return user.tiukoins if user else 0.0, "Баланс успешно получен", None
+        return user.tiukoins if user else 0.0, "Баланс успешно получен", "✅ Успешно"
     
     except Exception as e:
-        return 0.0, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при получении баланса пользователя {tg_id}: {str(e)}"
+        return 0.0, f"❌ Ошибка получения баланс. Обратитесь в /support. ", f"Ошибка БД при получении баланса пользователя {tg_id}: {str(e)}"
     
 @connection
 async def db_return_tiukoins(session,
@@ -399,7 +373,7 @@ async def db_return_tiukoins(session,
         user.tiukoins = new_balance
         await session.commit()
 
-        return True, f"✅ Успешно! Возвращено {item_price} ТИУкоинов пользователю {tg_id}. Новый баланс: {new_balance:.1f}", None
+        return True, f"✅ Успешно! Возвращено {item_price} ТИУкоинов пользователю {tg_id}. Новый баланс: {new_balance:.1f}", "✅ Успешно"
     
     except SQLAlchemyError as e:
         await session.rollback()
@@ -431,7 +405,7 @@ async def db_delete_user_by_tg_id(session, tg_id_str: str) -> Tuple[bool, str, O
         await session.delete(user)
         await session.commit()
         
-        return True, f"✅ Удален пользователь: {user.full_name} ({user.tg_id})", user_db_id, None
+        return True, f"✅ Удален пользователь: {user.full_name} ({user.tg_id})", user_db_id, "✅ Успешно"
         
     except Exception as e:
         await session.rollback()
@@ -468,13 +442,13 @@ async def db_get_application_history(session, tg_id_str: str) -> Tuple[bool, lis
                 app.event_application_status
             ])
 
-        return True, apps_list, f"Заявки пользователя {tg_id}: найдено {len(apps_list)} за 3 месяца", None
+        return True, apps_list, f"Заявки пользователя {tg_id}: найдено {len(apps_list)} за 3 месяца", "✅ Успешно"
     
     except SQLAlchemyError as e:
-        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при получении заявок пользователя {tg_id}: {e}"
+        return False, [], f"❌ Ошибка получения истории мероприятий. Обратитесь в /support.", f"Ошибка БД при получении заявок пользователя {tg_id}: {e}"
 
     except Exception as e:
-        return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Неожиданная ошибка БД при получении заявок: {e}"
+        return False, [], f"❌ Ошибка получения истории мероприятий. Обратитесь в /support.", f"Неожиданная ошибка БД при получении заявок: {e}"
     
 
 @connection
@@ -490,7 +464,7 @@ async def db_get_all_user_tg_ids(session) -> Tuple[bool, list[int], Optional[str
         tg_ids = result.scalars().all()
         all_ids = [str(id) for id in tg_ids]
         
-        return True, list(all_ids), f"Всего пользователей в БД: {len(all_ids)}", None  
+        return True, list(all_ids), f"Всего пользователей в БД: {len(all_ids)}", "✅ Успешно"  
 
     except SQLAlchemyError as e:
         return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при получении всех tg_id: {e}"

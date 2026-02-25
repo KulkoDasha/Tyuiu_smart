@@ -29,6 +29,8 @@ __all__ = [
     'Users',
     'Event_applications',
     'Roles',
+    'Catalog_of_reward',
+    'Issuance_of_rewards'
     
     # Из database_service.py
     'connection',
