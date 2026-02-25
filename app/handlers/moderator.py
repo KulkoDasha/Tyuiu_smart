@@ -60,7 +60,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     db_status = ""
     try:
         # Вызываем функцию set_user для добавления в БД
-        success, db_message, user_id_in_db = await db_set_user( 
+        db_success, db_user_message, user_id_in_db, db_log_message = await db_set_user( 
             tg_id_str=str(user_id),
             full_name=form_data.get('full_name', ''),
             institute=form_data.get('institute', ''),
@@ -74,21 +74,21 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
             moderator_username=moderator_username
         )
         
-        if success and user_id_in_db:
+        if db_success and user_id_in_db:
             db_status = f"✅ Добавлен (ID: {user_id_in_db})"
-        elif not success:
-            db_status = f"❌ {db_message}"
+        elif not db_success:
+            db_status = f"❌ {db_user_message}"
         else:
             db_status = "❌ Ошибка: пользователь не добавлен"
                 
     except Exception as e:
-        db_status = f"❌ Ошибка: {str(e)}"
+        db_status = f"❌ Ошибка: {db_user_message}"
 
         bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
             message=f"РЕГИСТРАЦИЯ: ❌ Ошибка БД\n"
                     f"Пользователь: {pii_masker.mask_full_name(form_data.get('full_name', ''))} (ID: {user_id})\n"
-                    f"База данных: {db_message}\n"
+                    f"База данных: {db_log_message}\n"
                     f"Google Sheets: {sheets_status}"
         )
 
@@ -319,15 +319,15 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
                                       db_application_id: int, ekaterinburg_time):
     """Обработка заявки для всех ролей кроме последней"""
     coins = ROLE_LEXICON[event_role]
-    db_status = await approve_db(db_application_id, moderator_username, coins)
+    db_status, db_log_message = await approve_db(db_application_id, moderator_username, coins)
     if db_status.startswith("❌"):
         await callback.message.edit_text("❗️ Произошла ошибка при сохранении в базу данных. Обратитесь к разработчику с данной проблемой.")
 
         bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
-            message=f"ЗАЯВКА: ❌ Ошибка принятия\n"
+            message=f"ЗАЯВКА: ❌ Ошибка БД при принятии\n"
                     f"Пользователь: {pii_masker.mask_full_name(app_data.get('full_name', ''))} (ID: {user_id})\n"
-                    f"База данных: {db_status}"
+                    f"База данных: {db_log_message}"
         )
 
         await state.clear()
@@ -369,16 +369,16 @@ async def approve_db(db_application_id: int, moderator_username: str, coins:floa
     db_status = ""
 
     try:
-        success, db_message, db_awarded_amount = await db_approve_application(
+        db_success, db_user_message, db_awarded_amount, db_log_message = await db_approve_application(
             application_id = db_application_id,
             moderator_username = moderator_username,
             tiukoins_amount = coins
         )
-        db_status = f"✅ Обновлено (ID: {db_application_id})" if success else f"❌ {db_message}"
+        db_status = f"✅ Обновлено (ID: {db_application_id})" if db_success else f"❌ {db_user_message}"
     except Exception as e:
-        db_status = f"❌ Ошибка: {str(e)}"
+        db_status = f"❌ Ошибка: {db_user_message}"
         
-    return db_status
+    return db_status, db_log_message
 
 async def send_message(callback: CallbackQuery, user_id: int,
                        app_data: dict, coins: float, sheets_status,
@@ -434,7 +434,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot, state: FSMCon
             "tiukoins": str(awarded_amount)
             })
 
-        db_status = await approve_db(db_application_id, moderator_username, awarded_amount)
+        db_status, db_log_message = await approve_db(db_application_id, moderator_username, awarded_amount)
         sheets_status = "✅ Обновлено" if googlesheets_result.get("success") else f"❌ {googlesheets_result.get('error', 'Ошибка')}"
         
         if db_status.startswith("❌"):
@@ -443,7 +443,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot, state: FSMCon
                 tg_id=message.from_user.id,
                 message=f"ЗАЯВКА: ❌ Ошибка принятия\n"
                         f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                        f"База данных: {db_status}\n"
+                        f"База данных: {db_log_message}\n"
                         f"Google Sheets: {sheets_status}"
             )
 
@@ -486,7 +486,7 @@ async def waiting_repeatability_factor(message: Message, bot: Bot, state: FSMCon
                         f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                         f"Направление: {data.get('event_direction', 'Неизвестно')}\n"
                         f"Мероприятие: {data.get('name_of_event')}\n"
-                        f"База данных: {db_status}\n"
+                        f"База данных: {db_log_message}\n"
                         f"Google Sheets: {sheets_status}\n"
                         f"Ошибка: {str(e)}"
             )
@@ -562,17 +562,17 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     try:
         db_status = ""
         try:
-            success, db_message = await db_reject_application(
+            db_success, db_user_message, db_log_message = await db_reject_application(
                 db_application_id,  
                 moderator_username
             )
                 
-            if success:
+            if db_success:
                 db_status = f"✅ Обновлено (ID: {db_application_id})"
             else:
-                db_status = f"❌ {db_message}"
+                db_status = f"❌ {db_user_message}"
         except Exception as e:
-            db_status = f"❌ Ошибка PostgreSQL: {str(e)}"
+            db_status = f"❌ Ошибка Базы данных: {db_user_message}"
 
 
         # Обновляем статус в Google Sheets
@@ -590,7 +590,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
                     f"Пользователь: {pii_masker.mask_full_name(app_data.get('full_name', ''))} (ID: {user_id})\n"
                     f"Направление: {data.get('event_direction', 'Неизвестно')}\n"
                     f"Мероприятие: {data.get('name_of_event')}\n"
-                    f"База данных: {db_status}\n"
+                    f"База данных: {db_log_message}\n"
                     f"Google Sheets: {sheets_status} (строка {row_id})"
         )
 
@@ -627,7 +627,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         await state.clear()
         
     except Exception as e:
-        await message.answer(f"❗️ Не удалось отклонить заявку: {e}")
+        await message.answer(f"❗️ Не удалось отклонить заявку. Обратитесь с проблемой к разработчику.")
 
         bot_logger.log_moderator_msg(
             tg_id=message.from_user.id,
@@ -635,7 +635,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
                     f"Пользователь: {pii_masker.mask_full_name(app_data.get('full_name', ''))} (ID: {user_id})\n"
                     f"Направление: {data.get('event_direction', 'Неизвестно')}\n"
                     f"Мероприятие: {data.get('name_of_event')}\n"
-                    f"База данных: {db_status}\n"
+                    f"База данных: {db_log_message}\n"
                     f"Google Sheets: {sheets_status} (строка {row_id})\n"
                     f"Ошибка: {str(e)}"
         )
@@ -738,13 +738,24 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         
     else:  # reject
 
-        success, message = await db_return_tiukoins( user_id, item_price)
+        db_success, db_user_message, db_log_message = await db_return_tiukoins( user_id, item_price)
 
-        if success:
+        if db_success:
             tiukoins_status = f"💎 <b>ТИУкоины возвращены:</b> {item_price}"
         else:
-            tiukoins_status = f"⚠️ <b>Ошибка возврата:</b> {message}"
-        
+            tiukoins_status = f"⚠️ <b>Ошибка возврата:</b> {db_user_message}"
+
+            bot_logger.log_moderator_msg(
+            tg_id=callback.from_user.id,
+            message=f"ПООЩРЕНИЕ: ❌ Ошибка возврата ТИУКоинов\n"
+                    f"Заявка №{request_id}\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                    f"Товар: {item_name}\n"
+                    f"Цена: {item_price} ТИУкоинов\n"
+                    f"База данных: {db_log_message}\n"
+                    f"ТИУкоины возвращены: {item_price}"
+        )
+
         catalog_status = ""
         sheets_status = ""
         if item_id:

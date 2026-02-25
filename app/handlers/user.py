@@ -792,7 +792,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ❌ Ошибка БД\n"
-                    f"БД: {database_result['message']}\n"
+                    f"БД: {database_result['log_message']}\n"
                     f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
                     f"ФИО: {pii_masker.mask_full_name(user_full_name)}\n"
                     f"Направление: {data.get('event_direction', '') or 'Не указано'}\n"
@@ -886,7 +886,7 @@ async def save_application_to_database(state: FSMContext,callback:CallbackQuery)
     
     data = await state.get_data()
     user_id = callback.from_user.id
-    db_application_id, db_message = await db_submit_event_application(
+    db_application_id, db_user_message, db_log_message = await db_submit_event_application(
             tg_id_str = str(user_id),
             event_direction = data.get("event_direction", ""),
             event_name = data.get("name_of_event", ""),
@@ -898,10 +898,10 @@ async def save_application_to_database(state: FSMContext,callback:CallbackQuery)
     db_status = ""
     if db_application_id: 
         db_status = f"✅ Заявка сохранена (ID: {db_application_id})"
-        return {"success": True, "application_id": db_application_id, "message": db_status}
+        return {"success": True, "application_id": db_application_id, "message": db_status, "log_message": db_log_message}
     else:
-        db_status = f"❌ {db_message}"
-        return {"success": False, "application_id": db_application_id, "message": db_status}
+        db_status = f"❌ {db_user_message}"
+        return {"success": False, "application_id": db_application_id, "message": db_status, "log_message": db_log_message}
 
 async def send_to_google_sheets(data: dict, user_id: int, user_full_name: str, ekaterinburg_time, thread_id: int): 
     """
@@ -1141,21 +1141,21 @@ async def balance_or_history(callback:CallbackQuery,state:FSMContext):
     
     if callback.data == "my_tyuiu_coins":
         async with async_session() as session:
-            balance, message = await db_get_user_balance(session, str(callback.from_user.id))
+            balance, db_user_message, db_log_message  = await db_get_user_balance(session, str(callback.from_user.id))
         await callback.message.edit_text(f"💎 <b>Ваш баланс:</b> {balance} ТИУкоинов")
         await callback.answer()
         await state.clear()
         
     elif callback.data == "application_history":
         await callback.message.delete()
-        db_success, db_applications, message = await db_get_application_history(str(callback.from_user.id))
+        db_success, db_applications, db_user_message, db_log_message = await db_get_application_history(str(callback.from_user.id))
 
         if not db_success:
             
             bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
             message=f"ИСТОРИЯ ЗАЯВОК: ❌ Ошибка БД\n"
-                    f"Ошибка: {message}"
+                    f"Ошибка: {db_log_message}"
                 )
 
             await callback.message.answer(
@@ -1387,14 +1387,24 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     
     try:
         user_full_name = await db_get_user_full_name(str(user_id))
-        success, message = await db_deduct_tiukoins(
+        db_success, db_user_message, db_log_message = await db_deduct_tiukoins(
             tg_id_str=str(user_id),
             spend_amount=item['price'],
             name_of_item=item['name']
         )
-        if not success:
+        if not db_success:
             # Если не удалось списать тиукоины
-            await callback.message.answer(f"❌ <b>Ошибка списания ТИУкоинов</b>\n\n{message}.")
+            bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"ПООЩРЕНИЕ: ❌ Ошибка БД\n"
+                    f"Заявка №{request_id}\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                    f"Товар: {item['name']}\n"
+                    f"Цена: {item['price']} ТИУкоинов\n"
+                    f"База данных: {db_log_message}"
+        )
+
+            await callback.message.answer(f"❌ <b>Ошибка списания ТИУкоинов</b>\n\n{db_user_message}.")
             await state.clear()
             return
         
@@ -1738,11 +1748,11 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
     try:
         # БД (приоритетная)
         try:
-            db_success, db_result, db_user_id= await db_delete_user_by_tg_id(user_id)
+            db_success, db_result, db_user_id, db_log_message= await db_delete_user_by_tg_id(user_id)
             db_status = "✅" if db_success else "❌"
         except Exception as db_error:
             db_success = False
-            db_result = f"Ошибка: {str(db_error)}"
+            db_result = f"Ошибка: {str(db_log_message)}"
             db_status = "❌"
         
         # Google Sheets (опционально)
@@ -1794,7 +1804,7 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
                 message=f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ: ❌ Ошибка БД\n"
                         f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                         f"База данных: {db_status}\n"
-                        f"  └─ {db_result}\n"
+                        f"  └─ {db_log_message}\n"
                         f"Google Sheets: {google_sheets_status}"
             )
 
@@ -1810,7 +1820,7 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
             message=f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ: 🚨 КРИТИЧЕСКАЯ ОШИБКА\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"            
                     f"База данных: {db_status or 'Неизвестно'}\n"
-                    f"  └─ {db_result}\n"
+                    f"  └─ {db_log_message}\n"
                     f"Google Sheets: {google_sheets_status}\n"
                     f"Ошибка: {str(e)}"
         )
