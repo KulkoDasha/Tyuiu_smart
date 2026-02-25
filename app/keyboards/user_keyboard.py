@@ -29,33 +29,23 @@ class AgreementInlineButtons:
     def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["read_the_agreement"],callback_data="read_the_agreement")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["give_agreement"], callback_data="give_agreement")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["refuse_agreement"], callback_data= "refuse_agreement")]
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["read_the_agreement"],callback_data="read_the_agreement")]
                                 ])
         
         return keyboard
 
-
-class ChoiceOfInstituteInlineButtons:
-    """Инлайн-кнопки выбора структурного подразделения обучения"""
+class ReRegister:
+    """Инлайн-кнопка для перепрохождения регистрации"""
 
     @staticmethod
     def get_inline_keyboard():
         keyboard = InlineKeyboardMarkup(
-            inline_keyboard = [
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute_of_architecture_and_design"], callback_data="institute_of_architecture_and_design")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["civil_engineering_institute"], callback_data="civil_engineering_institute")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["higher_school_of_engineering"], callback_data="higher_school_of_engineering")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["higher_school_of_digital_technologies"], callback_data="higher_school_of_digital_technologies")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["oil_and_gas_institute"], callback_data="oil_and_gas_institute")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute_of_service_and_industry_management"], callback_data="institute_of_service_and_industry_management")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute_of_technology"], callback_data="institute_of_technology")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute_of_correspondence_and_distance_education"], callback_data="institute_of_correspondence_and_distance_education")],
-                                ])        
-                
+            inline_keyboard=[
+                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["re_register"], callback_data= "re_register")]
+                                ])
+        
         return keyboard
-    
+
 class DirectionOfActivitiesInlineButtons:
     """Инлайн-кнопки выбора направления внеучебного направления"""
 
@@ -83,51 +73,6 @@ class DirectionOfActivitiesInlineButtons:
                                 [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["topic_headman"], callback_data="topic_headman")]
                                 ])        
                 
-        return keyboard
-
-class ChangeRegistrationFormInlineButtons:
-    """Инлайн-кнопки для изменения анкеты"""
-
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard = [
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["full_name"], callback_data="full_name")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["institute"], callback_data="institute")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["direction"], callback_data="direction")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["course"], callback_data="course")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["group"], callback_data="group")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["start_year"], callback_data="start_year")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["end_year"], callback_data="end_year")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["phone_number"], callback_data="phone_number")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["email"], callback_data="email")]
-                            ])        
-                
-        return keyboard
-
-class ConfirmRegistrationFormInlineButtons:
-    """Инлайн-кнопки подтверждения заявки"""
-
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["save_registration_form"], callback_data="save_registration_form")],
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["change_registration_form"], callback_data= "change_registration_form")]
-                                ])
-        
-        return keyboard
-    
-class ReRegister:
-    """Инлайн-кнопка для перепрохождения регистрации"""
-
-    @staticmethod
-    def get_inline_keyboard():
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                                [InlineKeyboardButton(text=LEXICON_USER_KEYBOARD["re_register"], callback_data= "re_register")]
-                                ])
-        
         return keyboard
     
 class ChoiceOfRoleInlineButtons:
