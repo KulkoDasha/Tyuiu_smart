@@ -1,12 +1,8 @@
 from .user_keyboard import (MenuKeyboard,
                            AgreementInlineButtons,
-                           ChoiceOfInstituteInlineButtons,
-                           DirectionOfActivitiesInlineButtons,
                            ApplicationConfirmationInlineButtons,
                            ChangeOfApplicationInlineButtons,
                            ChoiceOfRoleInlineButtons,
-                           ChangeRegistrationFormInlineButtons,
-                           ConfirmRegistrationFormInlineButtons,
                            ReRegister,
                            SupportInlineButtons,
                            AddMaterial,
@@ -15,7 +11,8 @@ from .user_keyboard import (MenuKeyboard,
                            ConfirmationRewardInlineButtons,
                            AboutTheCompetition,
                            MyTiukoins,
-                           RecallTheAgreement)
+                           RecallTheAgreement,
+                           DirectionOfActivitiesInlineButtons)
 
 from .moderator_keyboard import (RegisterNewUserInlineButtons,
                                  ProcessingUserApplicationInlineButtons,
@@ -29,14 +26,10 @@ from .item_catalog_keyboard import(catalog_of_rewards)
 __all__ = [
     "MenuKeyboard",
     "AgreementInlineButtons",
-    "ChoiceOfInstituteInlineButtons",
-    "DirectionOfActivitiesInlineButtons",
     "ApplicationConfirmationInlineButtons",
     "ChangeOfApplicationInlineButtons",
     "ChoiceOfRoleInlineButtons",
     "SelectingRewardInlineButtons",
-    "ChangeRegistrationFormInlineButtons",
-    "ConfirmRegistrationFormInlineButtons",
     "SupportInlineButtons",
     "RegisterNewUserInlineButtons",
     "ProcessingUserApplicationInlineButtons",
@@ -50,4 +43,5 @@ __all__ = [
     "ConfirmationRewardInlineButtons",
     "AboutTheCompetition",
     "MyTiukoins",
-    "RecallTheAgreement"]
+    "RecallTheAgreement",
+    "DirectionOfActivitiesInlineButtons"]

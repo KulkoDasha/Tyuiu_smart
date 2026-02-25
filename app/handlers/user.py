@@ -18,9 +18,7 @@ from ..services import *
 user_router = Router()
 keyboard_start = AgreementInlineButtons.get_inline_keyboard()
 menu_keyboard = MenuKeyboard.get_keyboard_menu()
-institute_keyboard = ChoiceOfInstituteInlineButtons.get_inline_keyboard()
-change_registration_form = ChangeRegistrationFormInlineButtons.get_inline_keyboard()
-confirm_registration_form = ConfirmRegistrationFormInlineButtons.get_inline_keyboard()
+
 support_keyboard = SupportInlineButtons.get_inline_keyboard()
 choice_role = ChoiceOfRoleInlineButtons.get_inline_keyboard()
 direction_of_activities_keyboard = DirectionOfActivitiesInlineButtons.get_inline_keyboard()
@@ -33,13 +31,13 @@ my_tiukoins = MyTiukoins.get_inline_keyboard()
 recall_the_agreement_keyboard = RecallTheAgreement.get_inline_keyboard()
 catalog_of_rewards = catalog_of_rewards
 
-competition_regulations_path = "app\\files\\docs\\Polozhenie_o_Konkurse_nematerialnoy_motivatsii_obuchayuschikhsya_TIUmnichka.pdf"
+competition_regulations_path = "app\\files\\docs\\Polozhenie_TIUmnichka.pdf"
 agreement_path = "app\\files\\docs\\Soglasie_na_obrabotku_personalnx_dannx.pdf"
 
 ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 
 @user_router.message(CommandStart(), StateFilter(default_state))
-async def start(message: Message):
+async def start(message: Message, state: FSMContext):
     """Хендлер на /start с проверкой есть ли пользователь в базе данных"""
     
     user_id = str(message.from_user.id)
@@ -48,10 +46,32 @@ async def start(message: Message):
         await message.answer(text=LEXICON_TEXT["start_already_registered"],
             reply_markup=menu_keyboard)
     else:
-        await message.answer(text=LEXICON_TEXT["start_text"], reply_markup=keyboard_start)
+        await message.answer(text=LEXICON_TEXT["start_text"])
+        await state.set_state(RegistrationFormStates.full_name)
+
+@user_router.callback_query(F.data == "re_register")
+async def re_register_start(callback: CallbackQuery,state:FSMContext):
+    """Нажатие на кнопку получить ОПД заново"""
+
+    await callback.message.edit_text(LEXICON_TEXT["re_register_text"])
+    await state.set_state(RegistrationFormStates.full_name)
+    await callback.answer()
+
+@user_router.message(StateFilter(RegistrationFormStates.full_name), lambda message: is_valid_full_name(message.text) == True )
+async def full_name_sent(message:Message, state: FSMContext ):
+    """Обрабатывает введенное ФИО"""
+    
+    await state.update_data(full_name = message.text, user_id=message.from_user.id)
+    await message.answer(text = LEXICON_TEXT['start_agreement_text'], reply_markup = keyboard_start)
+
+@user_router.message(StateFilter(RegistrationFormStates.full_name),lambda message: not message.text.startswith('/'))
+async def process_full_name_incorrect(message: Message):
+    """ФИО некоректное"""
+    
+    await message.answer(text = LEXICON_TEXT["registration_incorrect_full_name"])
 
 @user_router.callback_query(F.data == "read_the_agreement")
-async def send_the_agreement(callback: CallbackQuery):
+async def send_the_agreement(callback: CallbackQuery, bot: Bot):
     """Высылает согласие на обработку персональных данных"""
     
     doc = await callback.message.answer("⏳ Загружаем согласие на обработку персональных данных...")
@@ -59,36 +79,69 @@ async def send_the_agreement(callback: CallbackQuery):
             path = agreement_path,
             filename = "Согласие на обработку персональных данных.pdf"
         )
-    await callback.message.answer_document(document=document)
-    await doc.delete()
-    await callback.answer()
-
-@user_router.callback_query(F.data == "give_agreement")
-async def give_agreement(callback:CallbackQuery, state: FSMContext):
-    """Обрабатывает нажатие на кнопку принять согласие и начинает заполнение анкеты"""
-
-    await callback.message.edit_text(text=LEXICON_TEXT["give_agreement"])
-    await callback.message.answer(text=LEXICON_TEXT["registration_fill_full_name"])
-    await state.set_state(RegistrationFormStates.full_name)
-    await callback.answer()
     
     bot_logger.log_user_msg(
+        tg_id=callback.from_user.id,
+        message="РЕГИСТРАЦИЯ: ✅ Согласие на ОПД скачано"
+        )
+    
+    ### TODO: Сохранять ФИО
+    
+    await callback.message.answer_document(document = document)
+    await doc.delete()
+    await _process_save_form(callback, bot)
+    await callback.answer()
+
+async def _process_save_form(callback: CallbackQuery, bot: Bot):
+    """Обработка сохранения и отправки анкеты"""
+    
+    username = f"@{callback.from_user.username}" if callback.from_user.username else "без username"
+    user_id = callback.from_user.id
+    utc_time = callback.message.date
+    ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
+    await callback.message.edit_reply_markup(reply_markup = None)
+    
+    moderator_message = (
+        "📋<b> Пользователь скачал согласие на обработку персональных данных</b>\n"
+        f"👤 <b>Пользователь:</b> {username} (<b>ID:</b> {user_id})\n"
+        f"📅 <b>Время скачивания:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
+    )
+
+    # Отправка модератору
+    moderator_confirm_form = RegisterNewUserInlineButtons.get_inline_keyboard(
+        user_id = callback.from_user.id 
+    )
+    
+    send_params = {
+        "chat_id": config.moderator_chat_id,
+        "text": moderator_message,
+        "reply_markup": moderator_confirm_form,
+        "message_thread_id": TOPIC_REGISTRATION_NEW_USER
+    }
+    
+    try:
+        await bot.send_message(**send_params)
+        await callback.message.edit_text(text = LEXICON_TEXT["registration_completed"])
+
+        bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
-            message="РЕГИСТРАЦИЯ: ✅ Согласие на ОПД получено"
+            message=f"РЕГИСТРАЦИЯ: ✅ Согласие на ОПД отправлено модератору\n"
         )
 
-@user_router.callback_query(F.data == "refuse_agreement")
-async def refuse_agreement(callback:CallbackQuery):
-    """Обрабатывает нажатие на кнопку отказ от согласия"""
-    
-    await callback.message.answer(text=LEXICON_TEXT["refuse_agreement"])
-    await callback.answer()
-    
+    except Exception as send_error:
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"❌ РЕГИСТРАЦИЯ: Ошибка отправки сообщения модератору\n"
+                    f"Ошибка: {str(send_error)}"
+        )
+        
+        raise Exception(f"Ошибка отправки модератору: {send_error}")
+
 @user_router.message(Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message):
     """Хендлер на отмену состояний"""
     
-    await message.answer(text=LEXICON_TEXT["cancel_no_fsm"])
+    await message.answer(text = LEXICON_TEXT["cancel_no_fsm"])
     
 @user_router.message(Command(commands = 'cancel'), ~StateFilter(default_state))
 async def procces_cancel_command_state(message: Message,state: FSMContext):
@@ -102,448 +155,6 @@ async def help_command(message: Message):
     """Хендлер на команду хелп"""
     
     await message.answer(text = LEXICON_TEXT["help_text"])
-
-@user_router.callback_query(F.data == "re_register")
-async def re_register_start(callback: CallbackQuery,state:FSMContext):
-    """Нажатие на кнопку пройти регистрацию заново"""
-
-    await callback.message.edit_text(LEXICON_TEXT["re_register_text"])
-    await state.set_state(RegistrationFormStates.full_name)
-    await callback.answer()
-
-@user_router.message(StateFilter(RegistrationFormStates.full_name), lambda message: is_valid_full_name(message.text) == True )
-async def full_name_sent(message:Message, state: FSMContext ):
-    """Обрабатывает введенное фио и запрашивает структурное подразделение обучения"""
-    
-    await state.update_data(full_name=message.text, user_id=message.from_user.id)
-    await message.answer(text = LEXICON_TEXT["registration_select_institute"], reply_markup = institute_keyboard)
-    await state.set_state(RegistrationFormStates.institute)
-
-@user_router.message(StateFilter(RegistrationFormStates.full_name))
-async def process_full_name_incorrect(message: Message):
-    """ФИО некоректное"""
-    
-    await message.answer(text=LEXICON_TEXT["registration_incorrect_full_name"])
-
-@user_router.callback_query(StateFilter(RegistrationFormStates.institute))
-async def institute_select(callback: CallbackQuery,state: FSMContext):
-    """Обрабатывает введенное структурное подразделения и запрашивает направление"""
-    
-    institute_name = LEXICON_USER_KEYBOARD.get(callback.data, 'Неизвестный институт')
-    await callback.message.edit_text(f"✅ Вы выбрали: {institute_name}")
-    await state.update_data(institute=institute_name)
-    await callback.message.answer(text = LEXICON_TEXT["registration_fill_direction"])  
-    await state.set_state(RegistrationFormStates.direction)
-    await callback.answer()
-
-@user_router.message(StateFilter(RegistrationFormStates.direction), lambda message: is_valid_direction(message.text) == True)
-async def direction_sent(message:Message, state:FSMContext):
-    """Обрабатывает введенное направление и запрашивает курс"""
-    
-    await state.update_data(direction = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_course"])  
-    await state.set_state(RegistrationFormStates.course)
-
-@user_router.message(StateFilter(RegistrationFormStates.direction))
-async def process_from_of_education_incorrect(message:Message):
-    """Направление неккоректно"""
-    
-    await message.answer(text=LEXICON_TEXT["registration_incorrect_direction"])
-
-@user_router.message(StateFilter(RegistrationFormStates.course),lambda message: is_valid_course(message.text) == True)
-async def course_sent(message: Message, state: FSMContext):
-    """Обрабатывает введенный курс и запрашивает группу"""
-    
-    await state.update_data(course = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_group"]) 
-    await state.set_state(RegistrationFormStates.group) 
-
-@user_router.message(StateFilter(RegistrationFormStates.course))
-async def process_course_incorrect(message:Message):
-    """Курс некорректен"""
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_course"])
-
-@user_router.message(StateFilter(RegistrationFormStates.group),lambda message: is_valid_group(message.text) == True)
-async def groupe_sent(message: Message, state: FSMContext):
-    """Обрабатывает введенную группу и запрашивает год поступления"""
-    
-    await state.update_data(group = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_start_year"])  
-    await state.set_state(RegistrationFormStates.start_year)
-
-@user_router.message(StateFilter(RegistrationFormStates.group))
-async def process_course_incorrect(message:Message):
-    """Группа некорректна"""
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_group"])
-
-@user_router.message(StateFilter(RegistrationFormStates.start_year), lambda message: message.text.isdigit() 
-                     and len(message.text) == 4
-                     and 2010 <= int(message.text) <= 2100) 
-async def start_year_sent(message: Message, state: FSMContext):
-    """Обрабатывает введенный год поступления и запрашивает год окончания"""
-    
-    await state.update_data(start_year = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_end_year"])  
-    await state.set_state(RegistrationFormStates.end_year)
-
-@user_router.message(StateFilter(RegistrationFormStates.start_year))
-async def process_start_year_incorrect(message:Message):
-    """Дата начала неккоректна"""
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_start_year"])
-
-@user_router.message(StateFilter(RegistrationFormStates.end_year))
-async def end_year_sent(message: Message, state: FSMContext):
-    """Обрабатывает введенную дату конца обучения и запрашивает номер телефона"""
-    
-    data = await state.get_data()
-    start_year = data.get("start_year")
-    if is_valid_study_years(start_year, message.text):
-        await state.update_data(end_year = message.text)
-        await message.answer(text = LEXICON_TEXT["registration_fill_phone_number"]) 
-        await state.set_state(RegistrationFormStates.phone_number)
-    else:
-        await message.answer(LEXICON_TEXT["registration_incorrect_end_year"])
-
-@user_router.message(StateFilter(RegistrationFormStates.phone_number),lambda message: is_valid_phone_number(message.text) == True)
-async def phone_sent(message: Message, state: FSMContext):  
-    """Обрабатывает введенный номер телефон и запрашивает почту"""
-    
-    await state.update_data(phone_number = message.text)
-    await message.answer(text = LEXICON_TEXT["registration_fill_email"])  
-    await state.set_state(RegistrationFormStates.email)
-
-@user_router.message(StateFilter(RegistrationFormStates.phone_number))
-async def process_phone_incorrect(message:Message): 
-    """Номер телефона неккоректен""" 
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_phone_number"])
-
-@user_router.message(StateFilter(RegistrationFormStates.email),lambda message: is_valid_email(message.text) == True)
-async def email_sent(message: Message, state: FSMContext):  
-    """Почта корректна, выводим итоговое сообщение"""
-    
-    await state.update_data(email = message.text)
-    data = await state.get_data()
-    await message.answer("✅ <b>Анкета успешно заполнена!</b>\nПодтвердите данные или выберите, что изменить\n\n"
-                         f"<b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
-                         f"<b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
-                         f"<b>Направление:</b> {data.get('direction', 'Не указано')}\n"
-                         f"<b>Курс:</b> {data.get('course', 'Не указано')}\n"
-                         f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
-                         f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
-                         f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
-                         f"<b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}\n"
-                         f"<b>Email:</b> {message.text}\n", reply_markup = confirm_registration_form)
-    await state.set_state(RegistrationFormStates.registration_end)
-
-@user_router.message(StateFilter(RegistrationFormStates.email))
-async def process_phone_incorrect(message:Message):  
-    """Почта неккоректна"""
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_email"])
-
-@user_router.callback_query(StateFilter(RegistrationFormStates.registration_end))
-async def registration_end(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    """
-    Обрабатываем нажатие на кнопки отправить анкету/изменить анкету
-    """
-    try:
-        await callback.answer("⏳ Обработка...", show_alert=False)
-    except Exception:
-        pass
-    
-    try:
-        if callback.data == "save_registration_form":
-            await _process_save_form(callback, state, bot)
-            await callback.answer()
-        elif callback.data == "change_registration_form":
-            await _process_change_form(callback, state)
-            await callback.answer()
-        else:
-            await _process_unknown_action(callback)
-            await callback.answer()
-
-    except Exception as e:
-        await _handle_error(callback, e) 
-
-        bot_logger.log_user_msg(
-            tg_id=callback.from_user.id,
-            message=f"РЕГИСТРАЦИЯ: ❌ Ошибка отправки анкеты\n"
-                    f"Ошибка: {str(e)}"
-        )
-
-        await callback.answer()     
-
-async def _process_save_form(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    """Обработка сохранения и отправки анкеты"""
-    
-    data = await state.get_data()
-    await callback.message.edit_reply_markup(reply_markup = None)
-    moderator_message = _prepare_moderator_message(data, callback)
-    
-    # Отправка модератору
-    moderator_confirm_form = RegisterNewUserInlineButtons.get_inline_keyboard(
-        user_id=callback.from_user.id 
-    )
-    
-    send_params = {
-        "chat_id": config.moderator_chat_id,
-        "text": moderator_message,
-        "reply_markup": moderator_confirm_form,
-        "message_thread_id": TOPIC_REGISTRATION_NEW_USER
-    }
-    
-    try:
-        await bot.send_message(**send_params)
-        await callback.message.edit_text(text=LEXICON_TEXT["registration_end"])
-
-        bot_logger.log_user_msg(
-            tg_id=callback.from_user.id,
-            message=f"РЕГИСТРАЦИЯ: ✅ Анкета успешно отправлена\n"
-                    f"ФИО: {pii_masker.mask_full_name(data.get('full_name', '')) or 'Не указано'}\n"
-                    f"Структурное подразделение обучения: {data.get('institute', 'Не указано')[2:]}\n"
-                    f"Направление: {pii_masker.mask_direction(data.get('direction', '')) or 'Не указано'}\n"
-                    f"Группа: {pii_masker.mask_group(data.get('group', '')) or 'Не указано'}\n"
-                    f"Email: {pii_masker.mask_email(data.get('email', '')) or 'Не указано'}"
-        )
-
-        await state.clear()
-
-    except Exception as send_error:
-        bot_logger.log_user_msg(
-            tg_id=callback.from_user.id,
-            message=f"❌ РЕГИСТРАЦИЯ: Ошибка отправки анкеты\n"
-                    f"Ошибка: {str(send_error)}"
-        )
-        
-        raise Exception(f"Ошибка отправки модератору: {send_error}")
-
-
-async def _process_change_form(callback: CallbackQuery, state: FSMContext):
-    """Обработка изменения анкеты"""
-    
-    await callback.message.edit_text(
-        text = LEXICON_TEXT["registration_edit"],
-        reply_markup = change_registration_form
-    )
-    await state.set_state(EditRegistrationForm.start)
-
-async def _process_unknown_action(callback: CallbackQuery):
-    """Обработка неизвестного действия"""
-    
-    await callback.message.answer(text=LEXICON_TEXT["in_state"])
-    await callback.answer()
-
-def _prepare_moderator_message(data: dict, callback: CallbackQuery) -> str:
-    """Подготовка сообщения для модератора"""
-    
-    utc_time = callback.message.date
-    ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
-    
-    username = f"@{callback.from_user.username}" if callback.from_user.username else "без username"
-    user_id = callback.from_user.id
-    
-    message_lines = [
-        "📋<b> Новая анкета на проверку</b>\n",
-        f"👤 <b>Пользователь:</b> {username} (<b>ID:</b> {user_id})",
-        f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n",
-        "📝 Данные анкеты:",
-        f"• <b>ФИО:</b> {data.get('full_name', 'Не указано')}",
-        f"• <b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}",
-        f"• <b>Направление:</b> {data.get('direction', 'Не указано')}",
-        f"• <b>Курс:</b> {data.get('course', 'Не указано')}",
-        f"• <b>Группа:</b> {data.get('group', 'Не указано')}",
-        f"• <b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}",
-        f"• <b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}",
-        f"• <b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}",
-        f"• <b>Email:</b> {data.get('email', 'Не указано')}",
-    ]
-    
-    return "\n".join(message_lines)
-
-async def _handle_error(callback: CallbackQuery, error: Exception):
-    """Обработка ошибок"""
-    
-    try:
-        await callback.message.edit_text(
-            text="❌ Произошла ошибка при обработке запроса. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support"
-        )
-    except Exception:
-        try:
-            await callback.message.answer(
-                text="❌ Произошла ошибка при обработке запроса. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support"
-            )
-        except Exception:
-            pass
-        
-    await callback.answer()
-    
-@user_router.callback_query(StateFilter(EditRegistrationForm.start))
-async def choice_edit(callback:CallbackQuery, state: FSMContext):
-    """Обрабатываем нажатие на кнопки изменить данные"""
-    
-    if callback.data == "full_name":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_full_name"])
-        await state.set_state(EditRegistrationForm.edit_full_name)
-        await callback.answer()
-        
-    elif callback.data == "institute":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_institute"],reply_markup = institute_keyboard)
-        await state.set_state(EditRegistrationForm.edit_institute)
-        await callback.answer()
-        
-    elif callback.data == "direction":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_direction"])
-        await state.set_state(EditRegistrationForm.edit_direction)
-        await callback.answer()
-        
-    elif callback.data == "course":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_course"])
-        await state.set_state(EditRegistrationForm.edit_course)
-        await callback.answer()
-        
-    elif callback.data == "group":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_group"])
-        await state.set_state(EditRegistrationForm.edit_group)
-        await callback.answer()
-        
-    elif callback.data == "start_year":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_start_year"])
-        await state.set_state(EditRegistrationForm.edit_start_year)
-        await callback.answer()
-        
-    elif callback.data == "end_year":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_end_year"])
-        await state.set_state(EditRegistrationForm.edit_end_year)
-        await callback.answer()
-        
-    elif callback.data == "phone_number":
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_phone_number"])
-        await state.set_state(EditRegistrationForm.edit_phone_number)
-        await callback.answer()
-        
-    else:
-        await callback.message.edit_text(text = LEXICON_TEXT["registration_edit_email"])
-        await state.set_state(EditRegistrationForm.edit_email)
-        await callback.answer()
-
-async def show_updated_form(message: Message, state: FSMContext):
-    """Показываем обновленную анкету"""
-    
-    data = await state.get_data()
-    await message.answer("✅ <b>Анкета успешно обновлена!</b>\nПодтвердите данные или выберите что вы хотите изменить\n\n"
-                         f"<b>ФИО:</b> {data.get('full_name', 'Не указано')}\n"
-                         f"<b>Структурное подразделение обучения:</b> {data.get('institute', 'Не указано')}\n"
-                         f"<b>Направление:</b> {data.get('direction', 'Не указано')}\n"
-                         f"<b>Курс:</b> {data.get('course', 'Не указано')}\n"
-                         f"<b>Группа:</b> {data.get('group', 'Не указано')}\n"
-                         f"<b>Год начала обучения:</b> {data.get('start_year', 'Не указано')}\n"
-                         f"<b>Год окончания программы обучения:</b> {data.get('end_year', 'Не указано')}\n"
-                         f"<b>Номер телефона:</b> {data.get('phone_number', 'Не указано')}\n"
-                         f"<b>Email:</b> {data.get('email', 'Не указано')}\n", reply_markup=confirm_registration_form)
-    await state.set_state(RegistrationFormStates.registration_end)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_full_name), lambda message: is_valid_full_name(message.text) == True)
-async def edit_full_name(message:Message, state: FSMContext):
-    
-    await state.update_data(full_name=message.text)
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_full_name))
-async def edit_full_name_incorrect(message:Message):
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_full_name"])
-
-@user_router.callback_query(StateFilter(EditRegistrationForm.edit_institute))
-async def edit_institute(callback: CallbackQuery, state: FSMContext):
-    
-    institute_key = callback.data
-    institute_name = LEXICON_USER_KEYBOARD.get(institute_key, 'Неизвестый институт')
-    await callback.message.edit_text(f"✅ Вы выбрали: {institute_name}")   
-    await state.update_data(institute = institute_name)
-    await show_updated_form(callback.message, state)
-    await callback.answer()
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_direction), lambda message: is_valid_direction(message.text) == True)
-async def edit_direction(message:Message, state: FSMContext):
-    
-    await state.update_data(direction = message.text)
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_direction))
-async def edit_direction_incorrect(message:Message):
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_direction"])
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_course),lambda message: is_valid_course(message.text) == True)
-async def edit_course(message:Message, state: FSMContext):
-    
-    await state.update_data(course = message.text)
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_course))
-async def edit_course_incorrect(message:Message):
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_course"])
-    
-@user_router.message(StateFilter(EditRegistrationForm.edit_group),lambda message: is_valid_group(message.text) == True)
-async def edit_groupe(message:Message, state: FSMContext):
-    
-    await state.update_data(group = message.text)
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_group))
-async def edit_groupe_incorrect(message:Message):
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_group"])
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_start_year), lambda message: message.text.isdigit() 
-                     and len(message.text) == 4
-                     and 2010 <= int(message.text) <= 2100)
-async def edit_start_year(message:Message, state: FSMContext):
-    
-    await state.update_data(start_year = message.text)
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_start_year))
-async def edit_start_year_incorrext(message:Message):
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_start_year"])
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_end_year))
-async def edit_end_year(message:Message, state: FSMContext):
-    
-    data = await state.get_data()
-    start_year = data.get("start_year")
-    if is_valid_study_years(start_year, message.text):
-        await state.update_data(end_year = message.text)
-        await show_updated_form(message, state)
-    else:
-        await message.answer(LEXICON_TEXT["registration_incorrect_end_year"])   
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_phone_number),lambda message: is_valid_phone_number(message.text) == True)
-async def edit_phone_number(message:Message, state: FSMContext):
-    
-    await state.update_data(phone_number = message.text)
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_phone_number))
-async def edit_phone_number_number_incorrect(message:Message):
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_phone_number"])
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_email),lambda message: is_valid_email(message.text) == True)
-async def edit_email(message:Message, state: FSMContext):
-    
-    await state.update_data(email = message.text)
-    await show_updated_form(message, state)
-
-@user_router.message(StateFilter(EditRegistrationForm.edit_email))
-async def edit_email_incorrect(message:Message):
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_email"])
 
 @user_router.message(F.text == LEXICON_USER_KEYBOARD['submit_application'],StateFilter(default_state))
 async def application_start(message: Message, state: FSMContext):
@@ -793,7 +404,6 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ❌ Ошибка БД\n"
                     f"БД: {database_result['log_message']}\n"
-                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
                     f"ФИО: {pii_masker.mask_full_name(user_full_name)}\n"
                     f"Направление: {data.get('event_direction', '') or 'Не указано'}\n"
                     f"Мероприятие: {data.get('name_of_event', 'Не указано')}\n"
@@ -806,11 +416,10 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             await state.clear()
             return 
 
-        sheets_result = await send_to_google_sheets(data, user_id, user_full_name, ekaterinburg_time, thread_id)
-        event_direction = sheets_result.get('sheet')
+        event_direction = "ЗАГЛУШКА" #TODO: надо ли сделать лист и строку заявки
         
         send_moderator = await send_to_moderator(
-                callback, user_id, sheets_result, database_result, ekaterinburg_time,
+                callback, user_id, database_result, ekaterinburg_time,
                 user_full_name, data, clean_role, bot, thread_id, event_direction
             )
         
@@ -818,7 +427,6 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ✅ Заявка отправлена\n"
                     f"БД: {database_result['message']}\n"
-                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
                     f"ФИО: {pii_masker.mask_full_name(user_full_name)}\n"
                     f"Направление: {data.get('event_direction', '') or 'Не указано'}\n"
                     f"Мероприятие: {data.get('name_of_event', 'Не указано')}\n"
@@ -833,7 +441,6 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ❌ Ошибка отправки модератору\n"
                     f"БД: {database_result['message']}\n"
-                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
                     f"ФИО: {pii_masker.mask_full_name(user_full_name)}\n"
                     f"Направление: {data.get('event_direction', '') or 'Не указано'}\n"
                     f"Мероприятие: {data.get('name_of_event', 'Не указано')}\n"
@@ -850,7 +457,6 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ❌ Неожиданная ошибка\n"
                     f"БД: {database_result['message']}\n"
-                    f"Google Sheets: {'✅' if sheets_result.get('success') else '❌'} (строка {sheets_result.get('row', 'N/A')})\n"
                     f"Ошибка: {str(e)}"
         )
     
@@ -903,37 +509,11 @@ async def save_application_to_database(state: FSMContext,callback:CallbackQuery)
         db_status = f"❌ {db_user_message}"
         return {"success": False, "application_id": db_application_id, "message": db_status, "log_message": db_log_message}
 
-async def send_to_google_sheets(data: dict, user_id: int, user_full_name: str, ekaterinburg_time, thread_id: int): 
-    """
-    Отправляет заявку в Google Sheets
-    Возвращает словарь {'success', 'row', 'sheet', 'data'}
-    """
-    app_data = {
-        "tg_id": user_id,
-        "user_id": user_id,
-        "full_name": user_full_name,
-        "event_direction": data.get("event_direction", ""),
-        "name_of_event": data.get("name_of_event", ""),
-        "date_of_event": data.get("date_of_event", ""),
-        "event_location": data.get("event_location", ""),
-        "event_role": data.get("event_role", ""),
-        "tiukoins" : float(data.get("tiukoins", 0)),
-        "application_time": ekaterinburg_time.strftime('%d.%m.%Y %H:%M'),
-        "status": "На рассмотрении",
-        "moderator": "",
-        "sheet_name": data.get("event_direction", ""),
-        "thread_id": thread_id
-        }
-    event_direction = app_data["event_direction"]
-    
-    sheets_result = await googlesheet_service.add_event_application_async(app_data, event_direction)
-    
-    return sheets_result
     
 async def send_to_moderator(callback: CallbackQuery, user_id: int,
-                            sheets_result, database_result, ekaterinburg_time,
+                            database_result, ekaterinburg_time,
                             user_full_name, data: dict,
-                            clean_role, bot, thread_id: int, event_direction):
+                            clean_role, bot, thread_id: int):
     """
     Отправляет сообщение с данными в чат модераторов
     Возвращает True/False
@@ -944,21 +524,19 @@ async def send_to_moderator(callback: CallbackQuery, user_id: int,
             f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
             f"(<b>ID:</b> {user_id})\n"
             f"💾 <b>База данных:</b> {database_result['message']}\n"
-            f"📊 <b>Google Sheets:</b> {'✅' if sheets_result.get('success') else '❌'} ({event_direction}, строка {sheets_result.get('row', 'N/A')})\n"
             f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 <b>Данные заявки:</b>\n"
-            f"• <b>ФИО</b>: {user_full_name}\n"
             f"• <b>Направление внеучебной деятельности:</b> {data.get('event_direction', 'Не указано')}\n"
             f"• <b>Название мероприятия:</b> {data.get('name_of_event', 'Не указано')}\n"
             f"• <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
             f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
             f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n\n"
-            f"❗️ Если заявка не отображается в Google Sheets, то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
+            f"❗️ Если заявка не отображается в Яндекс Таблицах, то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
         )
        
     moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(
-            application_id = int(sheets_result.get('row', 'N/A'))-1,
+            application_id = int(3)-1, #TODO: че делать с этим
             user_id = user_id,
             event_role = clean_role,
             db_application_id = database_result["application_id"]
@@ -1141,14 +719,14 @@ async def balance_or_history(callback:CallbackQuery,state:FSMContext):
     
     if callback.data == "my_tyuiu_coins":
         async with async_session() as session:
-            balance, db_user_message, db_log_message  = await db_get_user_balance(session, str(callback.from_user.id))
+            balance, db_log_message  = await db_get_user_balance(session, str(callback.from_user.id))
         await callback.message.edit_text(f"💎 <b>Ваш баланс:</b> {balance} ТИУкоинов")
         await callback.answer()
         await state.clear()
         
     elif callback.data == "application_history":
         await callback.message.delete()
-        db_success, db_applications, db_user_message, db_log_message = await db_get_application_history(str(callback.from_user.id))
+        db_success, db_applications, db_log_message = await db_get_application_history(str(callback.from_user.id))
 
         if not db_success:
             
@@ -1737,13 +1315,12 @@ async def wait_answer(callback:CallbackQuery, state: FSMContext, bot:Bot):
         await callback.answer()
 
 async def process_recall_user(callback:CallbackQuery, bot: Bot):
-    """Удаляет пользователя из БД и Google_Sheets"""
+    """Удаляет пользователя из БД"""
     
     user_id = callback.from_user.id
     user_full_name = await db_get_user_full_name(user_id)
     # Инициализация статусов БД и Google Sheets
     db_success = db_result = db_user_id = None
-    google_sheets_status = google_sheets_row = "⏳"
     
     try:
         # БД (приоритетная)
@@ -1752,22 +1329,7 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
             db_status = "✅" if db_success else "❌"
         except Exception as db_error:
             db_success = False
-            db_result = f"Ошибка: {str(db_log_message)}"
             db_status = "❌"
-        
-        # Google Sheets (опционально)
-        try:
-            google_sheets_success = await googlesheet_service.delete_user_by_tg_id_async(int(user_id))
-
-            if google_sheets_success.get("success"):
-                google_sheets_status = "✅"
-                google_sheets_row = google_sheets_success.get('deleted_row', 'N/A')
-            else:
-                google_sheets_status = "⚠️"
-                google_sheets_row = google_sheets_success.get('message', 'Не найден')
-        except Exception as gs_error:
-            google_sheets_status = "⚠️"
-            google_sheets_row = f"Ошибка Google Sheets: {str(gs_error)}"
         
         # Финальный отчет
         if db_success:
@@ -1776,13 +1338,10 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
             message=f"ОТЗЫВ СОГЛАСИЯ И УДАЛЕНИЕ: ✅ Удалён\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"База данных: {db_status} (ID: {db_user_id})\n"
-                    f"Google Sheets: {google_sheets_status}"
         )
             
             moderator_message = (f"✅ <b>Пользователь {user_full_name} (ID: {user_id}) отозвал согласие и был удалён из системы</b>\n\n"
                                 f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id})\n"
-                                f"📊 <b>Google Sheets:</b> {google_sheets_status}\n"
-                                f"  └─ Строка: {google_sheets_row}\n\n"
                                 f"❗️ Если пользователь не удалён из Google Sheets - сделайте это вручную. Обратитесь к разработчику с данной проблемой.")
             send_params = {
                 "chat_id": config.moderator_chat_id,
@@ -1805,7 +1364,6 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
                         f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                         f"База данных: {db_status}\n"
                         f"  └─ {db_log_message}\n"
-                        f"Google Sheets: {google_sheets_status}"
             )
 
             await callback.message.answer(
@@ -1821,7 +1379,6 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"            
                     f"База данных: {db_status or 'Неизвестно'}\n"
                     f"  └─ {db_log_message}\n"
-                    f"Google Sheets: {google_sheets_status}\n"
                     f"Ошибка: {str(e)}"
         )
 

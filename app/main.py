@@ -8,6 +8,7 @@ from .services import bot_logger
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiohttp import ClientTimeout
 
 from .config import config
 from .handlers import *
@@ -19,6 +20,13 @@ logging.basicConfig(
     style='{'
 )
 
+timeout = ClientTimeout(
+    total=600,        # 10 минут на всю операцию
+    connect=30,       # 30 секунд на подключение
+    sock_read=600,    # 10 минут на чтение данных
+    sock_connect=30
+)
+
 async def main():
     session_path = Path("session")
     if session_path.exists():
@@ -27,7 +35,8 @@ async def main():
     
     bot = Bot(
         token=config.bot.token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        timeout=timeout
     )
     dp = Dispatcher()
     
