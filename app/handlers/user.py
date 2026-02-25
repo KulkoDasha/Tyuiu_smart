@@ -61,7 +61,7 @@ async def re_register_start(callback: CallbackQuery,state:FSMContext):
 async def full_name_sent(message:Message, state: FSMContext ):
     """Обрабатывает введенное ФИО"""
     
-    await state.update_data(full_name = message.text, user_id=message.from_user.id)
+    await state.update_data(full_name = message.text, tg_id=message.from_user.id, username = message.from_user.username)
     await message.answer(text = LEXICON_TEXT['start_agreement_text'], reply_markup = keyboard_start)
 
 @user_router.message(StateFilter(RegistrationFormStates.full_name),lambda message: not message.text.startswith('/'))
@@ -71,39 +71,27 @@ async def process_full_name_incorrect(message: Message):
     await message.answer(text = LEXICON_TEXT["registration_incorrect_full_name"])
 
 @user_router.callback_query(F.data == "read_the_agreement")
-async def send_the_agreement(callback: CallbackQuery, bot: Bot):
+async def send_the_agreement(callback: CallbackQuery, bot: Bot, state: FSMContext):
     """Высылает согласие на обработку персональных данных"""
     
-    await _process_save_form(callback, bot)
-    doc = await callback.message.answer("⏳ Загружаем согласие на обработку персональных данных...")
-    await callback.answer()
-    document = FSInputFile(
-            path = agreement_path,
-            filename = "Согласие на обработку персональных данных.pdf"
-        )
-    
-    bot_logger.log_user_msg(
-        tg_id=callback.from_user.id,
-        message="РЕГИСТРАЦИЯ: ✅ Согласие на ОПД скачано"
-        )
-    
-    ### TODO: Сохранять ФИО
-    
-    await callback.message.answer_document(document = document)
-    await doc.delete()
-
-async def _process_save_form(callback: CallbackQuery, bot: Bot):
-    """Обработка сохранения и отправки анкеты"""
-    
-    username = f"@{callback.from_user.username}" if callback.from_user.username else "без username"
-    user_id = callback.from_user.id
+    data = await state.get_data()
+    tg_id = data.get('tg_id', 'Не указано'), 
+    full_name = data.get('full_name', 'Не указано'),
+    username = data.get('username', 'Не указано')
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     await callback.message.edit_reply_markup(reply_markup = None)
     
+    db_succes, db_user_message, user_id_in_db, db_log_message = await db_set_user(tg_id, full_name, username)
+    if db_succes:
+        db_message = db_user_message
+    else:
+        db_message = db_user_message
+        
     moderator_message = (
-        "📋<b> Пользователь скачал согласие на обработку персональных данных</b>\n"
-        f"👤 <b>Пользователь:</b> {username} (<b>ID:</b> {user_id})\n"
+        "📋<b> Пользователь скачал согласие на обработку персональных данных</b>\n\n"
+        f"👤 <b>Пользователь:</b> {username} (<b>ID:</b> {tg_id})\n"
+        f"💾 <b>База данных:</b> {db_message}\n"
         f"📅 <b>Время скачивания:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
     )
 
@@ -136,6 +124,21 @@ async def _process_save_form(callback: CallbackQuery, bot: Bot):
         )
         
         raise Exception(f"Ошибка отправки модератору: {send_error}")
+    
+    doc = await callback.message.answer("⏳ Загружаем согласие на обработку персональных данных...")
+    await callback.answer()
+    document = FSInputFile(
+            path = agreement_path,
+            filename = "Согласие на обработку персональных данных.pdf"
+        )
+    
+    bot_logger.log_user_msg(
+        tg_id=callback.from_user.id,
+        message="РЕГИСТРАЦИЯ: ✅ Согласие на ОПД скачано"
+        )
+    
+    await callback.message.answer_document(document = document)
+    await doc.delete()
 
 @user_router.message(Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message):
