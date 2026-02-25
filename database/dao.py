@@ -12,7 +12,6 @@ async def db_set_user(session,
                    tg_id_str: str, 
                    full_name: str, 
                    username: str,
-                   moderator_username: str
                    ) -> Optional[Tuple[bool, str, Optional[int], Optional[str]]]:
     """
     Метод для добавления нового пользователя (проверка по tg_id и уникальной почте)
@@ -24,9 +23,11 @@ async def db_set_user(session,
         new_user = Users(
             tg_id = tg_id,
             full_name = full_name,
+            username = username,
             tiukoins = 0.0,
-            approval_date = datetime.now(),
-            moderator_username = moderator_username
+            approval_date = None,
+            moderator_username = None
+
         )
         session.add(new_user)
         await session.flush()  
@@ -471,3 +472,42 @@ async def db_get_all_user_tg_ids(session) -> Tuple[bool, list[int], Optional[str
     
     except Exception as e:
         return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.",  f"Неожиданная ошибка БД: {e}"
+    
+
+@connection
+async def db_update_user(
+    session,
+    tg_id_str: str,
+    moderator_username: str
+) -> Optional[Tuple[bool, str, Optional[int], Optional[str]]]:
+    """
+    Метод для обновления данных существующего пользователя по tg_id
+    """
+    try:
+        tg_id = int(tg_id_str)
+
+        # Проверяем, существует ли пользователь
+        result = await session.execute(
+            select(Users).where(Users.tg_id == tg_id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return False, f"Пользователь с tg_id {tg_id} не найден", None, None
+
+        # Обновляем данные пользователя
+        await session.execute(
+            update(Users)
+            .where(Users.tg_id == tg_id)
+            .values(
+                moderator_username=moderator_username,
+                approval_date=datetime.now()
+            )
+        )
+
+        await session.commit()
+        return True, f"Данные пользователя {tg_id} успешно обновлены", user.id, "✅ Успешно"
+
+    except SQLAlchemyError as e:
+        await session.rollback()
+        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", None, f"Ошибка БД при обновлении пользователя: {str(e)}"
