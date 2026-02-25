@@ -74,7 +74,9 @@ async def process_full_name_incorrect(message: Message):
 async def send_the_agreement(callback: CallbackQuery, bot: Bot):
     """Высылает согласие на обработку персональных данных"""
     
+    await _process_save_form(callback, bot)
     doc = await callback.message.answer("⏳ Загружаем согласие на обработку персональных данных...")
+    await callback.answer()
     document = FSInputFile(
             path = agreement_path,
             filename = "Согласие на обработку персональных данных.pdf"
@@ -89,8 +91,6 @@ async def send_the_agreement(callback: CallbackQuery, bot: Bot):
     
     await callback.message.answer_document(document = document)
     await doc.delete()
-    await _process_save_form(callback, bot)
-    await callback.answer()
 
 async def _process_save_form(callback: CallbackQuery, bot: Bot):
     """Обработка сохранения и отправки анкеты"""
