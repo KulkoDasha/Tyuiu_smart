@@ -9,7 +9,6 @@ from sqlalchemy import select
 async def seed_roles():
     """Заполнение таблицы roles начальными данными."""
     async with engine.begin() as conn:
-        print("🔄 Подключение к БД...")  # ДОБАВЬТЕ ЭТУ СТРОКУ
         result = await conn.execute(select(func.count()).select_from(Roles))
         count = result.scalar()
         print(f"📊 Найдено ролей: {count}") 

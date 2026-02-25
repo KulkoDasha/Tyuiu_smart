@@ -8,7 +8,6 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from database.database import Base
-from database.models import Users, Event_applications, Roles
 from dotenv import load_dotenv
 from os.path import dirname, abspath, join
 
@@ -17,10 +16,10 @@ from os.path import dirname, abspath, join
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 load_dotenv(join(dirname(dirname(abspath(__file__))), '.env'))
-database_url = os.getenv("DATABASE_URL")
+db_credentials = os.getenv("DB_CREDENTIALS")
 
 config = context.config
-config.set_main_option("sqlalchemy.url", database_url)
+config.set_main_option("sqlalchemy.url", db_credentials)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
