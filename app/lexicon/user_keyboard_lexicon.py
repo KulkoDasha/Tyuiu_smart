@@ -12,18 +12,6 @@ LEXICON_USER_KEYBOARD = {
     "contest_full_text": "📄 Положение конкурса",
 
     "read_the_agreement": "📃 Ознакомиться с текстом согласия",
-    "give_agreement": "✅ Даю согласие",
-    "refuse_agreement": "❌ Не даю согласие",
-    "re_register":"🔄 Пройти регистрацию заново",
-
-    "institute_of_architecture_and_design": "🏛️ Институт архитектуры и дизайна",
-    "civil_engineering_institute": "🏗️ Строительный институт",
-    "higher_school_of_engineering": "🎓 Высшая инжерная школа EG",
-    "higher_school_of_digital_technologies": "💻 Высшая школа цифровых технологий",
-    "oil_and_gas_institute": "🛢️ Нефтегазовый институт",
-    "institute_of_service_and_industry_management": "💼 Институт сервиса и отраслевого управления",
-    "institute_of_technology": "🔧 Технологический институт",
-    "institute_of_correspondence_and_distance_education": "📧 Институт заочного и дистанционного образования",
 
     "topic_social_design": "👨‍👩‍👧‍👧 Социальное проектирование",
     "topic_research_technologies": "🧪 Научно-исследовательские технологии",
@@ -67,19 +55,6 @@ LEXICON_USER_KEYBOARD = {
     "edit_event_location": "✏️ Изменить локацию мероприятия",
     "edit_role": "✏️ Изменить роль",
     "edit_confirmation_material": "✏️ Изменить материал, подтверждающий участие",
-
-    "save_registration_form":"✅ Отправить анкету",
-    "change_registration_form":"✏️ Изменить данные",
-
-    "full_name":"✏️ Изменить ФИО",
-    "institute":"✏️ Изменить структурное подразделение обучения",
-    "direction":"✏️ Изменить направление",
-    "course":"✏️ Изменить курс",
-    "group":"✏️ Изменить группу",
-    "start_year":"✏️ Изменить год начала обучения",
-    "end_year":"✏️ Изменить год окончания обучения",
-    "phone_number":"✏️ Изменить номер телефона",
-    "email":"✏️ Изменить почту",
 
     "select_item": "✅ Выбрать этот товар",
     "back_to_catalog": "⬅️ Назад к каталогу",
