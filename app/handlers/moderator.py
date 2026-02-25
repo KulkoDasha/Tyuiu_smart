@@ -33,47 +33,27 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_reply_markup(reply_markup = None)
     
     user_id = int(callback.data.split("_")[-1])
+    
     ekaterinburg_time = callback.message.date.astimezone(ekaterinburg_tz)
 
     moderator_username = f'@{callback.from_user.username}' or callback.from_user.full_name or "Unknown"
     approval_date = ekaterinburg_time.strftime('%d.%m.%Y %H:%M')
-
-    # Парсим анкету из сообщения
-    form_data = parse_registration_form_from_message(callback.message.text or "", user_id, moderator_username, approval_date)
-
-    if not form_data:
-        await callback.answer("❌ Не удалось извлечь данные анкеты", show_alert=True)
-
-        bot_logger.log_moderator_msg(
-            tg_id=callback.from_user.id,
-            message=f"РЕГИСТРАЦИЯ: ❌ Ошибка парсинга анкеты\n"
-                    f"Пользователь ID: {user_id}"
-        )
-        return
+    user_full_name = await db_get_user_full_name(tg_id_str=str(user_id))
 
     db_status = ""
     try:
         # Вызываем функцию set_user для добавления в БД
         db_success, db_user_message, user_id_in_db, db_log_message = await db_set_user( 
             tg_id_str=str(user_id),
-            full_name=form_data.get('full_name', ''),
-            institute=form_data.get('institute', ''),
-            direction=form_data.get('direction', ''),
-            group=form_data.get('group', ''),
-            course_str=str(form_data.get('course', '')),
-            start_year_str=str(form_data.get('start_year', '')),
-            end_year_str=str(form_data.get('end_year', '')),
-            phone_number=form_data.get('phone_number', ''),
-            email=form_data.get('email', ''),
             moderator_username=moderator_username
         )
         
         if db_success and user_id_in_db:
-            db_status = f"✅ Добавлен (ID: {user_id_in_db})"
+            db_status = f"✅ Обновлено (ID: {user_id_in_db})"
         elif not db_success:
             db_status = f"❌ {db_user_message}"
         else:
-            db_status = "❌ Ошибка: пользователь не добавлен"
+            db_status = "❌ Ошибка: Информация не обновлена"
                 
     except Exception as e:
         db_status = f"❌ Ошибка: {db_user_message}"
@@ -81,25 +61,24 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
         bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
             message=f"РЕГИСТРАЦИЯ: ❌ Ошибка БД\n"
-                    f"Пользователь: {pii_masker.mask_full_name(form_data.get('full_name', ''))} (ID: {user_id})\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"База данных: {db_log_message}"
         )
 
     bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
             message=f"РЕГИСТРАЦИЯ: ✅ Анкета одобрена\n"
-                    f"Пользователь: {pii_masker.mask_full_name(form_data.get('full_name', ''))} (ID: {user_id})\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"База данных: {db_status}"
         )
 
-    await callback.answer(f"✅ Анкета пользователя {user_id} одобрена!", show_alert = True)
+    await callback.answer(f"✅ Пользователь {user_id} успешно добавлен!", show_alert = True)
     await callback.message.edit_text(
-        f"✅ <b>Анкета одобрена</b>\n\n"
-        f"👤 <b>Пользователь:</b> {form_data.get('full_name', '')} (ID: {user_id})\n"
+        f"✅ <b>Пользователь зарегистрирован</b>\n\n"
+        f"👤 <b>Пользователь:</b> {user_id}\n"
         f"💾 <b>База данных:</b> {db_status}\n"
-        f"👮 <b>Модератор:</b> @{callback.from_user.username or callback.from_user.full_name}\n"
-        f"🕐 <b>Время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
-        f"❗️ Если информация о пользователе не появилась в Google Sheets - заполните вручную. Обратитесь к разработчику с данной проблемой.",
+        f"👮 <b>Модератор:</b> {moderator_username}\n"
+        f"🕐 <b>Время:</b> {approval_date}",
         reply_markup = None)
     
     try:
@@ -150,7 +129,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         await bot.edit_message_text(
         chat_id = moder_chat_id,
         message_id = moder_message_id,
-        text = f"❌ <b>Анкета отклонена</b>\n\n"
+        text = f"❌ <b>Регистрация пользователя отклонена</b>\n\n"
             f"👤 <b>ID пользователя:</b> {user_id}\n"
             f"📝 <b>Причина:</b> {reason}\n"
             f"👮 <b>Модератор:</b> @{message.from_user.username or message.from_user.full_name}\n"
@@ -160,7 +139,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
 
         await bot.send_message(
             chat_id = user_id,
-            text = f"😔 Ваша анкета отклонена.\n\n<b>Причина:</b> {reason}\n\nПожалуйста, заполните анкету заново.",
+            text = f"😔 К сожалению вы не прошли регистрацию.\n\n<b>Причина:</b> {reason}\n\nПожалуйста, пройдите процедуру регистрации заново. Если у вас есть вопросы - обращайтесь в поддержку в /support.",
             reply_markup = re_register_keyboard
         )
 
