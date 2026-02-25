@@ -12,6 +12,7 @@ LEXICON_USER_KEYBOARD = {
     "contest_full_text": "📄 Положение конкурса",
 
     "read_the_agreement": "📃 Ознакомиться с текстом согласия",
+    "re_register":"🔄 Пройти регистрацию заново",
 
     "topic_social_design": "👨‍👩‍👧‍👧 Социальное проектирование",
     "topic_research_technologies": "🧪 Научно-исследовательские технологии",
