@@ -1,7 +1,7 @@
 import logging
 
 from .database_service import connection
-from .models import Users, Event_applications 
+from .models import Users, Event_applications, Issuance_of_rewards 
 from sqlalchemy import select, update, delete, text
 from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,8 +25,8 @@ async def db_set_user(session,
             full_name = full_name,
             username = username,
             tiukoins = 0.0,
-            approval_date = None,
-            moderator_username = None
+            approval_date = datetime.now(),
+            moderator_username = "Не указано"
 
         )
         session.add(new_user)
@@ -44,26 +44,32 @@ async def db_set_user(session,
 @connection
 async def db_delete_all_users(session) -> Tuple[bool, str, Optional[str]]:
     """
-    Удаляет ВСЕХ пользователей из базы данных
-    Сначала удаляет все связанные заявки, потом пользователей
+    Удаляет ВСЕХ пользователей из базы данных, все заявки на мероприятия и заявки на выдачу поощрения.
+    Сначала удаляет все связанные записи, потом пользователей
     """
 
     try:
-        # Удаляем ВСЕ заявки
+        # Удаляем все заявки на выдачу поощрений 
+        result_issuances = await session.execute(delete(Issuance_of_rewards))
+        deleted_issuances_count = result_issuances.rowcount
+        
+        # Удаляем все заявки на мероприятия
         result_apps = await session.execute(delete(Event_applications))
         deleted_apps_count = result_apps.rowcount
         
-        # Удаляем ВСЕХ пользователей
+        # Удаляем всех пользователей
         result_users = await session.execute(delete(Users))
         deleted_users_count = result_users.rowcount
         
         await session.commit()
 
+        # Сбрасываем последовательности ID для всех таблиц
         await session.execute(text("ALTER SEQUENCE users_id_seq RESTART WITH 1"))
         await session.execute(text("ALTER SEQUENCE event_applications_id_seq RESTART WITH 1"))
+        await session.execute(text("ALTER SEQUENCE issuance_of_rewards_id_seq RESTART WITH 1"))
         await session.commit()
         
-        return True, f"✅ Успешно удалено {deleted_users_count} пользователей и {deleted_apps_count} заявок", "✅ Успешно"
+        return True, f"✅ Успешно удалено {deleted_users_count} пользователей, {deleted_apps_count} заявок и {deleted_issuances_count} выдач поощрений", "✅ Успешно"
     
     except SQLAlchemyError as e:
         await session.rollback()
@@ -85,18 +91,27 @@ async def db_get_user_full_name(session, tg_id_str:str ) -> str:
         return ""
     
 @connection
-async def db_user_exists(session, tg_id_str: str) -> bool:
+async def db_user_exists(session, tg_id_str: str) -> str:
     """
-    Проверяет, существует ли пользователь с заданным tg_id
-    Возвращает True если существует, False если нет
-    """
-
-    tg_id = int(tg_id_str)
-    exists = await session.scalar(
-        select(1).where(Users.tg_id == tg_id)
-    )
-    return exists is not None
+    Проверяет статус пользователя в системе.
     
+    Возвращает:
+        "not_registered" — записи о пользователе нет в БД (можно регистрироваться)
+        "pending"        — запись есть, но moderator_username == "Не указано" (ждать одобрения)
+        "approved"       — запись есть и moderator_username != "Не указано" (доступ открыт)
+    """
+    tg_id = int(tg_id_str)
+    
+    # Получаем пользователя из БД
+    user = await session.scalar(select(Users).where(Users.tg_id == tg_id))
+    
+    if user is None:
+        return "not_registered"
+    
+    if user.moderator_username == "Не указано":
+        return "pending"
+    
+    return "approved"
 
 @connection
 async def db_submit_event_application (session,
@@ -105,7 +120,8 @@ async def db_submit_event_application (session,
                                     event_name: str,
                                     date_of_event: str,
                                     event_place: str,
-                                    event_role: str
+                                    event_role: str,
+                                    username: str
                                     ) -> Tuple[int, str, Optional[str]]:
     """
     Метод для добавления заявки пользователя по мероприятию (без подтверждения от модератора)
@@ -117,7 +133,7 @@ async def db_submit_event_application (session,
     bool_user_exists = await db_user_exists(tg_id_str)
 
     try:
-        if bool_user_exists == False:
+        if bool_user_exists != "approved":
             return -1, f"Пользователь с ID: {tg_id} не зарегестрирован", None
     except Exception as e:
         return -1, f"❌ Ошибка базы данных. Обратитесь в поддержку /support.", f"Ошибка при проверке пользователя {tg_id}: {str(e)}"
@@ -144,6 +160,7 @@ async def db_submit_event_application (session,
         new_event_application = Event_applications(
             tg_id = tg_id,
             full_name = full_name,
+            username = username,
             event_direction = event_direction,
             event_name = event_name,
             date_of_event = event_date,
@@ -329,7 +346,8 @@ async def db_add_tiukoins(session,
         return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при добавлении ТИУкоинов у пользователя {tg_id}: {str(e)}"
     except Exception as e:
         return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при добавлении ТИУкоинов: {str(e)}"
-    
+
+@connection
 async def db_get_user_balance(session, tg_id_str: str) -> Tuple[float, str, Optional[str]]:
     """Получает текущий баланс ТИУкоинов пользователя"""
 
@@ -473,7 +491,6 @@ async def db_get_all_user_tg_ids(session) -> Tuple[bool, list[int], Optional[str
     except Exception as e:
         return False, [], f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.",  f"Неожиданная ошибка БД: {e}"
     
-
 @connection
 async def db_update_user(
     session,

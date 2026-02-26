@@ -18,7 +18,6 @@ from ..services import *
 user_router = Router()
 keyboard_start = AgreementInlineButtons.get_inline_keyboard()
 menu_keyboard = MenuKeyboard.get_keyboard_menu()
-
 support_keyboard = SupportInlineButtons.get_inline_keyboard()
 choice_role = ChoiceOfRoleInlineButtons.get_inline_keyboard()
 direction_of_activities_keyboard = DirectionOfActivitiesInlineButtons.get_inline_keyboard()
@@ -42,9 +41,11 @@ async def start(message: Message, state: FSMContext):
     
     user_id = str(message.from_user.id)
     user_exists = await db_user_exists(user_id)
-    if user_exists:
+    if user_exists == "approved":
         await message.answer(text=LEXICON_TEXT["start_already_registered"],
             reply_markup=menu_keyboard)
+    elif user_exists == "pending":
+        await message.answer(text=LEXICON_TEXT["wait_registration"])
     else:
         await message.answer(text=LEXICON_TEXT["start_text"])
         await state.set_state(RegistrationFormStates.full_name)
@@ -61,7 +62,7 @@ async def re_register_start(callback: CallbackQuery,state:FSMContext):
 async def full_name_sent(message:Message, state: FSMContext ):
     """Обрабатывает введенное ФИО"""
     
-    await state.update_data(full_name = message.text, tg_id=message.from_user.id, username = message.from_user.username)
+    await state.update_data(full_name = message.text, user_id=message.from_user.id, username = f"@{message.from_user.username}", message_id = message.message_id)
     await message.answer(text = LEXICON_TEXT['start_agreement_text'], reply_markup = keyboard_start)
 
 @user_router.message(StateFilter(RegistrationFormStates.full_name),lambda message: not message.text.startswith('/'))
@@ -75,25 +76,34 @@ async def send_the_agreement(callback: CallbackQuery, bot: Bot, state: FSMContex
     """Высылает согласие на обработку персональных данных"""
     
     data = await state.get_data()
-    tg_id = data.get('tg_id', 'Не указано'), 
-    full_name = data.get('full_name', 'Не указано'),
+    user_id = data.get('user_id', 'Не указано')
+    full_name = data.get('full_name')
     username = data.get('username', 'Не указано')
+    message_id = data.get('message_id', 'Не указано')
     utc_time = callback.message.date
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     await callback.message.edit_reply_markup(reply_markup = None)
     
-    db_succes, db_user_message, user_id_in_db, db_log_message = await db_set_user(tg_id, full_name, username)
-    if db_succes:
-        db_message = db_user_message
+    db_success, db_user_message, user_id_in_db, db_log_message = await db_set_user(tg_id_str=str(user_id), full_name=full_name, username=username)
+
+    if db_success:
+        db_message = f"✅ Успешно (ID: {user_id_in_db})"
     else:
         db_message = db_user_message
+        bot_logger.log_user_msg(
+            tg_id=callback.from_user.id,
+            message=f"❌ РЕГИСТРАЦИЯ: Ошибка БД\n"
+                    f"Ошибка: {db_log_message}"
+        )
         
     moderator_message = (
         "📋<b> Пользователь скачал согласие на обработку персональных данных</b>\n\n"
-        f"👤 <b>Пользователь:</b> {username} (<b>ID:</b> {tg_id})\n"
+        f"👤 <b>Пользователь:</b> {username} (<b>ID:</b> {user_id})\n"
         f"💾 <b>База данных:</b> {db_message}\n"
         f"📅 <b>Время скачивания:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
     )
+
+    await bot.delete_message(message_id=message_id, chat_id=user_id)
 
     # Отправка модератору
     moderator_confirm_form = RegisterNewUserInlineButtons.get_inline_keyboard(
@@ -122,8 +132,6 @@ async def send_the_agreement(callback: CallbackQuery, bot: Bot, state: FSMContex
             message=f"❌ РЕГИСТРАЦИЯ: Ошибка отправки сообщения модератору\n"
                     f"Ошибка: {str(send_error)}"
         )
-        
-        raise Exception(f"Ошибка отправки модератору: {send_error}")
     
     doc = await callback.message.answer("⏳ Загружаем согласие на обработку персональных данных...")
     await callback.answer()
@@ -134,7 +142,7 @@ async def send_the_agreement(callback: CallbackQuery, bot: Bot, state: FSMContex
     
     bot_logger.log_user_msg(
         tg_id=callback.from_user.id,
-        message="РЕГИСТРАЦИЯ: ✅ Согласие на ОПД скачано"
+        message="РЕГИСТРАЦИЯ: ✅ Согласие на ОПД загружено"
         )
     
     await callback.message.answer_document(document = document)
@@ -394,6 +402,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
     clean_role = data.get('event_role', 'Не указано')[2:8].replace("/", "_")
     tiukoins = ROLE_LEXICON[clean_role]
     await state.update_data(tiukoins = tiukoins)
+    await state.update_data(username = f"@{callback.from_user.username}")
     data["tiukoins"] = tiukoins
     
     await callback.message.edit_reply_markup(reply_markup=None)
@@ -423,7 +432,7 @@ async def process_application_confirmation(callback: CallbackQuery, state: FSMCo
         
         send_moderator = await send_to_moderator(
                 callback, user_id, database_result, ekaterinburg_time,
-                user_full_name, data, clean_role, bot, thread_id, event_direction
+                user_full_name, data, clean_role, bot, thread_id,
             )
         
         bot_logger.log_user_msg(
@@ -501,7 +510,8 @@ async def save_application_to_database(state: FSMContext,callback:CallbackQuery)
             event_name = data.get("name_of_event", ""),
             date_of_event = data.get("date_of_event", ""),
             event_place = data.get("event_location", ""),
-            event_role = data.get("event_role", "")
+            event_role = data.get("event_role", ""),
+            username = data.get("username","")
         )
         
     db_status = ""
@@ -525,7 +535,7 @@ async def send_to_moderator(callback: CallbackQuery, user_id: int,
     moderator_message = (
             "📋 <b>Новая заявка на проверку</b>\n\n"
             f"👤 <b>Пользователь:</b> @{callback.from_user.username or 'без username'} "
-            f"(<b>ID:</b> {user_id})\n"
+            f"(ID: {user_id})\n"
             f"💾 <b>База данных:</b> {database_result['message']}\n"
             f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"📝 <b>Данные заявки:</b>\n"
@@ -534,8 +544,7 @@ async def send_to_moderator(callback: CallbackQuery, user_id: int,
             f"• <b>Дата проведения:</b> {data.get('date_of_event', 'Не указано')}\n"
             f"• <b>Место проведения:</b> {data.get('event_location', 'Не указано')}\n"
             f"• <b>Роль в мероприятии:</b> {data.get('event_role', 'Не указано')}\n"
-            f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇\n\n"
-            f"❗️ Если заявка не отображается в Яндекс Таблицах, то заполните данные вручную, указав ID по порядку. После чего обратитесь к разработчику с данной проблемой."
+            f"• <b>Подтверждающие материалы:</b> {len(data.get('supporting_materials', []))} шт. 👇"
         )
        
     moderator_proceesing_application_keyboard = ProcessingUserApplicationInlineButtons.get_inline_keyboard(
@@ -715,21 +724,21 @@ async def tyuiu_coins_start(message: Message, state: FSMContext):
     
     await message.answer(LEXICON_TEXT["my_coins_menu"],reply_markup = my_tiukoins)
     await state.set_state(AboutCompetition.my_tiukoins_start)
-    
+
+@connection
 @user_router.callback_query(StateFilter(AboutCompetition.my_tiukoins_start))
 async def balance_or_history(callback:CallbackQuery,state:FSMContext):
     """Высылает баланс или историю заявок"""
     
     if callback.data == "my_tyuiu_coins":
-        async with async_session() as session:
-            balance, db_log_message  = await db_get_user_balance(session, str(callback.from_user.id))
+        balance, db_user_message ,db_log_message  = await db_get_user_balance(tg_id_str= str(callback.from_user.id))
         await callback.message.edit_text(f"💎 <b>Ваш баланс:</b> {balance} ТИУкоинов")
         await callback.answer()
         await state.clear()
         
     elif callback.data == "application_history":
         await callback.message.delete()
-        db_success, db_applications, db_log_message = await db_get_application_history(str(callback.from_user.id))
+        db_success, db_applications, db_user_message, db_log_message = await db_get_application_history(str(callback.from_user.id))
 
         if not db_success:
             
