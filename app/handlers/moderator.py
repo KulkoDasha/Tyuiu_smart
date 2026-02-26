@@ -42,8 +42,8 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
 
     db_status = ""
     try:
-        # Вызываем функцию set_user для добавления в БД
-        db_success, db_user_message, user_id_in_db, db_log_message = await db_set_user( 
+        # Вызываем функцию db_update_user для обновления записи в БД
+        db_success, db_user_message, user_id_in_db, db_log_message = await db_update_user( 
             tg_id_str=str(user_id),
             moderator_username=moderator_username
         )
@@ -52,6 +52,13 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
             db_status = f"✅ Обновлено (ID: {user_id_in_db})"
         elif not db_success:
             db_status = f"❌ {db_user_message}"
+
+            bot_logger.log_moderator_msg(
+            tg_id=callback.from_user.id,
+            message=f"РЕГИСТРАЦИЯ: ❌ Ошибка БД\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                    f"База данных: {db_log_message}"
+        )
         else:
             db_status = "❌ Ошибка: Информация не обновлена"
                 
@@ -60,9 +67,10 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
 
         bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
-            message=f"РЕГИСТРАЦИЯ: ❌ Ошибка БД\n"
+            message=f"РЕГИСТРАЦИЯ: ❌ Критическая ошибка\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"База данных: {db_log_message}"
+                    f"Ошибка: {str(e)}"
         )
 
     bot_logger.log_moderator_msg(
@@ -84,7 +92,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
     try:
         await bot.send_message(
             chat_id = user_id,
-            text = LEXICON_TEXT["registration_completed"], reply_markup = menu_keyboard
+            text = LEXICON_TEXT["approve_registration"], reply_markup = menu_keyboard
         )
     except Exception as e:
         await callback.message.answer(f"❗️ Не удалось уведомить пользователя {user_id}")
@@ -114,8 +122,31 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     user_id = data.get("reject_user_id")
     reason = message.text
+    user_full_name = await db_get_user_full_name(tg_id_str=str(user_id))
 
     try:
+
+        try:
+            # Вызываем функцию для удаления записи из БД
+            db_success, db_user_message, user_id_in_db, db_log_message = await db_delete_user_by_tg_id( 
+                tg_id_str=str(user_id),
+            )
+            
+            if db_success:
+                db_status = f"✅ Успешно"
+            else:
+                db_status = f"❌ {db_user_message}"
+                    
+        except Exception as e:
+            db_status = f"❌ Ошибка: {db_user_message}"
+
+            bot_logger.log_moderator_msg(
+                tg_id=message.from_user.id,
+                message=f"РЕГИСТРАЦИЯ: ❌ Ошибка БД при отклонении\n"
+                        f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                        f"База данных: {db_log_message}"
+            )
+
         moder_chat_id = data.get("moder_chat_id")
         moder_message_id = data.get("moder_message_id")
 
@@ -129,7 +160,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         await bot.edit_message_text(
         chat_id = moder_chat_id,
         message_id = moder_message_id,
-        text = f"❌ <b>Регистрация пользователя отклонена</b>\n\n"
+        text = f"❌ <b>Отклонено</b>\n\n"
             f"👤 <b>ID пользователя:</b> {user_id}\n"
             f"📝 <b>Причина:</b> {reason}\n"
             f"👮 <b>Модератор:</b> @{message.from_user.username or message.from_user.full_name}\n"
@@ -281,7 +312,7 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
                                       user_id: int, moderator_username: str,
                                       app_data: dict, row_id: int, event_role: str,
                                       db_application_id: int, ekaterinburg_time):
-    """Обработка заявки для всех ролей кроме последней"""
+    """Обработка заявки"""
     coins = ROLE_LEXICON[event_role]
     db_status, db_log_message = await approve_db(db_application_id, moderator_username, coins)
     if db_status.startswith("❌"):
@@ -340,7 +371,7 @@ async def send_message(callback: CallbackQuery, user_id: int,
     await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert  = True)
     await callback.message.edit_text(
             f"✅ <b>Заявка одобрена</b>\n\n"
-            f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id}, @{callback.from_user.username})\n"
+            f"👤 <b>Пользователь:</b> ID: {user_id}\n"
             f"💎 <b>Начислено:</b> {coins} ТИУкоинов\n"
             f"💾 <b>База данных:</b> {db_status}\n"
             f"👮 <b>Модератор:</b> @{moderator_username}\n"
@@ -439,7 +470,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
             chat_id = moder_chat_id,
             message_id = moder_message_id,
             text = f"❌ <b>Заявка отклонена</b>\n\n"
-                 f"👤 <b>Пользователь:</b> {app_data.get('full_name', '')} (ID: {user_id})\n"
+                 f"👤 <b>Пользователь:</b> ID: {user_id}\n"
                  f"📝 <b>Причина:</b> {reason}\n"
                  f"💾 <b>База данных:</b> {db_status}\n"
                  f"👮 <b>Модератор:</b> @{moderator_username}\n"

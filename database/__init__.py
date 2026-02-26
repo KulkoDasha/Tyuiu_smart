@@ -1,5 +1,5 @@
 from .database import engine, async_session, Base
-from .models import Users, Event_applications, Roles
+from .models import Users, Event_applications, Roles, Catalog_of_reward, Issuance_of_rewards
 from .database_service import connection, create_tables
 from .dao import (
     db_set_user,
@@ -15,7 +15,8 @@ from .dao import (
     db_delete_user_by_tg_id,
     db_get_application_history,
     db_get_all_user_tg_ids,
-    db_add_tiukoins
+    db_add_tiukoins,
+    db_update_user
 )
 
 
@@ -30,7 +31,7 @@ __all__ = [
     'Event_applications',
     'Roles',
     'Catalog_of_reward',
-    'Issuance_of_rewards'
+    'Issuance_of_rewards',
     
     # Из database_service.py
     'connection',
@@ -50,5 +51,6 @@ __all__ = [
     'db_delete_user_by_tg_id',
     'db_get_application_history',
     'db_get_all_user_tg_ids',
-    'db_add_tiukoins'
+    'db_add_tiukoins',
+    'db_update_user'
 ]

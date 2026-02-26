@@ -15,5 +15,5 @@ async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    import seed_data 
+    from database import seed_data
     await seed_data.seed_roles() 
