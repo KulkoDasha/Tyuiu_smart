@@ -1,20 +1,25 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from ..services import googlesheet_service
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from database import *
+
+from ..lexicon import LEXICON_USER_KEYBOARD
 
 class DynamicCatalogKeyboard:
     @staticmethod
-    async def create_table_keyboard() -> InlineKeyboardMarkup:
-        """Создает динамическую таблицу поощрений из Google Sheets"""
+    async def create_table_keyboard(session: AsyncSession) -> InlineKeyboardMarkup:
+        """Создает динамическую таблицу поощрений из БД и возвращает клавиатуру"""
 
         try:
-            catalog = await googlesheet_service.get_catalog_items_async()
+            catalog = select(Catalog_of_reward).order_by(Catalog_of_reward.id)
+            result = await session.execute(catalog)
+            rewards = result.scalars().all()
             
-            if not catalog.get("success"):
+            if not rewards:
                 return InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="❌ Ошибка каталога", callback_data="error_catalog")]
                 ])
             
-            items = catalog.get("items", [])
             keyboard = []
             
             # Заголовок
@@ -24,18 +29,17 @@ class DynamicCatalogKeyboard:
             ])
             
             # Товары (2 колонки)
-            for item in items:
+            for item in rewards:
                 keyboard.append([
                     InlineKeyboardButton(
-                        text=item['name'][:20] + "..." if len(item['name']) > 20 else item['name'],
-                        callback_data=f"view_item_{item['id']}"
+                        text=item.name_of_reward[:20] + "..." if len(item.name_of_reward) > 20 else item.name_of_reward,
+                        callback_data=f"view_item_{item.id}"
                     ),
-                    InlineKeyboardButton(text=f"{item['price']}", callback_data="ignore")
+                    InlineKeyboardButton(text=f"{item.price}", callback_data="ignore")
                 ])
             
             # Навигация
             keyboard.append([
-                InlineKeyboardButton(text="🔄 Обновить", callback_data="refresh_catalog"),
                 InlineKeyboardButton(text="❌ Закрыть", callback_data="cancel_catalog")
             ])
             
@@ -48,3 +52,4 @@ class DynamicCatalogKeyboard:
 
 # Глобальный экземпляр
 catalog_of_rewards = DynamicCatalogKeyboard()
+

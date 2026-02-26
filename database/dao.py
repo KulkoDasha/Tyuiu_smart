@@ -1,7 +1,7 @@
 import logging
 
 from .database_service import connection
-from .models import Users, Event_applications, Issuance_of_rewards 
+from .models import Users, Event_applications, Issuance_of_rewards, Catalog_of_reward
 from sqlalchemy import select, update, delete, text
 from typing import Optional, Tuple
 from sqlalchemy.exc import SQLAlchemyError
@@ -268,9 +268,8 @@ async def db_reject_application(
 async def db_deduct_tiukoins(
     session,
     tg_id_str: str,
-    spend_amount: float,
-    name_of_item: str) -> Tuple[bool, str, Optional[str]]:
-    """Списание ТИУкоинов у пользователя при заказе поощрения"""
+    spend_amount: float) -> Tuple[bool, str, Optional[str]]:
+    """Списание ТИУкоинов у пользователя """
 
     try:
             
@@ -283,13 +282,13 @@ async def db_deduct_tiukoins(
         user = result.scalar_one_or_none()
         
         if not user:
-            return False, f"Пользователь {tg_id} не найден. \n Зарегистрируйтесь в системе, если вы не зарегистрированы.", None
+            return False, f"Пользователь с TG_ID:{tg_id} не найден.", None
         
         # Проверяем баланс
         current_balance = user.tiukoins
         
         if current_balance < spend_amount:
-            return False, f"Недостаточно ТИУкоинов.\nВаш баланс: {current_balance:.1f}. Требуется: {spend_amount:.1f}", None
+            return False, f"Недостаточно ТИУкоинов.\nБаланс: {current_balance:.1f}. Требуется: {spend_amount:.1f}", None
         
         # Рассчитываем новый баланс в переменной
         new_balance = current_balance - spend_amount
@@ -300,7 +299,7 @@ async def db_deduct_tiukoins(
         # Сохраняем
         await session.commit()
         
-        return True, f"✅ Успешно! Списано {spend_amount} ТИУкоинов за {name_of_item} у пользователя {tg_id}\n. Новый баланс: {new_balance:.1f}", "✅ Успешно"
+        return True, f"✅ Успешно! Списано {spend_amount} ТИУкоинов у пользователя {tg_id}\n. Новый баланс: {new_balance:.1f}", "✅ Успешно"
         
     except SQLAlchemyError as e:
         await session.rollback()
@@ -365,40 +364,79 @@ async def db_get_user_balance(session, tg_id_str: str) -> Tuple[float, str, Opti
         return 0.0, f"❌ Ошибка получения баланс. Обратитесь в /support. ", f"Ошибка БД при получении баланса пользователя {tg_id}: {str(e)}"
     
 @connection
-async def db_return_tiukoins(session,
-                          tg_id_str: str,
-                          item_price_str: str) -> Tuple[bool, str, Optional[str]]:
+async def db_reject_issuance(
+    session,
+    tg_id_str: str,
+    issuance_id: int,
+    moderator_username: str
+) -> Tuple[bool, str, Optional[str]]:
     """
     Возврат ТИУкоинов пользователю при отклонении заявки на поощрение
+    - Возвращает ТИУкоины пользователю
+    - Увеличивает количество товара в каталоге на 1
+    - Меняет статус заявки на "Отклонено"
+    - Записывает moderator_username в заявку
     """
-
     try: 
         tg_id = int(tg_id_str)
-        item_price = float(item_price_str)
 
-        result = await session.execute(
+        # 1. Получаем заявку на выдачу
+        issuance_result = await session.execute(
+            select(Issuance_of_rewards).where(Issuance_of_rewards.id == issuance_id)
+        )
+        issuance = issuance_result.scalar_one_or_none()
+
+        if not issuance:
+            return False, f"Заявка с ID {issuance_id} не найдена.", None
+
+        # 2. Получаем товар из каталога по reward_id из заявки
+        reward_result = await session.execute(
+            select(Catalog_of_reward).where(Catalog_of_reward.id == issuance.reward_id)
+        )
+        reward = reward_result.scalar_one_or_none()
+
+        if not reward:
+            return False, f"Товар с ID {issuance.reward_id} не найден в каталоге.", None
+
+        # 3. Получаем пользователя
+        user_result = await session.execute(
             select(Users).where(Users.tg_id == tg_id)
         )
-        user = result.scalar_one_or_none()
+        user = user_result.scalar_one_or_none()
         
         if not user:
             return False, f"Пользователь с TG ID {tg_id} не найден", None
         
-        if item_price <= 0:
-            return False, f"Некорректная сумма возврата: {item_price}. Сумма должна быть положительной.", None
+        # 4. Проверяем, что заявка еще не обработана
+        if issuance.status != "Ожидает выдачи":
+            return False, f"Заявка #{issuance_id} уже обработана (статус: {issuance.status})", None
         
+        # 5. Возвращаем ТИУкоины пользователю
         old_balance = user.tiukoins
-        new_balance = old_balance + item_price
+        refund_amount = float(issuance.price)
+        new_balance = old_balance + refund_amount
         user.tiukoins = new_balance
+
+        # 6. Увеличиваем количество товара на 1
+        old_quantity = reward.count
+        reward.count += 1
+
+        # 7. Обновляем статус заявки и модератора
+        issuance.status = "Отклонено"
+        issuance.moderator_username = moderator_username
+        
+        # 8. Сохраняем все изменения
         await session.commit()
 
-        return True, f"✅ Успешно! Возвращено {item_price} ТИУкоинов пользователю {tg_id}. Новый баланс: {new_balance:.1f}", "✅ Успешно"
+        return (True,
+                f"Заявка на получение поощрения откланена ",
+                f"✅ Успешно")
     
     except SQLAlchemyError as e:
         await session.rollback()
         return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Ошибка БД при возврате ТИУкоинов пользователю {tg_id}: {str(e)}"
-    
     except Exception as e:
+        await session.rollback()
         return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", f"Неожиданная ошибка БД при возврате ТИУкоинов: {str(e)}"
     
 
@@ -497,34 +535,158 @@ async def db_update_user(
     tg_id_str: str,
     moderator_username: str
 ) -> Optional[Tuple[bool, str, Optional[int], Optional[str]]]:
-    """
-    Метод для обновления данных существующего пользователя по tg_id
-    """
     try:
         tg_id = int(tg_id_str)
 
-        # Проверяем, существует ли пользователь
+        # Используем update() как в db_approve_application
         result = await session.execute(
-            select(Users).where(Users.tg_id == tg_id)
-        )
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            return False, f"Пользователь с tg_id {tg_id} не найден", None, None
-
-        # Обновляем данные пользователя
-        await session.execute(
             update(Users)
             .where(Users.tg_id == tg_id)
             .values(
                 moderator_username=moderator_username,
                 approval_date=datetime.now()
             )
+            .returning(Users.id)
         )
+        
+        user_id = result.scalar_one_or_none()
+        if not user_id:
+            return False, f"Пользователь с tg_id {tg_id} не найден", None, None
 
         await session.commit()
-        return True, f"Данные пользователя {tg_id} успешно обновлены", user.id, "✅ Успешно"
+        return True, f"Данные пользователя {tg_id} успешно обновлены", user_id, "✅ Успешно"
 
     except SQLAlchemyError as e:
         await session.rollback()
-        return False, f"❌ Ошибка базы данных. Обратитесь к разработчику с данной проблемой.", None, f"Ошибка БД при обновлении пользователя: {str(e)}"
+        return False, f"❌ Ошибка базы данных.", None, f"Ошибка БД: {str(e)}"
+    
+@connection
+async def db_purchase_reward(
+        session,
+        tg_id_str: str,
+        reward_id_str: str,
+        username: str,
+) -> Tuple[int, str, Optional[int], Optional[str]]:
+    """
+    Покупка поощрения пользователем:
+    - Списывает ТИУкоины с пользователя
+    - Уменьшает количество товара в каталоге на 1
+    - Создает запись в таблице выдачи поощрений
+    """
+    #try:
+    tg_id = int(tg_id_str)
+    reward_id = int(reward_id_str)
+
+    print(f"Покупка поощрения: TG_ID={tg_id}, reward_id={reward_id}, username={username}")
+    
+    # Получаем информацию о товаре
+    reward_result = await session.execute(
+        select(Catalog_of_reward).where(Catalog_of_reward.id == reward_id)
+    )
+    reward = reward_result.scalar_one_or_none()
+
+    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",reward)
+    
+    if not reward:
+        return -1, f"Поощрение с ID '{reward_id}' не найдено в каталоге.", None, None
+
+    # Проверяем наличие товара
+    if reward.count <= 0:
+        return -1, f"Поощрение '{reward.name_of_reward}' отсутствует в наличии.", 0, None
+
+    spend_amount = reward.price
+
+    # 👇 ИЗМЕНЕНО: теперь не вызываем отдельную функцию, а делаем списание здесь
+    # Получаем пользователя
+    user_result = await session.execute(
+        select(Users).where(Users.tg_id == tg_id)
+    )
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        return -1, f"Пользователь с TG_ID:{tg_id} не найден.", None, None
+
+    # Проверяем баланс
+    if user.tiukoins < spend_amount:
+        return -1, f"Недостаточно ТИУкоинов.\nБаланс: {user.tiukoins:.1f}. Требуется: {spend_amount:.1f}", None, None
+
+    # Списываем ТИУкоины
+    user.tiukoins -= spend_amount
+
+    # Уменьшаем количество товара на 1
+    reward.count -= 1
+
+    # Создаем запись в выдаче
+    new_issuance = Issuance_of_rewards(
+        tg_id=tg_id,
+        username=username or str(tg_id),
+        reward_id=reward.id,
+        name_of_reward=reward.name_of_reward,
+        price=int(spend_amount),
+        order_date=datetime.now(),
+        status="Ожидает выдачи",
+        moderator_username="Не указан"
+    )
+
+    session.add(new_issuance)
+    await session.flush()
+    issuance_id = new_issuance.id
+
+    # 👇 ВАЖНО: Один commit в конце всех операций
+    await session.commit()
+
+    return (issuance_id,
+            f"✅ Покупка совершена! Списано {spend_amount} ТИУкоинов за {reward.name_of_reward} у пользователя {tg_id}",
+            reward.count,
+            "✅ Успешно")
+
+    '''except SQLAlchemyError as e:
+        await session.rollback()
+        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Ошибка БД: {str(e)}"
+    except Exception as e:
+        await session.rollback()
+        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Неожиданная ошибка: {str(e)}"
+
+    except SQLAlchemyError as e:
+        await session.rollback()
+        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Ошибка БД: {str(e)}"
+    except Exception as e:
+        await session.rollback()
+        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Неожиданная ошибка БД при покупке товара: {str(e)}"'''
+
+@connection
+async def db_approve_issuance(
+    session,
+    issuance_id: int,
+    moderator_username: str
+) -> Tuple[bool, str, Optional[str]]:
+    """
+    Принятие заявки на выдачу поощрения
+    - Меняет статус заявки на "Выдано"
+    - Записывает moderator_username в заявку
+    """
+    try:
+        issuance_result = await session.execute(
+            select(Issuance_of_rewards).where(Issuance_of_rewards.id == issuance_id)
+        )
+        issuance = issuance_result.scalar_one_or_none()
+
+        if not issuance:
+            return False, f"❌ Заявка с ID {issuance_id} не найдена.", None
+
+        if issuance.status != "Ожидает выдачи":
+            return False, (f"❌ Заявка #{issuance_id} уже обработана. ", None)
+
+        issuance.status = "Выдано"
+        issuance.moderator_username = moderator_username
+
+        await session.commit()
+
+        return True, f"Заявка #{issuance_id} на выдачу поощрения подтверждена модератором {moderator_username}. Пользователь {issuance.tg_id}", "✅ Успешно"
+
+    except SQLAlchemyError as e:
+        await session.rollback()
+        return False, "❌ Ошибка базы данных. Обратитесь в /support.", f"Ошибка БД при подтверждении заявки #{issuance_id}: {str(e)}"
+    except Exception as e:
+        await session.rollback()
+        return False, "❌ Ошибка базы данных. Обратитесь в /support.", f"Неожиданная ошибка БД при подтверждении заявки #{issuance_id}: {str(e)}"
