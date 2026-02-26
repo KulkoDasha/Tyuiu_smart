@@ -16,11 +16,11 @@ from .dao import (
     db_get_all_user_tg_ids,
     db_add_tiukoins,
     db_update_user,
-    db_purchase_reward,
-    db_reject_issuance
+    db_reject_issuance,
+    db_create_issuance_record,
+    db_decrease_reward_count
     
 )
-
 
 __all__ = [
     # Из database.py
@@ -54,6 +54,7 @@ __all__ = [
     'db_get_all_user_tg_ids',
     'db_add_tiukoins',
     'db_update_user',
-    'db_purchase_reward',
-    'db_reject_issuance'
+    'db_reject_issuance',
+    'db_create_issuance_record',
+    'db_decrease_reward_count'
 ]

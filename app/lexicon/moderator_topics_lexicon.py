@@ -17,6 +17,6 @@ TOPIC_MAPPING = {
     "topic_tourism_travel": ("Туризм и путешествия", TOPIC_TOURISM_TRAVEL),
     "topic_digital_sport": ("Фиджитал спорт", TOPIC_DIGITAL_SPORT),
     "topic_student_units": ("Студенческие отряды", TOPIC_STUDENT_UNITS),
-    "topic_united_student_council": ("ОСО/Совет общежитий/Профсоюз", TOPIC_UNITED_STUDENT_COUNCIL),
+    "topic_united_student_council": ("ОСО Совет общежитий Профсоюз", TOPIC_UNITED_STUDENT_COUNCIL),
     "topic_headman": ("Старостат", TOPIC_HEADMAN),
 }

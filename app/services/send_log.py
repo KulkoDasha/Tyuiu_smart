@@ -7,6 +7,7 @@ from email import encoders
 from datetime import datetime
 import time
 import threading
+import schedule
 
 def send_log_file():
     """Отправка лог-файла на почту"""
@@ -72,23 +73,23 @@ def send_log_file():
     except Exception as e:
         print(f"Ошибка при отправке логов: {e}")
 
-# Настройка расписания
-#schedule.every().day.at("23:59").do(send_log_file)  # Каждый день в 23:59
+#Настройка расписания
+schedule.every().day.at("23:59").do(send_log_file)  # Каждый день в 23:59
 
 
 # Запуск планировщика в фоне
-"""def run_scheduler():
+def run_scheduler():
     while True:
         schedule.run_pending()
-        time.sleep(60)"""
+        time.sleep(60)
 
-"""# Запускаем планировщик в отдельном потоке
+# Запускаем планировщик в отдельном потоке
 scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
-scheduler_thread.start()"""
+scheduler_thread.start()
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("🚀 ЗАПУСК ОТПРАВКИ ЛОГОВ")
+    print("ЗАПУСК ОТПРАВКИ ЛОГОВ")
     print("=" * 50)
     send_log_file()
     print("✅ Готово!")

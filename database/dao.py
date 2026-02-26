@@ -559,101 +559,67 @@ async def db_update_user(
     except SQLAlchemyError as e:
         await session.rollback()
         return False, f"❌ Ошибка базы данных.", None, f"Ошибка БД: {str(e)}"
-    
+
+# Функция 2: Уменьшение количества товара на 1
 @connection
-async def db_purchase_reward(
-        session,
-        tg_id_str: str,
-        reward_id_str: str,
-        username: str,
-) -> Tuple[int, str, Optional[int], Optional[str]]:
+async def db_decrease_reward_count(session, reward_id: int) -> tuple[bool, int | None, str | None]:
     """
-    Покупка поощрения пользователем:
-    - Списывает ТИУкоины с пользователя
-    - Уменьшает количество товара в каталоге на 1
-    - Создает запись в таблице выдачи поощрений
+    Уменьшает количество товара на 1
+    Возвращает: (успех, новое_количество, название_товара)
     """
-    #try:
-    tg_id = int(tg_id_str)
-    reward_id = int(reward_id_str)
-
-    print(f"Покупка поощрения: TG_ID={tg_id}, reward_id={reward_id}, username={username}")
-    
-    # Получаем информацию о товаре
-    reward_result = await session.execute(
-        select(Catalog_of_reward).where(Catalog_of_reward.id == reward_id)
-    )
-    reward = reward_result.scalar_one_or_none()
-
-    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",reward)
-    
-    if not reward:
-        return -1, f"Поощрение с ID '{reward_id}' не найдено в каталоге.", None, None
-
-    # Проверяем наличие товара
-    if reward.count <= 0:
-        return -1, f"Поощрение '{reward.name_of_reward}' отсутствует в наличии.", 0, None
-
-    spend_amount = reward.price
-
-    # 👇 ИЗМЕНЕНО: теперь не вызываем отдельную функцию, а делаем списание здесь
-    # Получаем пользователя
-    user_result = await session.execute(
-        select(Users).where(Users.tg_id == tg_id)
-    )
-    user = user_result.scalar_one_or_none()
-
-    if not user:
-        return -1, f"Пользователь с TG_ID:{tg_id} не найден.", None, None
-
-    # Проверяем баланс
-    if user.tiukoins < spend_amount:
-        return -1, f"Недостаточно ТИУкоинов.\nБаланс: {user.tiukoins:.1f}. Требуется: {spend_amount:.1f}", None, None
-
-    # Списываем ТИУкоины
-    user.tiukoins -= spend_amount
-
-    # Уменьшаем количество товара на 1
-    reward.count -= 1
-
-    # Создаем запись в выдаче
-    new_issuance = Issuance_of_rewards(
-        tg_id=tg_id,
-        username=username or str(tg_id),
-        reward_id=reward.id,
-        name_of_reward=reward.name_of_reward,
-        price=int(spend_amount),
-        order_date=datetime.now(),
-        status="Ожидает выдачи",
-        moderator_username="Не указан"
-    )
-
-    session.add(new_issuance)
-    await session.flush()
-    issuance_id = new_issuance.id
-
-    # 👇 ВАЖНО: Один commit в конце всех операций
-    await session.commit()
-
-    return (issuance_id,
-            f"✅ Покупка совершена! Списано {spend_amount} ТИУкоинов за {reward.name_of_reward} у пользователя {tg_id}",
-            reward.count,
-            "✅ Успешно")
-
-    '''except SQLAlchemyError as e:
-        await session.rollback()
-        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Ошибка БД: {str(e)}"
+    try:
+        reward = await session.get(Catalog_of_reward, reward_id)
+        
+        if not reward:
+            return False, None, None
+            
+        if reward.count <= 0:
+            return False, 0, reward.name_of_reward
+            
+        reward.count -= 1
+        await session.flush()
+        
+        return True, reward.count, "✅ Успешно"
+        
     except Exception as e:
-        await session.rollback()
-        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Неожиданная ошибка: {str(e)}"
+        return False, f"❌ Ошибка базы данных. Пожалуйста, обратитесь в /support.", f"Ошибка БД при уменьшении количества товара {reward_id}: {str(e)}"
 
-    except SQLAlchemyError as e:
-        await session.rollback()
-        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Ошибка БД: {str(e)}"
+
+# Функция 3: Создание записи о выдаче
+@connection
+async def db_create_issuance_record(
+    session,
+    tg_id: int,
+    username: str,
+    reward_id: int,
+    reward_name: str,
+    price: float
+) -> int | None:
+    """
+    Создает запись в таблице выдачи поощрений
+    Возвращает: ID созданной записи или None
+    """
+    try:
+
+        issuance = Issuance_of_rewards(
+            tg_id=int(tg_id),
+            username=username or str(tg_id),
+            reward_id=reward_id,
+            name_of_reward=reward_name,
+            price=int(price),
+            order_date=datetime.now(),
+            status="Ожидает выдачи",
+            moderator_username="Не указан"
+        )
+        
+        session.add(issuance)
+        await session.flush()
+        
+        return issuance.id, "✅ Успешно", "✅ Успешно"
+        
     except Exception as e:
-        await session.rollback()
-        return -1, f"❌ Ошибка базы данных. Обратитесь в /support.", None, f"Неожиданная ошибка БД при покупке товара: {str(e)}"'''
-
+        return None, f"❌ Ошибка базы данных. Пожалуйста, обратитесь в /support.", f"Ошибка БД при создании записи о выдаче для пользователя {tg_id}: {str(e)}"
+    
 @connection
 async def db_approve_issuance(
     session,
@@ -687,6 +653,7 @@ async def db_approve_issuance(
     except SQLAlchemyError as e:
         await session.rollback()
         return False, "❌ Ошибка базы данных. Обратитесь в /support.", f"Ошибка БД при подтверждении заявки #{issuance_id}: {str(e)}"
+    
     except Exception as e:
         await session.rollback()
         return False, "❌ Ошибка базы данных. Обратитесь в /support.", f"Неожиданная ошибка БД при подтверждении заявки #{issuance_id}: {str(e)}"
