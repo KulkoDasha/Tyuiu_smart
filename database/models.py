@@ -62,7 +62,7 @@ class Catalog_of_reward(Base):
     count: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     note: Mapped[str] = mapped_column(String, nullable=False)
-    link_on_photo: Mapped[str] = mapped_column(String, nullable=False)
+    link_on_photo: Mapped[str] = mapped_column(String, nullable=True)
 
 
     issuances: Mapped[list["Issuance_of_rewards"]] = relationship(

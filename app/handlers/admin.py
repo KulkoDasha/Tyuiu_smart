@@ -213,7 +213,7 @@ async def process_delete_user(message: Message, state: FSMContext, bot:Bot):
             )
 
             await message.answer(
-                f"✅ <b>Пользователь {user_full_name} (ID: {user_id}) удалён из системы</b>\n\n"
+                f"✅ <b>Пользователь {user_id} удалён из системы</b>\n\n"
                 f"❔ <b>Причина:</b> {reason_for_delete}\n"
                 f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id})",
                 parse_mode="HTML"
@@ -518,7 +518,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
 
             await message.answer(
                 f"✅ <b>ТИУкоины начислены!</b>\n\n"
-                f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+                f"<b>Пользователь:</b> {user_id}\n"
                 f"💎 <b>Начислено:</b> {coins}\n"
                 f"💾 <b>База данных:</b> {db_status}",
                 parse_mode="HTML"

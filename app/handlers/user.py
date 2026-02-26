@@ -1336,7 +1336,7 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
     
     user_id = callback.from_user.id
     user_full_name = await db_get_user_full_name(user_id)
-    # Инициализация статусов БД и Google Sheets
+    # Инициализация статусов БД
     db_success = db_result = db_user_id = None
     
     try:
@@ -1357,9 +1357,8 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
                     f"База данных: {db_status} (ID: {db_user_id})\n"
         )
             
-            moderator_message = (f"✅ <b>Пользователь {user_full_name} (ID: {user_id}) отозвал согласие и был удалён из системы</b>\n\n"
-                                f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id})\n"
-                                f"❗️ Если пользователь не удалён из Google Sheets - сделайте это вручную. Обратитесь к разработчику с данной проблемой.")
+            moderator_message = (f"✅ <b>Пользователь {user_id} отозвал согласие и был удалён из системы</b>\n\n"
+                                f"💾 <b>База данных:</b> {db_status} (ID: {db_user_id})")
             send_params = {
                 "chat_id": config.moderator_chat_id,
                 "text": moderator_message,
@@ -1370,7 +1369,7 @@ async def process_recall_user(callback:CallbackQuery, bot: Bot):
     
             await callback.message.delete()
             await callback.message.answer(
-                text = f"❌ <b>Ваш аккаунт был удалён из системы!<b>\n\nДля повторной регистрации воспользуйтесь командой /start.",
+                text = f"❌ <b>Ваш аккаунт был удалён из системы! Согласие отозвано</b>\n\nДля повторной регистрации воспользуйтесь командой /start.",
                 reply_markup=ReplyKeyboardRemove(),
                 parse_mode="HTML")
 

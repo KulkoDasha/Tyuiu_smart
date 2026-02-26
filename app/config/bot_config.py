@@ -20,8 +20,6 @@ class Config:
     log: LogSettings
     moderator_chat_id: int
     admin_panel_id :None | int
-    google_secret_key : str
-    apps_script_url: str
 
 def load_config(path: str | None = None) -> Config:
     """Принимает данные из .env и загружает конфиг"""
@@ -46,9 +44,7 @@ def load_config(path: str | None = None) -> Config:
         format=os.getenv("LOG_FORMAT", "{asctime} - {levelname} - {name} - {message}"),
         logs_dir=os.getenv("LOGS_DIR", "logs")),
         moderator_chat_id = int(moderator_chat_id),
-        admin_panel_id = admin_panel_id,
-        google_secret_key = os.getenv("GOOGLE_SECRET_KEY"),
-        apps_script_url = os.getenv("APPS_SCRIPT_URL")
+        admin_panel_id = admin_panel_id
         )
     
 config = load_config()
