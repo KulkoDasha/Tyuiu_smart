@@ -11,12 +11,14 @@ from .dao import (
     db_reject_application,
     db_deduct_tiukoins,
     db_get_user_balance,
-    db_return_tiukoins,
     db_delete_user_by_tg_id,
     db_get_application_history,
     db_get_all_user_tg_ids,
     db_add_tiukoins,
-    db_update_user
+    db_update_user,
+    db_purchase_reward,
+    db_reject_issuance
+    
 )
 
 
@@ -47,10 +49,11 @@ __all__ = [
     'db_reject_application',
     'db_deduct_tiukoins',
     'db_get_user_balance',
-    'db_return_tiukoins',
     'db_delete_user_by_tg_id',
     'db_get_application_history',
     'db_get_all_user_tg_ids',
     'db_add_tiukoins',
-    'db_update_user'
+    'db_update_user',
+    'db_purchase_reward',
+    'db_reject_issuance'
 ]

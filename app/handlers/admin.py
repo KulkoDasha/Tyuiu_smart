@@ -386,7 +386,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
     coins = float(parts[1])
     user_full_name = await db_get_user_full_name(user_id)
     
-    await message.answer(f"🔄 Списываю ТИУкоины...\n\nПользователь: {user_full_name} (ID: {user_id})")
+    await message.answer(f"🔄 Списываю ТИУкоины...\n\nПользователь: ID: {user_id}")
 
     # Инициализация статуса БД
     db_success = db_result = None
@@ -395,10 +395,12 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
     try:
         db_success, db_user_message, db_log_message = await db_deduct_tiukoins(
             tg_id_str=str(user_id),
-            spend_amount=coins,
-            name_of_item="Списание ТИУкоинов"
+            spend_amount=coins
         )
         db_status = "✅" if db_success else "❌"
+        
+        print('-'*30)
+        print(db_success, db_user_message, db_log_message)
     except Exception as db_error:
         db_success = False
         db_result = f"Ошибка: {db_user_message}"
@@ -417,7 +419,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
 
             await message.answer(
                 f"✅ <b>ТИУкоины списаны!</b>\n\n"
-                f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+                f"<b>Пользователь:</b> {user_id}\n"
                 f"💎 <b>Списано:</b> {coins}\n"
                 f"💾 <b>База данных:</b> {db_status}",
                 parse_mode="HTML"
@@ -439,7 +441,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
 
             await message.answer(
                 f"❌ <b>Ошибка базы данных</b>\n\n"
-                f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+                f"<b>Пользователь:</b> {user_id}\n"
                 f"💾 <b>База данных:</b> {db_status}\n"
                 f"  └─ {db_result}\n"
                 f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",
@@ -458,7 +460,7 @@ async def process_deduct_tiukoins_from_user(message: Message, state: FSMContext,
 
         await message.answer(
             f"💥 <b>Критическая ошибка:</b>\n"
-            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n"
+            f"<b>Пользователь:</b> ID: {user_id}\n"
             f"💾 <b>База данных:</b> {db_status}\n"
             f"  └─ {db_result}\n\n"
             f"❗️ Попробуйте ещё раз, если ошибка повторяется - обратитесь к разработчику с данной проблемой.",

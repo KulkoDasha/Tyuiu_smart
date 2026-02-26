@@ -20,9 +20,9 @@ ekaterinburg_tz = pytz.timezone('Asia/Yekaterinburg')
 menu_keyboard = MenuKeyboard.get_keyboard_menu()
 re_register_keyboard = ReRegister.get_inline_keyboard()
 
-@connection
+
 @moderator_router.callback_query(F.data.startswith("accept_user"))
-async def approve_application(callback: CallbackQuery, bot: Bot):
+async def approve_application(callback: CallbackQuery, bot: Bot, ):
     """Обрабатывает нажатие на кнопку принять анкету пользователя"""
     
     try:
@@ -61,7 +61,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
         )
         else:
             db_status = "❌ Ошибка: Информация не обновлена"
-                
+             
     except Exception as e:
         db_status = f"❌ Ошибка: {db_user_message}"
 
@@ -94,6 +94,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot):
             chat_id = user_id,
             text = LEXICON_TEXT["approve_registration"], reply_markup = menu_keyboard
         )
+        
     except Exception as e:
         await callback.message.answer(f"❗️ Не удалось уведомить пользователя {user_id}")
 
@@ -371,7 +372,7 @@ async def send_message(callback: CallbackQuery, user_id: int,
     await callback.answer(f"✅ Заявка пользователя {user_id} одобрена!", show_alert  = True)
     await callback.message.edit_text(
             f"✅ <b>Заявка одобрена</b>\n\n"
-            f"👤 <b>Пользователь:</b> ID: {user_id}\n"
+            f"👤 <b>Пользователь:</b> {user_id}\n"
             f"💎 <b>Начислено:</b> {coins} ТИУкоинов\n"
             f"💾 <b>База данных:</b> {db_status}\n"
             f"👮 <b>Модератор:</b> @{moderator_username}\n"
@@ -470,7 +471,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
             chat_id = moder_chat_id,
             message_id = moder_message_id,
             text = f"❌ <b>Заявка отклонена</b>\n\n"
-                 f"👤 <b>Пользователь:</b> ID: {user_id}\n"
+                 f"👤 <b>Пользователь:</b> {user_id}\n"
                  f"📝 <b>Причина:</b> {reason}\n"
                  f"💾 <b>База данных:</b> {db_status}\n"
                  f"👮 <b>Модератор:</b> @{moderator_username}\n"
@@ -599,7 +600,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         
     else:  # reject
 
-        db_success, db_user_message, db_log_message = await db_return_tiukoins( user_id, item_price)
+        db_success, db_user_message, db_log_message = await db_reject_issuance( tg_id_str = str(user_id), issuance_id = item_price)
 
         if db_success:
             tiukoins_status = f"💎 <b>ТИУкоины возвращены:</b> {item_price}"
