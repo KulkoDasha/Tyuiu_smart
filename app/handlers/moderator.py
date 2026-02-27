@@ -69,18 +69,18 @@ async def approve_application(callback: CallbackQuery, bot: Bot, ):
             tg_id=callback.from_user.id,
             message=f"РЕГИСТРАЦИЯ: ❌ Критическая ошибка\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                    f"База данных: {db_log_message}"
+                    f"База данных: {db_log_message}\n"
                     f"Ошибка: {str(e)}"
         )
 
     bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
-            message=f"РЕГИСТРАЦИЯ: ✅ Анкета одобрена\n"
+            message=f"РЕГИСТРАЦИЯ: ✅ Пользователь зарегистрирован\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"База данных: {db_status}"
         )
 
-    await callback.answer(f"✅ Пользователь {user_id} успешно добавлен!", show_alert = True)
+    await callback.answer(f"✅ Пользователь {user_id} успешно зарегистрирован!", show_alert = True)
     await callback.message.edit_text(
         f"✅ <b>Пользователь зарегистрирован</b>\n\n"
         f"👤 <b>Пользователь:</b> {user_id}\n"
@@ -153,7 +153,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
 
         bot_logger.log_moderator_msg(
             tg_id=message.from_user.id,
-            message=f"РЕГИСТРАЦИЯ: ❌ Анкета отклонена\n"
+            message=f"РЕГИСТРАЦИЯ: ❌ Отмена регистрации\n"
                     f"Пользователь ID: {user_id}\n"
                     f"Причина: {reason}"
         )
@@ -340,7 +340,7 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
                     f"Направление: {app_data.get('event_direction', 'Неизвестно')}\n"
                     f"Мероприятие: {app_data.get('name_of_event')}\n"
                     f"Начислено: {coins} ТИУкоинов\n"
-                    f"База данных: {db_status}\n"
+                    f"База данных: {db_status}"
         )
 
     except Exception:
@@ -582,7 +582,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
                     f"Заявка №{request_id}\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"Товар: {item_name}\n"
-                    f"Цена: {item_price} ТИУкоинов\n"
+                    f"Цена: {item_price} ТИУкоинов"
         )
 
 
