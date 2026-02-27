@@ -134,7 +134,7 @@ async def send_the_agreement(callback: CallbackQuery, bot: Bot, state: FSMContex
 
         bot_logger.log_user_msg(
             tg_id=callback.from_user.id,
-            message=f"РЕГИСТРАЦИЯ: ✅ Согласие на ОПД отправлено модератору\n"
+            message=f"РЕГИСТРАЦИЯ: ✅ Согласие на ОПД отправлено модератору"
         )
 
     except Exception as send_error:
@@ -1230,7 +1230,7 @@ async def support_write_moderator(message:Message,state:FSMContext, bot: Bot):
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_message = (
         "❗️ <b>Новое сообщение от пользователя:</b> \n\n"
-        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} ID: {message.from_user.id}\n"   
+        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} (ID: {message.from_user.id})\n"   
         f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"<b>Сообщение:</b> {message.text}"
     )
@@ -1254,7 +1254,7 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_message = (
         "❗️ <b>Новое сообщение от пользователя:</b> \n\n"
-        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} ID: {message.from_user.id})\n"
+        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} (ID: {message.from_user.id})\n"
         f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"<b>Сообщение:</b> {message.text}"
     )
@@ -1278,7 +1278,7 @@ async def support_feedback_and_error(message:Message,state:FSMContext, bot: Bot)
     ekaterinburg_time = utc_time.astimezone(ekaterinburg_tz)
     moderator_message = (
         "❗️ <b>Новое сообщение от пользователя:</b> \n\n"
-        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} ID: {message.from_user.id}\n"   
+        f"👤 <b>Пользователь:</b> @{message.from_user.username or 'без username'} (ID: {message.from_user.id})\n"   
         f"📅 <b>Время подачи:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"<b>Сообщение:</b> {message.text}"
     )
