@@ -3,8 +3,6 @@ from pathlib import Path
 from logging.handlers import TimedRotatingFileHandler
 from typing import Optional
 from ..config.bot_config import config 
-from .pii_masker import pii_masker
-
 
 class BotLogger:
     """Универсальный логгер"""

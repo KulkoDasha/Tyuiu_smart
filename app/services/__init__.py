@@ -1,4 +1,3 @@
-from .parser_registration_form_service import parse_registration_form_from_message
 from .parser_event_application_service import parse_event_application_from_message
 from .logger import bot_logger
 from .pii_masker import pii_masker
@@ -14,8 +13,7 @@ from .validation_service import (is_valid_full_name,
                                  is_valid_confirmation_material)
 
 
-__all__=["parse_registration_form_from_message",
-         "parse_event_application_from_message",
+__all__=["parse_event_application_from_message",
          "is_valid_full_name",
          "is_valid_group",
          "is_valid_direction",
