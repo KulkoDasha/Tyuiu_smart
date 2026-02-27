@@ -34,7 +34,7 @@ async def process_notify_all_users_message(message: Message, state: FSMContext, 
         bot_logger.log_admin_msg(
             tg_id=message.from_user.id,
             message=f"МАССОВОЕ УВЕДОМЛЕНИЕ: ❌ Ошибка БД\n"
-                    f"База данных: {db_log_message}"
+                    f"База данных: {db_log_message}\n"
                     f"Ошибка: {str(e)}"
         )
 
@@ -68,7 +68,7 @@ async def process_notify_all_users_message(message: Message, state: FSMContext, 
         bot_logger.log_admin_msg(
             tg_id=message.from_user.id,
             message=f"МАССОВОЕ УВЕДОМЛЕНИЕ: ❌ Ошибка БД\n"
-                    f"База данных: {db_log_message}"
+                    f"База данных: {db_log_message}\n"
                     f"Ошибка: {str(e)}"
         )
 
@@ -513,7 +513,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
                 message=f"НАЧИСЛЕНИЕ: ✅ Выполнено\n"
                         f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                         f"Начислено: {coins} ТИУкоинов\n"
-                        f"База данных: {db_status}\n"
+                        f"База данных: {db_status}"
             )
 
             await message.answer(
@@ -554,7 +554,7 @@ async def process_add_tiukoins_to_user(message: Message, state: FSMContext, bot:
             message=f"💸 НАЧИСЛЕНИЕ: ❌ Ошибка БД\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"База данных: {db_status}\n"
-                    f"  └─ {db_log_message}"
+                    f"  └─ {db_log_message}\n"
                     f"Ошибка: {str(e)}"
         )
 
