@@ -2,3 +2,5 @@
 /.vscode
 /.env
 __pycache__
+/logs
+/upload_script/.env

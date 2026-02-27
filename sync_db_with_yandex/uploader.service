@@ -1,0 +1,15 @@
+[Unit]
+Description=Синхронизация Yandex Disk с БД каждые 4 часа
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=SetUserHere
+Group=dataexporter
+WorkingDirectory=/opt/repo
+ExecStart=/opt/repo/bin/path_to/binary
+TimeoutStartSec=5000
+
+[Install]
+WantedBy=multi-user.target
+

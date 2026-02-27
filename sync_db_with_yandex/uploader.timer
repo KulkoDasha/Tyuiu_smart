@@ -1,0 +1,14 @@
+[Unit]
+Description=Run My Binary Script every 4 hours
+Requires=uploader.service
+
+[Timer]
+OnCalendar=*:0/4
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=30s
+Unit=uploader.service
+
+[Install]
+WantedBy=timers.target
+
