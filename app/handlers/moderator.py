@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from datetime import datetime
 import pytz
 from asyncio import sleep
+from sqlalchemy import select
 
 from database import *
 from ..services import *
@@ -562,12 +563,18 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
     request_id = data["request_id"]
 
     user_id = data["user_id"]
-    item_id = data["item_id"]
-    item_price = data["item_price"]
+    item_id = int(data["item_id"])
+    item_price = int(data["item_price"])
     action = data["action"]
+
+    print('1'*50)
+    print(request_id, user_id, item_id, item_price, action)
     
-    # TODO: сделать связь с яндекс таблицами
-    item_name = "pass"
+    catalog = select(Catalog_of_reward).where(Catalog_of_reward.id == item_id)
+    async with async_session() as session:
+        result = await session.execute(catalog)
+        item = result.scalar_one_or_none()
+        
     catalog_status = "pass"
     ekaterinburg_time = datetime.now()
     moderator_username = callback.from_user.username or callback.from_user.full_name
@@ -575,13 +582,20 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
 
     # Логика действия
     if action == "issue":
+        
+        db_status, db_user_message, db_log_message = await db_approve_issuance(issuance_id = request_id, moderator_username = moderator_username)
+
+        if db_status:
+            catalog_status = "✅"
+        else:
+            catalog_status = f"❌ {db_user_message}"
 
         bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
             message=f"ПООЩРЕНИЕ: ✅ Выдано\n"
                     f"Заявка №{request_id}\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                    f"Товар: {item_name}\n"
+                    f"Товар: {item.name_of_reward}\n"
                     f"Цена: {item_price} ТИУкоинов"
         )
 
@@ -590,8 +604,8 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         await callback.message.edit_text(
             f"✅ <b>Поощрение выдано!</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n\n"
-            f"🎁 <b>Поощрение:</b> {item_name}\n"
+            f"<b>Пользователь:</b> ID: {user_id}\n\n"
+            f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"👮 <b>Модератор:</b> @{moderator_username}\n"
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
@@ -600,7 +614,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         
     else:  # reject
 
-        db_success, db_user_message, db_log_message = await db_reject_issuance( tg_id_str = str(user_id), issuance_id = item_price)
+        db_success, db_user_message, db_log_message = await db_reject_issuance( tg_id_str = str(user_id), issuance_id = request_id, moderator_username = moderator_username)
 
         if db_success:
             tiukoins_status = f"💎 <b>ТИУкоины возвращены:</b> {item_price}"
@@ -612,7 +626,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
             message=f"ПООЩРЕНИЕ: ❌ Ошибка возврата ТИУКоинов\n"
                     f"Заявка №{request_id}\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                    f"Поощрение: {item_name}\n"
+                    f"Поощрение: {item.name_of_reward}\n"
                     f"Цена: {item_price} ТИУкоинов\n"
                     f"База данных: {db_log_message}\n"
                     f"ТИУкоины возвращены: {item_price}"
@@ -623,7 +637,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
             message=f"ПООЩРЕНИЕ: ❌ Отменено\n"
                     f"Заявка №{request_id}\n"
                     f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                    f"Товар: {item_name}\n"
+                    f"Товар: {item.name_of_reward}\n"
                     f"Цена: {item_price} ТИУкоинов\n"
                     f"ТИУкоины возвращены: {item_price}"
         )
@@ -632,8 +646,8 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         await callback.message.edit_text(
             f"❌ <b>Выдача отменена!</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"<b>Пользователь:</b> {user_full_name} (ID: {user_id})\n\n"
-            f"🎁 <b>Поощрение:</b> {item_name}\n"
+            f"<b>Пользователь:</b> ID: {user_id}\n\n"
+            f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"{tiukoins_status}\n"
             f"{catalog_status}\n"
@@ -648,7 +662,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         student_text = (
             f"{status_emoji} <b>{'Поощрение выдано!' if action == 'issue' else 'Выдача отменена!'}</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"🎁 <b>Поощрение:</b> {item_name}\n"
+            f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
        )

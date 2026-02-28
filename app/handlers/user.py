@@ -848,20 +848,18 @@ def split_message(text: str, max_length: int = 4096) -> list:
 async def catalog_start(message: Message, state: FSMContext):
     """Обрабатывает нажатие на кнопку 'Каталог Поощрений'"""
 
-    await message.answer("В данный момент каталог поощрений находится в разработке и скоро будет доступен. Следите за обновлениями! 🚀")
-    await state.clear()
-    # user_id = str(message.from_user.id)
-    # user_exists = await db_user_exists(user_id)
-    # if user_exists:
-    #     catalog = await message.answer("⏳ Загружаем каталог поощрений...")
-    #     async with async_session() as session:
-    #         keyboard_markup = await catalog_of_rewards.create_table_keyboard(session)
+    user_id = str(message.from_user.id)
+    user_exists = await db_user_exists(user_id)
+    if user_exists:
+        catalog = await message.answer("⏳ Загружаем каталог поощрений...")
+        async with async_session() as session:
+             keyboard_markup = await catalog_of_rewards.create_table_keyboard(session)
             
-    #     await catalog.delete()
-    #     await message.answer(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:", reply_markup = keyboard_markup)
-    #     await state.set_state(CatalogOfRewardsStates.catalog_of_rewards_start)
-    # else:
-    #     await message.answer(text=LEXICON_TEXT["not_registred"], reply_markup=ReplyKeyboardRemove())
+        await catalog.delete()
+        await message.answer(text="🛒 <b>Каталог поощрений </b>\n\nВыберите поощрение:", reply_markup = keyboard_markup)
+        await state.set_state(CatalogOfRewardsStates.catalog_of_rewards_start)
+    else:
+        await message.answer(text=LEXICON_TEXT["not_registred"], reply_markup=ReplyKeyboardRemove())
 
 @user_router.callback_query(F.data == "cancel_catalog", StateFilter(CatalogOfRewardsStates.catalog_of_rewards_start))
 async def cancel_catalog(callback: CallbackQuery, state: FSMContext):
@@ -986,8 +984,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     item_id = int(callback.data.replace("confirm_purchase_", ""))
     purchase_date = datetime.now().strftime("%d.%m.%Y")
     catalog = select(Catalog_of_reward).where(Catalog_of_reward.id == item_id)
-    issuance_id = None
-    db_log_message = ""
+
     
     async with async_session() as session:
         result = await session.execute(catalog)
@@ -1002,12 +999,13 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
     
     try:
         user_full_name = await db_get_user_full_name(str(user_id))
-        db_success, db_user_message, db_log_message = await db_deduct_tiukoins(
+        issuance_id, db_user_message, i_count, db_log_message = await db_purchase_reward(
             tg_id_str = str(user_id),
-            spend_amount = item.price
+            reward_id_str = str(item_id),
+            username = str(callback.from_user.username)
         )
         
-        if not db_success:
+        if issuance_id == -1:
             bot_logger.log_user_msg(
                 tg_id=callback.from_user.id,
                 message=f"ПООЩРЕНИЕ: ❌ Ошибка списания ТИУкоинов\n"
@@ -1017,46 +1015,6 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                         f"База данных: {db_log_message}"
             )
             await callback.message.answer(f"❌ <b>Ошибка списания ТИУкоинов</b>\n\n{db_user_message}")
-            await state.clear()
-            return
-        
-        db_success, item_count, db_log_message = await db_decrease_reward_count(
-            reward_id=item_id
-        )
-
-        if not db_success:
-            bot_logger.log_user_msg(
-                tg_id=callback.from_user.id,
-                message=f"ПООЩРЕНИЕ: ❌ Ошибка БД при уменьшении количества товара\n"
-                        f"Заявка №{issuance_id}\n"
-                        f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                        f"Товар: {item.name_of_reward}\n"
-                        f"Цена: {item.price} ТИУкоинов\n"
-                        f"База данных: {db_log_message}"
-            )
-            await callback.message.answer(f"❌ <b>Ошибка при оформлении заявки</b>\n\n{db_user_message}")
-            await state.clear()
-            return
-
-        db_success, db_user_message, db_log_message = await db_create_issuance_record(
-            tg_id = str(user_id),
-            username = f"@{callback.from_user.username}",
-            reward_id = item_id,
-            reward_name = item.name_of_reward,
-            price = item.price
-        )
-    
-        if not db_success:
-            bot_logger.log_user_msg(
-                tg_id=callback.from_user.id,
-                message=f"ПООЩРЕНИЕ: ❌ Ошибка БД при создании записи о выдаче\n"
-                        f"Заявка №{issuance_id}\n"
-                        f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                        f"Товар: {item.name_of_reward}\n"
-                        f"Цена: {item.price} ТИУкоинов\n"
-                        f"База данных: {db_log_message}"
-            )
-            await callback.message.answer(f"❌ <b>Ошибка при оформлении заявки</b>\n\n{db_user_message}")
             await state.clear()
             return
         
@@ -1076,15 +1034,15 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
             f"<b>Заявка №{issuance_id}</b>\n"
             f"<b>Пользователь:</b> @{callback.from_user.username or 'без username'} (ID: {user_id}) \n"
             f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
-            f"💾 <b>База данных:</b> {db_user_message}\n"
+            f"💾 <b>База данных:</b> {db_log_message}\n"
             f"💎 <b>Стоимость:</b> {item.price} ТИУкоинов\n"
-            f"📦 <b>Осталось:</b> {item_count} шт.\n"
+            f"📦 <b>Осталось:</b> {i_count} шт.\n"
             f"📅 <b>Дата оформления:</b> {purchase_date}\n"
             f"📍 <b>Место выдачи:</b> г. Тюмень, ул. Мельникайте, 72, корпус 1, кабинет 103\n"
             f"📋 <b>Статус:</b> {status}\n"
         )
-
-        moderator_keyboard = ModeratorCloseRewards.get_inline_keyboard(issuance_id, user_id, item.id, item.price)
+        
+        moderator_keyboard = ModeratorCloseRewards.get_inline_keyboard(issuance_id, user_id, item_id, item.price)
         send_params = {
                     "chat_id": config.moderator_chat_id,
                     "text": moderator_message,
@@ -1092,6 +1050,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
                     "message_thread_id": ISSUANCE_OF_INCENTIVES,
                     "parse_mode":"HTML"
                 }
+        
             
         asyncio.create_task(bot.send_message(**send_params))
 
@@ -1110,6 +1069,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
         await callback.answer("✅ Покупка завершена!", show_alert = True)
             
     except Exception as e:
+        
         await callback.message.answer(f"❌ Произошла ошибка. Попробуйте позже. Если ошибка повторяется - обратитесь в поддержку /support")
 
         bot_logger.log_user_msg(

@@ -1,6 +1,6 @@
 from .database import engine, async_session, Base
 from .models import Users, Event_applications, Roles, Catalog_of_reward, Issuance_of_rewards
-from .database_service import connection, create_tables
+from .database_service import connection, create_tables, connection_with_auto_commit
 from .dao import (
     db_set_user,
     db_delete_all_users,
@@ -18,7 +18,10 @@ from .dao import (
     db_update_user,
     db_reject_issuance,
     db_create_issuance_record,
-    db_decrease_reward_count
+    db_decrease_reward_count,
+    db_purchase_reward,
+    db_approve_issuance
+    
     
 )
 
@@ -38,6 +41,7 @@ __all__ = [
     # Из database_service.py
     'connection',
     'create_tables',
+    'connection_with_auto_commit',
     
     # Из dao.py
     'db_set_user',
@@ -56,5 +60,7 @@ __all__ = [
     'db_update_user',
     'db_reject_issuance',
     'db_create_issuance_record',
-    'db_decrease_reward_count'
+    'db_decrease_reward_count',
+    'db_purchase_reward',
+    'db_approve_issuance'
 ]

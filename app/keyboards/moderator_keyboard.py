@@ -48,7 +48,7 @@ class ModeratorCloseRewards:
     def get_inline_keyboard(request_id: int, user_id: int, item_id: str, item_price:int):
         req_str = str(request_id)
         user_str = str(user_id)
-        item_str = item_id[:4] 
+        item_str = item_id 
         item_price_str = str(item_price)
         
         full_issue = f"i_r_{req_str}_{user_str}_{item_price_str}_{item_str}"
