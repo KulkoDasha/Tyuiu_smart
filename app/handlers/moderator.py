@@ -249,12 +249,14 @@ async def process_the_request_answer(message: Message, state: FSMContext, bot: B
     user_id = data.get("support_user_id")
     original_message = data.get("original_message")
     answer = message.text
+    status_of_user = db_user_exists(tg_id_str=str(user_id))
+    reply_markup = ReplyKeyboardRemove() if status_of_user !="approved" else menu_keyboard
 
     try:
         await bot.send_message(
             chat_id = user_id,
             text = f"📨 <b>Ответ от службы поддержки\n\nВаш вопрос:</b>{original_message}\n<b>Ответ:</b> {answer}\n\n💬 Если у вас остались вопросы, напишите нам снова!",
-            reply_markup = ReplyKeyboardRemove()
+            reply_markup=reply_markup
         )
         await message.answer(f"✅ Ответ пользователю {user_id} отправлен!")
         await state.clear()
@@ -281,7 +283,7 @@ async def approve_application(callback: CallbackQuery, bot: Bot,state: FSMContex
     event_role = parts[4]
     db_application_id = int(parts[5])
     ekaterinburg_time = callback.message.date.astimezone(ekaterinburg_tz)
-    moderator_username = callback.from_user.username or callback.from_user.full_name
+    moderator_username = f"@{callback.from_user.username}" or callback.from_user.full_name
     
     # Парсим заявку извлекаем row_id из сообщения
     message_text = callback.message.text or ""
@@ -438,7 +440,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     row_match = re.search(r'строка\s*(\d+)', message_text)
     row_id = int(row_match.group(1)) if row_match else int(application_id+1)
     
-    moderator_username = message.from_user.username or message.from_user.full_name
+    moderator_username = f"@{message.from_user.username}" or message.from_user.full_name
     
     try:
         db_status = ""
@@ -577,7 +579,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         
     catalog_status = "pass"
     ekaterinburg_time = datetime.now()
-    moderator_username = callback.from_user.username or callback.from_user.full_name
+    moderator_username = f"@{callback.from_user.username}" or callback.from_user.full_name
     user_full_name = await db_get_user_full_name( str(user_id))
 
     # Логика действия

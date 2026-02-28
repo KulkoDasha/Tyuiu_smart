@@ -1066,7 +1066,7 @@ async def confirm_purchase(callback: CallbackQuery, state: FSMContext, bot: Bot)
 
         await callback.message.edit_text(text = confirm_text, parse_mode = "HTML")
         await state.clear()
-        await callback.answer("✅ Покупка завершена!", show_alert = True)
+        await callback.answer("✅ Покупка совершена!", show_alert = True)
             
     except Exception as e:
         

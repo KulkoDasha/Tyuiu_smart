@@ -153,8 +153,8 @@ async def delete_user(message: Message, state: FSMContext):
     """Начинает удаление конкретного пользователя"""
 
     await message.answer(
-        "👤 Введите Telegram ID для удаления пользователя:\n"
-        "💡 Пример: `1293014025`",
+        "👤 Введите Telegram ID для удаления пользователя\n"
+        "Пример: `1293014025`",
         parse_mode="Markdown"
     )
     await state.set_state(AdminStates.waiting_delete_user_tg_id)
@@ -373,7 +373,7 @@ async def deduct_tiukoins_from_user(message: Message, state: FSMContext):
     """Запрашивает ТГ_айди пользователя для списания ТИУкоинов"""
 
     await message.delete()
-    await message.answer(text="Напишите ID пользователя и количество ТИУкоинов, которые хотите списать через пробел\n\n<i>Например: 1059294358 150</i>")
+    await message.answer(text="Напишите ID пользователя и количество ТИУкоинов, которое хотите списать через пробел\n\n<i>Например: 1059294358 150</i>")
     
     await state.set_state (AdminStates.deduct_tiukoins)
 
