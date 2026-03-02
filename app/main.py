@@ -3,7 +3,7 @@ import logging
 import traceback
 from pathlib import Path
 import shutil
-from .services import bot_logger
+from datetime import datetime
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -13,6 +13,7 @@ from aiohttp import ClientTimeout
 from .config import config
 from .handlers import *
 from .keyboards import *
+from .services import bot_logger, send_log_file
 
 logging.basicConfig(
     level=logging.getLevelName(config.log.level),
@@ -26,6 +27,52 @@ timeout = ClientTimeout(
     sock_read=600,    # 10 минут на чтение данных
     sock_connect=30
 )
+
+async def scheduled_log_sender():
+    """Асинхронный планировщик внутри main.py"""
+    send_time = config.logs_send_time  # формат "HH:MM"
+    bot_logger.log_admin_msg(
+        tg_id="Отправка логов", 
+        message=f"⏰ Планировщик запущен. Отправка в {send_time}"
+    )
+    
+    last_send_date = None
+    
+    while True:
+        try:
+            now = datetime.now()
+            current_time = now.strftime("%H:%M")
+            current_date = now.strftime("%Y-%m-%d")
+            
+            # Проверяем время и чтобы не отправить дважды за день
+            if current_time == send_time and current_date != last_send_date:
+                bot_logger.log_admin_msg(
+                    tg_id="Отправка логов", 
+                    message=f"🕐 Время отправки: {current_time}"
+                )
+                
+                # ← Запускаем send_log_file() в отдельном потоке (smtplib синхронный)
+                await asyncio.get_event_loop().run_in_executor(
+                    None, 
+                    send_log_file
+                )
+                
+                last_send_date = current_date
+                bot_logger.log_admin_msg(
+                    tg_id="Отправка логов", 
+                    message=f"✅ Отправка завершена. Следующая: завтра в {send_time}"
+                )
+                
+                await asyncio.sleep(60)  # Не отправлять повторно в ту же минуту
+            else:
+                await asyncio.sleep(30)  # Проверка каждые 30 секунд
+                
+        except Exception as e:
+            bot_logger.log_admin_msg(
+                tg_id="Отправка логов", 
+                message=f"❌ Ошибка планировщика: {e}"
+            )
+            await asyncio.sleep(60)
 
 async def main():
     session_path = Path("session")
@@ -48,7 +95,13 @@ async def main():
 
     try:
         print("🚀 Бот запущен!")
+        send_log_file()
+        await asyncio.gather(
+            dp.start_polling(bot),
+            scheduled_log_sender()
+        )
         await dp.start_polling(bot)
+
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("🛑 Остановка по Ctrl+C")
     except Exception as e:

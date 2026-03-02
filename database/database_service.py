@@ -17,3 +17,15 @@ async def create_tables():
 
     from database import seed_data
     await seed_data.seed_roles() 
+
+def connection_with_auto_commit(func):
+    async def wrapper(*args, **kwargs):
+        async with async_session() as session:
+            try:
+                result = await func(session, *args, **kwargs)
+                await session.commit()
+                return result
+            except Exception:
+                await session.rollback()
+                raise
+    return wrapper

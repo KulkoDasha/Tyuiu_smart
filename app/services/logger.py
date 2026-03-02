@@ -53,5 +53,4 @@ class BotLogger:
         level = level.upper()
         getattr(logger, level.lower())(message)
 
-
 bot_logger = BotLogger(config.log)
