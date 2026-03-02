@@ -605,6 +605,20 @@ async def reward_action(callback: CallbackQuery, bot: Bot, state:FSMContext):
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup = None, parse_mode = "HTML"
         )
+
+        student_text = (
+            f"✅ <b>{'Поощрение выдано!'}</b>\n\n"
+            f"<b>Заявка №{request_id}</b>\n"
+            f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
+            f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
+            f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
+        )
+        await bot.send_message(
+            chat_id = user_id,
+            text = student_text,
+            parse_mode = "HTML", 
+            reply_markup = menu_keyboard
+        )
         
     else:  # reject
         data = await state.update_data(user_id=user_id, request_id=request_id, moderator_username=moderator_username, 
