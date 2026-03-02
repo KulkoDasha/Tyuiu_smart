@@ -601,7 +601,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot, state:FSMContext):
             f"<b>Пользователь:</b> ID: {user_id}\n\n"
             f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
-            f"👮 <b>Модератор:</b> @{moderator_username}\n"
+            f"👮 <b>Модератор:</b> {moderator_username}\n"
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup = None, parse_mode = "HTML"
         )

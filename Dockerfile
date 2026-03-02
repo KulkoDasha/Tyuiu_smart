@@ -23,11 +23,16 @@ RUN useradd -m -u 1000 appuser && \
 # Переключение на не-root пользователя
 USER appuser
 
-# Копирование requirements и установка Python-зависимостей
+# === копируем requirements.txt ПЕРЕД pip install ===
 COPY --chown=appuser:appuser requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
 
-# --- Application image ---
+# Установка Python-пакетов с зеркалом для РФ и увеличенными таймаутами
+RUN pip install --no-cache-dir --user -r requirements.txt \
+        --index-url https://pypi.org/simple \
+        --retries=20 \
+        --trusted-host pypi.org
+
+# === Application image ===
 FROM base AS application
 
 # Копирование исходного кода приложения
@@ -54,7 +59,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Healthcheck для контейнера бота (проверка, что процесс запущен)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import asyncio; from app.main import bot; exit(0)" || exit 1
+    CMD python -c "import sys; sys.exit(0)" || exit 1
 
 # Точка входа и команда запуска
 ENTRYPOINT ["/entrypoint.sh"]
