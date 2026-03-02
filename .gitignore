@@ -3,4 +3,4 @@
 /.env
 __pycache__
 /logs
-/upload_script/.env
+/uploader_script/.env
