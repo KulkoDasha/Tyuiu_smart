@@ -565,9 +565,6 @@ async def reward_action(callback: CallbackQuery, bot: Bot, state:FSMContext):
     item_price = int(data["item_price"])
     action = data["action"]
 
-    print('1'*50)
-    print(request_id, user_id, item_id, item_price, action)
-    
     catalog = select(Catalog_of_reward).where(Catalog_of_reward.id == item_id)
     async with async_session() as session:
         result = await session.execute(catalog)
@@ -612,14 +609,15 @@ async def reward_action(callback: CallbackQuery, bot: Bot, state:FSMContext):
     else:  # reject
         data = await state.update_data(user_id=user_id, request_id=request_id, moderator_username=moderator_username, 
                                        item_price=item_price, item_name=item.name_of_reward, user_full_name=user_full_name, 
-                                       action = action, catalog_status = catalog_status)
+                                       action = action, catalog_status = catalog_status, message_id = callback.message.message_id)
         await callback.message.answer(f"❔ Введите причину отклонения заявки пользователя {user_id}:" )
         await state.set_state(ModeratorStates.waiting_reject_issuance_reason)
         
 @moderator_router.message(F.text, StateFilter(ModeratorStates.waiting_reject_issuance_reason))
-async def process_reject_issuance_reason(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def process_reject_issuance_reason(message: Message, state: FSMContext, bot: Bot):
     """Процесс отмены выдачи по заявке"""
     
+    await message.delete()
     data = await state.get_data()
     user_id = data.get("user_id")
     request_id = data.get("request_id")
@@ -629,14 +627,14 @@ async def process_reject_issuance_reason(callback: CallbackQuery, state: FSMCont
     user_full_name = data.get("user_full_name")
     action = data.get("action")
     catalog_status = data.get("catalog_status")
+    reason = message.text or "Причина не указана"
+    message_id = data.get("message_id")
     
     ekaterinburg_time = datetime.now()
-    moderator_username = f"@{callback.from_user.username}" or callback.from_user.full_name
+    moderator_username = f"@{message.from_user.username}" or message.from_user.full_name
     
     db_success, db_user_message, db_log_message = await db_reject_issuance( tg_id_str = str(user_id), issuance_id = request_id,
-
-
-moderator_username = moderator_username)
+                                                                           moderator_username = moderator_username)
 
     if db_success:
         tiukoins_status = f"💎 <b>ТИУкоины возвращены:</b> {item_price}"
@@ -644,7 +642,7 @@ moderator_username = moderator_username)
         tiukoins_status = f"⚠️ <b>Ошибка возврата:</b> {db_user_message}"
 
         bot_logger.log_moderator_msg(
-        tg_id=callback.from_user.id,
+        tg_id = message.from_user.id,
         message=f"ПООЩРЕНИЕ: ❌ Ошибка возврата ТИУКоинов\n"
                 f"Заявка №{request_id}\n"
                 f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
@@ -655,7 +653,7 @@ moderator_username = moderator_username)
     )
     
     bot_logger.log_moderator_msg(
-        tg_id=callback.from_user.id,
+        tg_id = user_id,
         message=f"ПООЩРЕНИЕ: ❌ Отменено\n"
                 f"Заявка №{request_id}\n"
                 f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
@@ -665,7 +663,10 @@ moderator_username = moderator_username)
     )
 
         # Ответ модератору
-    await callback.message.edit_text(
+    await bot.edit_message_text(
+        chat_id=message.chat.id,
+        message_id=message_id,
+        text =
         f"❌ <b>Выдача отменена!</b>\n\n"
         f"<b>Заявка №{request_id}</b>\n"
         f"<b>Пользователь:</b> ID: {user_id}\n\n"
@@ -682,10 +683,11 @@ moderator_username = moderator_username)
     try:
         status_emoji = "✅" if action == "issue" else "❌"
         student_text = (
-            f"{status_emoji} <b>{'Поощрение выдано!' if action == 'issue' else 'Выдача отменена!'}</b>\n\n"
+            f"{status_emoji} <b>{'Выдача отменена!'}</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
             f"🎁 <b>Поощрение:</b> {item_name}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
+            f"📝 <b>Причина:</b> {reason}\n"
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
         )
         if action == "reject":
@@ -697,7 +699,13 @@ moderator_username = moderator_username)
             parse_mode = "HTML", 
             reply_markup = menu_keyboard
         )
-        await callback.answer(f"✅ Студент {user_id} уведомлён!", show_alert = True)
+        mes = await message.answer(f"✅ Студент {user_id} уведомлён!")
+        await sleep(5)
+        await mes.delete()
+        await state.clear()
 
     except Exception:
-        await callback.answer(f"❌ Студент {user_id} не уведомлён!", show_alert = True)
+        mes = await message.answer(f"❌ Студент {user_id} не уведомлён!")
+        await sleep(5)
+        await mes.delete()
+        await state.clear()

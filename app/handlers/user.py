@@ -78,11 +78,16 @@ async def full_name_sent(message:Message, state: FSMContext ):
     await state.update_data(full_name = message.text, user_id=message.from_user.id, username = f"@{message.from_user.username}", message_id = message.message_id)
     await message.answer(text = LEXICON_TEXT['start_agreement_text'], reply_markup = keyboard_start)
 
-@user_router.message(StateFilter(RegistrationFormStates.full_name),lambda message: not message.text.startswith('/'))
-async def process_full_name_incorrect(message: Message):
+@user_router.message(StateFilter(RegistrationFormStates.full_name))
+async def process_full_name_incorrect(message: Message,state: FSMContext):
     """ФИО некоректное"""
-    
-    await message.answer(text = LEXICON_TEXT["registration_incorrect_full_name"])
+    if message.text.startswith("/") and message.text != "/cancel":
+        await message.answer(text=LEXICON_TEXT["in_state"])
+    elif message.text == "/cancel":
+        await state.clear()
+        await message.answer(text = LEXICON_TEXT["cancel_fsm"])
+    else:
+        await message.answer(text = LEXICON_TEXT["registration_incorrect_full_name"])
 
 @user_router.callback_query(F.data == "read_the_agreement")
 async def send_the_agreement(callback: CallbackQuery, bot: Bot, state: FSMContext):
