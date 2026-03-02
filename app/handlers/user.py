@@ -57,9 +57,11 @@ async def start(message: Message, state: FSMContext):
             reply_markup=menu_keyboard)
     elif user_exists == "pending":
         await message.answer(text=LEXICON_TEXT["wait_registration"])
-    else:
+    elif user_exists == "not_registered":
         await message.answer(text=LEXICON_TEXT["start_text"])
         await state.set_state(RegistrationFormStates.full_name)
+    else:
+        await message.answer(text=LEXICON_TEXT["in_state"])
 
 @user_router.callback_query(F.data == "re_register")
 async def re_register_start(callback: CallbackQuery,state:FSMContext):

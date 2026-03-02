@@ -318,14 +318,14 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
                                       db_application_id: int, ekaterinburg_time):
     """Обработка заявки"""
     coins = ROLE_LEXICON[event_role]
+    user_full_name = await db_get_user_full_name(tg_id_str=str(user_id))
     db_status, db_log_message = await approve_db(db_application_id, moderator_username, coins)
     if db_status.startswith("❌"):
         await callback.message.edit_text("❗️ Произошла ошибка при сохранении в базу данных. Обратитесь к разработчику с данной проблемой.")
-
         bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ❌ Ошибка БД при принятии\n"
-                    f"Пользователь: {pii_masker.mask_full_name(app_data.get('full_name', ''))} (ID: {user_id})\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"База данных: {db_log_message}"
         )
 
@@ -339,7 +339,7 @@ async def process_regular_application(callback: CallbackQuery,bot: Bot, state:FS
         bot_logger.log_moderator_msg(
             tg_id=callback.from_user.id,
             message=f"ЗАЯВКА: ✅ Одобрена\n"
-                    f"Пользователь: {pii_masker.mask_full_name(app_data.get('full_name', ''))} (ID: {user_id})\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"Направление: {app_data.get('event_direction', 'Неизвестно')}\n"
                     f"Мероприятие: {app_data.get('name_of_event')}\n"
                     f"Начислено: {coins} ТИУкоинов\n"
@@ -431,14 +431,10 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
     user_id = data.get("reject_user_id")
     reason = message.text
     message_text = data.get("message_text", "")
+    user_full_name = await db_get_user_full_name(tg_id_str=(user_id))
     
     # Парсим заявку извлекаем row_id из сообщения
     app_data = parse_event_application_from_message(message_text, user_id)
-
-    # Извлекаем номер строки из сообщения из текста сообщения
-    import re
-    row_match = re.search(r'строка\s*(\d+)', message_text)
-    row_id = int(row_match.group(1)) if row_match else int(application_id+1)
     
     moderator_username = f"@{message.from_user.username}" or message.from_user.full_name
     
@@ -460,7 +456,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         bot_logger.log_moderator_msg(
             tg_id=message.from_user.id,
             message=f"ЗАЯВКА: ❌ Отклонена\n"
-                    f"Пользователь: {pii_masker.mask_full_name(app_data.get('full_name', ''))} (ID: {user_id})\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"Направление: {data.get('event_direction', 'Неизвестно')}\n"
                     f"Мероприятие: {data.get('name_of_event')}\n"
                     f"База данных: {db_log_message}"
@@ -503,7 +499,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
         bot_logger.log_moderator_msg(
             tg_id=message.from_user.id,
             message=f"ЗАЯВКА: ❌ Ошибка отклонения\n"
-                    f"Пользователь: {pii_masker.mask_full_name(app_data.get('full_name', ''))} (ID: {user_id})\n"
+                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
                     f"Направление: {data.get('event_direction', 'Неизвестно')}\n"
                     f"Мероприятие: {data.get('name_of_event')}\n"
                     f"База данных: {db_log_message}\n"
@@ -545,7 +541,7 @@ def parse_short_callback_data(callback_data: str) -> Dict[str, Any]:
 
 @connection
 @moderator_router.callback_query(F.data.startswith(("i_r_", "r_r_")))
-async def reward_action(callback: CallbackQuery, bot: Bot):
+async def reward_action(callback: CallbackQuery, bot: Bot, state:FSMContext):
     """Объединённый "Выдать+Отклонить" в один хендлер"""
     
     try:
@@ -601,7 +597,6 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
                     f"Цена: {item_price} ТИУкоинов"
         )
 
-
         # Ответ модератору
         await callback.message.edit_text(
             f"✅ <b>Поощрение выдано!</b>\n\n"
@@ -615,48 +610,73 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         )
         
     else:  # reject
-
-        db_success, db_user_message, db_log_message = await db_reject_issuance( tg_id_str = str(user_id), issuance_id = request_id, moderator_username = moderator_username)
-
-        if db_success:
-            tiukoins_status = f"💎 <b>ТИУкоины возвращены:</b> {item_price}"
-        else:
-            tiukoins_status = f"⚠️ <b>Ошибка возврата:</b> {db_user_message}"
-
-            bot_logger.log_moderator_msg(
-            tg_id=callback.from_user.id,
-            message=f"ПООЩРЕНИЕ: ❌ Ошибка возврата ТИУКоинов\n"
-                    f"Заявка №{request_id}\n"
-                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                    f"Поощрение: {item.name_of_reward}\n"
-                    f"Цена: {item_price} ТИУкоинов\n"
-                    f"База данных: {db_log_message}\n"
-                    f"ТИУкоины возвращены: {item_price}"
-        )
+        data = await state.update_data(user_id=user_id, request_id=request_id, moderator_username=moderator_username, 
+                                       item_price=item_price, item_name=item.name_of_reward, user_full_name=user_full_name, 
+                                       action = action, catalog_status = catalog_status)
+        await callback.message.answer(f"❔ Введите причину отклонения заявки пользователя {user_id}:" )
+        await state.set_state(ModeratorStates.waiting_reject_issuance_reason)
         
-        bot_logger.log_moderator_msg(
-            tg_id=callback.from_user.id,
-            message=f"ПООЩРЕНИЕ: ❌ Отменено\n"
-                    f"Заявка №{request_id}\n"
-                    f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
-                    f"Товар: {item.name_of_reward}\n"
-                    f"Цена: {item_price} ТИУкоинов\n"
-                    f"ТИУкоины возвращены: {item_price}"
-        )
+@moderator_router.message(F.text, StateFilter(ModeratorStates.waiting_reject_issuance_reason))
+async def process_reject_issuance_reason(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    """Процесс отмены выдачи по заявке"""
+    
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    request_id = data.get("request_id")
+    moderator_username = data.get("moderator_username")
+    item_price = data.get("item_price")
+    item_name = data.get("item_name")
+    user_full_name = data.get("user_full_name")
+    action = data.get("action")
+    catalog_status = data.get("catalog_status")
+    
+    ekaterinburg_time = datetime.now()
+    moderator_username = f"@{callback.from_user.username}" or callback.from_user.full_name
+    
+    db_success, db_user_message, db_log_message = await db_reject_issuance( tg_id_str = str(user_id), issuance_id = request_id,
 
-            # Ответ модератору
-        await callback.message.edit_text(
-            f"❌ <b>Выдача отменена!</b>\n\n"
-            f"<b>Заявка №{request_id}</b>\n"
-            f"<b>Пользователь:</b> ID: {user_id}\n\n"
-            f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
-            f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
-            f"{tiukoins_status}\n"
-            f"{catalog_status}\n"
-            f"👮 <b>Модератор:</b> @{moderator_username}\n"
-            f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
-            reply_markup=None, parse_mode="HTML"
-        )
+
+moderator_username = moderator_username)
+
+    if db_success:
+        tiukoins_status = f"💎 <b>ТИУкоины возвращены:</b> {item_price}"
+    else:
+        tiukoins_status = f"⚠️ <b>Ошибка возврата:</b> {db_user_message}"
+
+        bot_logger.log_moderator_msg(
+        tg_id=callback.from_user.id,
+        message=f"ПООЩРЕНИЕ: ❌ Ошибка возврата ТИУКоинов\n"
+                f"Заявка №{request_id}\n"
+                f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                f"Поощрение: {item_name}\n"
+                f"Цена: {item_price} ТИУкоинов\n"
+                f"База данных: {db_log_message}\n"
+                f"ТИУкоины возвращены: {item_price}"
+    )
+    
+    bot_logger.log_moderator_msg(
+        tg_id=callback.from_user.id,
+        message=f"ПООЩРЕНИЕ: ❌ Отменено\n"
+                f"Заявка №{request_id}\n"
+                f"Пользователь: {pii_masker.mask_full_name(user_full_name)} (ID: {user_id})\n"
+                f"Товар: {item_name}\n"
+                f"Цена: {item_price} ТИУкоинов\n"
+                f"ТИУкоины возвращены: {item_price}"
+    )
+
+        # Ответ модератору
+    await callback.message.edit_text(
+        f"❌ <b>Выдача отменена!</b>\n\n"
+        f"<b>Заявка №{request_id}</b>\n"
+        f"<b>Пользователь:</b> ID: {user_id}\n\n"
+        f"🎁 <b>Поощрение:</b> {item_name}\n"
+        f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
+        f"{tiukoins_status}\n"
+        f"{catalog_status}\n"
+        f"👮 <b>Модератор:</b> @{moderator_username}\n"
+        f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
+        reply_markup=None, parse_mode="HTML"
+    )
 
     # Уведомляем студента
     try:
@@ -664,10 +684,10 @@ async def reward_action(callback: CallbackQuery, bot: Bot):
         student_text = (
             f"{status_emoji} <b>{'Поощрение выдано!' if action == 'issue' else 'Выдача отменена!'}</b>\n\n"
             f"<b>Заявка №{request_id}</b>\n"
-            f"🎁 <b>Поощрение:</b> {item.name_of_reward}\n"
+            f"🎁 <b>Поощрение:</b> {item_name}\n"
             f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
             f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}"
-       )
+        )
         if action == "reject":
             student_text += f"\n\n<i>ТИУкоины возвращены!</i> ({item_price})\nПри необходимости обратитесь в поддержку /support"
         
