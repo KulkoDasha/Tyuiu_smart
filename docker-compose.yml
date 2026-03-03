@@ -13,11 +13,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backups:/backups
     healthcheck:
-      # Используем статичное имя пользователя или $$ для экранирования
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - tium_network
     logging:
@@ -35,9 +35,10 @@ services:
     environment:
       - DB_CREDENTIALS_OVERRIDE=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       - LOG_PATH=/app/logs
+      - YANDEX_BINARY_PATH=/app/uploader_script/binary
     volumes:
       - ./logs:/app/logs
-      - ./upload_script:/app/upload_script:ro
+      - ./uploader_script:/app/uploader_script:ro
     depends_on:
       postgres:
         condition: service_healthy
