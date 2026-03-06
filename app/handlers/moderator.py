@@ -3,7 +3,6 @@ from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram import Router, Bot, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from datetime import datetime
 import pytz
 from asyncio import sleep
 from sqlalchemy import select
@@ -378,7 +377,7 @@ async def send_message(callback: CallbackQuery, user_id: int,
             f"👤 <b>Пользователь:</b> {user_id}\n"
             f"💎 <b>Начислено:</b> {coins} ТИУкоинов\n"
             f"💾 <b>База данных:</b> {db_status}\n"
-            f"👮 <b>Модератор:</b> @{moderator_username}\n"
+            f"👮 <b>Модератор:</b> {moderator_username}\n"
             f"🕐 <b>Время одобрения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup = None, parse_mode = "HTML"
         )
@@ -473,7 +472,7 @@ async def process_reject_reason(message: Message, state: FSMContext, bot: Bot):
                  f"👤 <b>Пользователь:</b> {user_id}\n"
                  f"📝 <b>Причина:</b> {reason}\n"
                  f"💾 <b>База данных:</b> {db_status}\n"
-                 f"👮 <b>Модератор:</b> @{moderator_username}\n"
+                 f"👮 <b>Модератор:</b> {moderator_username}\n"
                  f"🕐 <b>Время отклонения:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
             reply_markup = None,
             parse_mode = "HTML"
@@ -571,7 +570,7 @@ async def reward_action(callback: CallbackQuery, bot: Bot, state:FSMContext):
         item = result.scalar_one_or_none()
         
     catalog_status = "pass"
-    ekaterinburg_time = datetime.now()
+    ekaterinburg_time = callback.message.date.astimezone(ekaterinburg_tz)
     moderator_username = f"@{callback.from_user.username}" or callback.from_user.full_name
     user_full_name = await db_get_user_full_name( str(user_id))
 
@@ -644,12 +643,13 @@ async def process_reject_issuance_reason(message: Message, state: FSMContext, bo
     reason = message.text or "Причина не указана"
     message_id = data.get("message_id")
     
-    ekaterinburg_time = datetime.now()
+    
+    ekaterinburg_time = message.date.astimezone(ekaterinburg_tz)
     moderator_username = f"@{message.from_user.username}" or message.from_user.full_name
     
     db_success, db_user_message, db_log_message = await db_reject_issuance( tg_id_str = str(user_id), issuance_id = request_id,
                                                                            moderator_username = moderator_username)
-
+    
     if db_success:
         tiukoins_status = f"💎 <b>ТИУкоины возвращены:</b> {item_price}"
     else:
@@ -687,8 +687,7 @@ async def process_reject_issuance_reason(message: Message, state: FSMContext, bo
         f"🎁 <b>Поощрение:</b> {item_name}\n"
         f"💎 <b>Стоимость:</b> {item_price} ТИУкоинов\n"
         f"{tiukoins_status}\n"
-        f"{catalog_status}\n"
-        f"👮 <b>Модератор:</b> @{moderator_username}\n"
+        f"👮 <b>Модератор:</b> {moderator_username}\n"
         f"🕐 <b>Дата и время:</b> {ekaterinburg_time.strftime('%d.%m.%Y %H:%M')}",
         reply_markup=None, parse_mode="HTML"
     )

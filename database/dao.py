@@ -429,7 +429,7 @@ async def db_reject_issuance(
         await session.commit()
 
         return (True,
-                f"Заявка на получение поощрения откланена ",
+                f"Заявка на получение поощрения отклонена ",
                 f"✅ Успешно")
     
     except SQLAlchemyError as e:
